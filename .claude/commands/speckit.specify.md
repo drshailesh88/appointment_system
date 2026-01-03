@@ -6,6 +6,68 @@ DocAssist Practice Manager is a premium appointment scheduling and practice mana
 
 ---
 
+## Why Doctors Choose Us Over Practo & HealthPlix
+
+### The Problem We Solve
+
+| Competitor Pain Point | Our Solution |
+|-----------------------|--------------|
+| Practo takes **37% commission** | **Zero commission** - payments go directly to doctor's UPI |
+| Cloud-only, **fails in rural areas** | **Offline-first** - works without internet |
+| **Data belongs to platform** | **Doctor owns data** locally, export anytime |
+| Complex, enterprise-feel UI | **Premium UX** - learnable in < 1 hour |
+| No voice interface | **Voice agent** - "Hey DocAssist, book..." |
+| Siloed from EMR | **Seamless EMR integration** |
+
+### Target Users
+
+**Primary:** Solo practitioners and small clinics in Tier 2/3 cities
+- Can't afford ₹3-5 lakh annual Practo fees
+- Unreliable internet connectivity
+- Need offline access to patient data
+
+**Secondary:** Privacy-conscious doctors concerned about cloud data breaches
+
+---
+
+## Multi-Platform Strategy
+
+### Platform Matrix
+
+| Platform | Features | Voice Agent | Local LLM | Target User |
+|----------|----------|-------------|-----------|-------------|
+| **Desktop (Windows/Linux)** | Full | Yes | Yes | Receptionist, Doctor at clinic |
+| **Web App** | Full | Yes (server-side) | Yes (server-side) | Any browser access |
+| **Mobile (iOS/Android)** | Essential | No | No | Doctor on-the-go |
+| **Patient Portal (Web)** | Booking only | No | No | Patients self-booking |
+
+### Desktop/Web App (Full Power)
+- Complete appointment management
+- Voice agent with wake word ("Hey DocAssist")
+- Local LLM for smart suggestions
+- Full analytics dashboard
+- Billing and invoicing
+- Offline-first operation
+
+### Mobile App (Essential Features)
+- View today's schedule
+- Patient quick lookup
+- Appointment confirmations
+- Push notifications
+- Quick actions (mark arrived, no-show)
+- Syncs with clinic when online
+
+**Note:** Voice agent and local LLM not available on mobile due to resource constraints.
+
+### Patient Portal (Self-Service)
+- View available slots
+- Book appointments
+- Cancel/reschedule
+- Receive confirmations
+- No login required (OTP-based)
+
+---
+
 ## Feature Specifications
 
 ### Module 1: Appointment Management
