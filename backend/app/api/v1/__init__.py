@@ -4,7 +4,7 @@ API v1 module.
 
 from fastapi import APIRouter
 
-from app.api.v1 import auth, appointments, patients, doctors, clinics, services, invoices, payments
+from app.api.v1 import auth, appointments, patients, doctors, clinics, services, invoices, payments, voice
 
 api_router = APIRouter()
 
@@ -16,3 +16,4 @@ api_router.include_router(appointments.router, prefix="/appointments", tags=["Ap
 api_router.include_router(services.router, prefix="/services", tags=["Services"])
 api_router.include_router(invoices.router, prefix="/invoices", tags=["Invoices"])
 api_router.include_router(payments.router, prefix="/payments", tags=["Payments"])
+api_router.include_router(voice.router, prefix="/voice", tags=["Voice Agent"])
