@@ -1,0 +1,54 @@
+# DocAssist Practice Manager - Requirements
+# Install: pip install -r requirements.txt
+
+# ============ UI Framework ============
+flet>=0.21.0
+
+# ============ Database ============
+sqlalchemy>=2.0.0
+alembic>=1.13.0
+
+# ============ Vector Database ============
+chromadb>=0.4.0
+
+# ============ Data Validation ============
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# ============ API Layer ============
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# ============ LLM Integration ============
+ollama>=0.1.0
+sentence-transformers>=2.2.0
+
+# ============ Voice Processing ============
+openai-whisper>=20231117
+openwakeword>=0.5.0
+piper-tts>=1.2.0
+sounddevice>=0.4.6
+soundfile>=0.12.0
+
+# ============ PDF Generation ============
+fpdf2>=2.7.0
+qrcode>=7.4.0
+pillow>=10.0.0
+
+# ============ File System ============
+watchdog>=3.0.0
+
+# ============ Utilities ============
+python-dotenv>=1.0.0
+httpx>=0.26.0
+rich>=13.7.0
+typer>=0.9.0
+
+# ============ Development ============
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-asyncio>=0.23.0
+mypy>=1.8.0
+ruff>=0.1.0
+black>=24.1.0
+pre-commit>=3.6.0
