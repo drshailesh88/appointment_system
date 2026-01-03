@@ -1,0 +1,92 @@
+# DocAssist Practice Manager - Backend
+# Python FastAPI Backend for the Practice Management System
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "docassist-backend"
+version = "0.1.0"
+description = "Backend API for DocAssist Practice Manager"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+
+dependencies = [
+    # Web Framework
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+    "python-multipart>=0.0.6",
+
+    # Database
+    "sqlalchemy>=2.0.25",
+    "alembic>=1.13.1",
+    "asyncpg>=0.29.0",
+    "psycopg2-binary>=2.9.9",
+
+    # Validation & Serialization
+    "pydantic>=2.5.3",
+    "pydantic-settings>=2.1.0",
+    "email-validator>=2.1.0",
+
+    # Authentication
+    "python-jose[cryptography]>=3.3.0",
+    "passlib[bcrypt]>=1.7.4",
+
+    # Cache & Task Queue
+    "redis>=5.0.1",
+    "celery>=5.3.6",
+
+    # HTTP Client
+    "httpx>=0.26.0",
+
+    # Voice Processing
+    "faster-whisper>=0.10.0",
+    "piper-tts>=1.2.0",
+    "openwakeword>=0.5.0",
+
+    # LLM
+    "ollama>=0.1.6",
+    "chromadb>=0.4.22",
+    "sentence-transformers>=2.3.1",
+
+    # Utilities
+    "python-dotenv>=1.0.0",
+    "tenacity>=8.2.3",
+    "phonenumbers>=8.13.27",
+
+    # PDF Generation
+    "reportlab>=4.0.8",
+    "qrcode[pil]>=7.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.4",
+    "pytest-asyncio>=0.23.3",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.26.0",
+    "mypy>=1.8.0",
+    "ruff>=0.1.11",
+    "black>=24.1.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --cov=app --cov-report=term-missing"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = ["E", "W", "F", "I", "B", "C4", "UP"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.black]
+target-version = ["py311"]
+line-length = 100
