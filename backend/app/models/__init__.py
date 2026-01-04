@@ -18,6 +18,27 @@ from app.models.scheduled_report import (
     ReportFormat,
     ReportFrequency,
 )
+from app.models.insurance import (
+    PatientInsurance,
+    InsuranceVerification,
+    InsuranceClaim,
+)
+from app.models.lab_result import (
+    LabOrder,
+    LabOrderStatus,
+    LabResult,
+    LabResultStatus,
+    LabReport,
+    LabTestPriority,
+)
+from app.models.calendar_sync import (
+    CalendarConnection,
+    CalendarSyncLog,
+    SyncDirection,
+    SyncStatus,
+    ConflictResolution,
+)
+from app.models.health_record import HealthRecord
 
 __all__ = [
     "User",
@@ -38,4 +59,19 @@ __all__ = [
     "ReportType",
     "ReportFormat",
     "ReportFrequency",
+    "PatientInsurance",
+    "InsuranceVerification",
+    "InsuranceClaim",
+    "LabOrder",
+    "LabOrderStatus",
+    "LabResult",
+    "LabResultStatus",
+    "LabReport",
+    "LabTestPriority",
+    "CalendarConnection",
+    "CalendarSyncLog",
+    "SyncDirection",
+    "SyncStatus",
+    "ConflictResolution",
+    "HealthRecord",
 ]

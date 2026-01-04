@@ -77,6 +77,10 @@ dependencies:
   path_provider: ^2.1.2
   open_file: ^3.3.2
 
+  # Health Integration
+  health: ^10.2.0
+  fl_chart: ^0.66.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

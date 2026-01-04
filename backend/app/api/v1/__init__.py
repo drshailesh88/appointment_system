@@ -21,6 +21,10 @@ from app.api.v1 import (
     websocket,
     notifications,
     reports,
+    insurance,
+    labs,
+    calendar_sync,
+    health,
 )
 
 api_router = APIRouter()
@@ -41,3 +45,7 @@ api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp B
 api_router.include_router(websocket.router, tags=["WebSocket"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Push Notifications"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
+api_router.include_router(insurance.router, prefix="/insurance", tags=["Insurance"])
+api_router.include_router(labs.router, prefix="/labs", tags=["Lab Results"])
+api_router.include_router(calendar_sync.router, prefix="/calendar", tags=["Calendar Sync"])
+api_router.include_router(health.router, prefix="/health", tags=["Health Integration"])
