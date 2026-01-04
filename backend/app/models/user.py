@@ -15,6 +15,7 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.clinic import Clinic
+    from app.models.device_token import DeviceToken
 
 
 class UserRole(str, Enum):
@@ -79,6 +80,11 @@ class User(BaseModel):
 
     # Relationships
     clinic: Mapped["Clinic | None"] = relationship("Clinic", back_populates="users")
+    device_tokens: Mapped[list["DeviceToken"]] = relationship(
+        "DeviceToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email} ({self.role})>"

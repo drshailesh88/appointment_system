@@ -27,6 +27,7 @@ dependencies:
   # Network
   dio: ^5.4.0
   retrofit: ^4.0.3
+  web_socket_channel: ^2.4.0
 
   # Local Storage
   hive: ^2.2.3

@@ -16,7 +16,19 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     print("Starting DocAssist Practice Manager API...")
+
+    # Initialize realtime service with WebSocket connection manager
+    from app.api.v1.websocket import get_connection_manager
+    from app.services.realtime import get_realtime_service
+
+    realtime_service = get_realtime_service()
+    connection_manager = get_connection_manager()
+    realtime_service.set_connection_manager(connection_manager)
+
+    print("Real-time WebSocket service initialized")
+
     yield
+
     # Shutdown
     print("Shutting down DocAssist Practice Manager API...")
 

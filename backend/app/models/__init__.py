@@ -11,6 +11,7 @@ from app.models.service import Service
 from app.models.invoice import Invoice, InvoiceItem
 from app.models.payment import Payment
 from app.models.waitlist import Waitlist, WaitlistPriority, WaitlistStatus
+from app.models.device_token import DeviceToken, DevicePlatform
 
 __all__ = [
     "User",
@@ -25,4 +26,6 @@ __all__ = [
     "Waitlist",
     "WaitlistPriority",
     "WaitlistStatus",
+    "DeviceToken",
+    "DevicePlatform",
 ]

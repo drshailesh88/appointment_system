@@ -69,3 +69,6 @@ razorpay>=1.4.1
 
 # SMS Gateway (mock for testing)
 requests>=2.31.0
+
+# Push Notifications
+firebase-admin>=6.4.0

@@ -89,6 +89,16 @@ class Settings(BaseSettings):
         """Get sync database URL for Alembic."""
         return str(self.database_url).replace("+asyncpg", "+psycopg2")
 
+    @property
+    def cors_origins(self) -> list[str]:
+        """Get CORS origins."""
+        return self.allowed_origins
+
+    @property
+    def version(self) -> str:
+        """Get app version."""
+        return self.app_version
+
 
 @lru_cache
 def get_settings() -> Settings:

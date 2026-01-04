@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart';
+import '../services/websocket_service.dart';
+import 'realtime_provider.dart';
+import 'auth_provider.dart';
 
 // Waitlist Priority enum
 enum WaitlistPriority {
@@ -174,8 +177,66 @@ class WaitlistState {
 // Waitlist Notifier
 class WaitlistNotifier extends StateNotifier<WaitlistState> {
   final ApiClient _apiClient;
+  final Ref _ref;
 
-  WaitlistNotifier(this._apiClient) : super(const WaitlistState());
+  WaitlistNotifier(this._apiClient, this._ref) : super(const WaitlistState()) {
+    _listenToRealtimeUpdates();
+  }
+
+  /// Listen to real-time WebSocket events
+  void _listenToRealtimeUpdates() {
+    _ref.listen<AsyncValue<WebSocketEvent>>(
+      waitlistEventsProvider,
+      (previous, next) {
+        next.whenData((event) {
+          _handleRealtimeEvent(event);
+        });
+      },
+    );
+  }
+
+  /// Handle real-time waitlist events
+  void _handleRealtimeEvent(WebSocketEvent event) {
+    switch (event.type) {
+      case WebSocketEventType.waitlistAdded:
+      case WebSocketEventType.waitlistUpdated:
+        _mergeWaitlistUpdate(event.data);
+        break;
+
+      case WebSocketEventType.waitlistOfferSent:
+        _mergeWaitlistUpdate(event.data);
+        // Optionally show a notification to the user
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  /// Merge real-time waitlist update into state
+  void _mergeWaitlistUpdate(Map<String, dynamic> data) {
+    try {
+      final updatedEntry = WaitlistEntry.fromJson(data);
+
+      final existingIndex = state.entries.indexWhere(
+        (e) => e.id == updatedEntry.id,
+      );
+
+      if (existingIndex != -1) {
+        // Update existing entry
+        final updatedEntries = List<WaitlistEntry>.from(state.entries);
+        updatedEntries[existingIndex] = updatedEntry;
+        state = state.copyWith(entries: updatedEntries);
+      } else {
+        // Add new entry
+        final updatedEntries = [...state.entries, updatedEntry];
+        state = state.copyWith(entries: updatedEntries);
+      }
+    } catch (e) {
+      // Silently handle parse errors - just refresh
+      loadWaitlist();
+    }
+  }
 
   Future<void> loadWaitlist({String? doctorId, String? status}) async {
     state = state.copyWith(isLoading: true, error: null);
@@ -292,5 +353,5 @@ class WaitlistNotifier extends StateNotifier<WaitlistState> {
 final waitlistProvider =
     StateNotifierProvider<WaitlistNotifier, WaitlistState>((ref) {
   final apiClient = ref.watch(apiClientProvider);
-  return WaitlistNotifier(apiClient);
+  return WaitlistNotifier(apiClient, ref);
 });
