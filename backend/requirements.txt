@@ -38,6 +38,10 @@ torchaudio>=2.0.0
 # LLM Integration
 ollama>=0.1.6
 
+# Vector Database & Embeddings (RAG)
+qdrant-client>=1.7.0
+fastembed>=0.2.0
+
 # File Watching (for EMR sync)
 watchdog>=3.0.0
 
