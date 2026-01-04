@@ -180,9 +180,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     },
                   ),
                   _QuickAction(
-                    icon: Icons.search,
-                    label: 'Search',
-                    onTap: () => context.goNamed('patients'),
+                    icon: Icons.analytics,
+                    label: 'Analytics',
+                    onTap: () => context.goNamed('analytics'),
                   ),
                 ],
               ),

@@ -12,8 +12,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# Python lib (not Flutter mobile/lib)
+/lib/
 lib64/
+!mobile/lib/
 parts/
 sdist/
 var/

@@ -64,6 +64,25 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
+          // Analytics & Reports section
+          _SettingsSection(
+            title: 'Analytics & Reports',
+            items: [
+              _SettingsItem(
+                icon: Icons.analytics,
+                title: 'Analytics Dashboard',
+                subtitle: 'View appointment and revenue stats',
+                onTap: () => context.goNamed('analytics'),
+              ),
+              _SettingsItem(
+                icon: Icons.hourglass_empty,
+                title: 'Waitlist Management',
+                subtitle: 'Manage patient waiting queue',
+                onTap: () => context.goNamed('waitlist'),
+              ),
+            ],
+          ),
+
           // Notifications section
           _SettingsSection(
             title: 'Notifications',

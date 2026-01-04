@@ -11,6 +11,8 @@ import '../features/patients/presentation/patients_screen.dart';
 import '../features/patients/presentation/patient_detail_screen.dart';
 import '../features/doctors/presentation/doctors_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/analytics/presentation/analytics_screen.dart';
+import '../features/waitlist/presentation/waitlist_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 /// Router provider
@@ -97,6 +99,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/doctors',
             name: 'doctors',
             builder: (context, state) => const DoctorsScreen(),
+          ),
+
+          // Analytics
+          GoRoute(
+            path: '/analytics',
+            name: 'analytics',
+            builder: (context, state) => const AnalyticsScreen(),
+          ),
+
+          // Waitlist
+          GoRoute(
+            path: '/waitlist',
+            name: 'waitlist',
+            builder: (context, state) => const WaitlistScreen(),
           ),
 
           // Settings
