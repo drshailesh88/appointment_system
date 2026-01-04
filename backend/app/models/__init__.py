@@ -10,6 +10,7 @@ from app.models.appointment import Appointment
 from app.models.service import Service
 from app.models.invoice import Invoice, InvoiceItem
 from app.models.payment import Payment
+from app.models.waitlist import Waitlist, WaitlistPriority, WaitlistStatus
 
 __all__ = [
     "User",
@@ -21,4 +22,7 @@ __all__ = [
     "Invoice",
     "InvoiceItem",
     "Payment",
+    "Waitlist",
+    "WaitlistPriority",
+    "WaitlistStatus",
 ]
