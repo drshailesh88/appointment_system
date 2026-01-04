@@ -95,7 +95,7 @@ Is task complex with clear tests?
 
 ## 📋 Complete Implementation Roadmap
 
-### Completed Phases (1-7) ✅
+### Completed Phases (1-9) ✅
 
 | Phase | Feature | Status |
 |-------|---------|--------|
@@ -106,37 +106,10 @@ Is task complex with clear tests?
 | 5 | WhatsApp Bot | ✅ DONE |
 | 6 | Mobile App Enhancements | ✅ DONE |
 | 7 | Real-Time & Push Notifications | ✅ DONE |
+| 8 | Reports & Exports (PDF/Excel) | ✅ DONE |
+| 9 | Procedure & Intervention Tracking | ✅ DONE |
 
-### Phase 8: Reports & Exports 🔄 NEXT
-**Goal:** Professional PDF/Excel reports for compliance and analysis
-
-- [ ] PDF report generation using [fpdf2](https://github.com/py-pdf/fpdf2)
-- [ ] Excel export with pandas + openpyxl
-- [ ] Branded report templates (clinic logo, letterhead)
-- [ ] Scheduled report emails
-- [ ] Custom date range reports
-- [ ] Print-ready formats
-
-**Open Source:** [html-to-pdf-microservice](https://github.com/josmanuelsandrea/html-to-pdf-microservice), [pdf_reports](https://github.com/Edinburgh-Genome-Foundry/pdf_reports)
-
-### Phase 9: Procedure & Intervention Tracking 🔄
-**Goal:** Let ANY specialty track their procedures (not just cardiologists)
-
-- [ ] Flexible Procedure model (category, type, subtype)
-- [ ] Consumables tracking (stent brand, implant details)
-- [ ] Outcome recording (successful, partial, referred)
-- [ ] Procedure analytics ("How many echos this month?")
-- [ ] Specialty-specific dashboards
-- [ ] ICD/CPT code support for billing
-
-**Use Cases:**
-- Cardiologist: Echos, Angioplasties, Stents, Pacemakers
-- Orthopedist: Surgeries, Fracture fixations, Joint replacements
-- Ophthalmologist: Cataract surgeries, LASIK, Injections
-- Dermatologist: Biopsies, Procedures, Laser treatments
-- Any specialty: Custom procedure types
-
-### Phase 10: Document Scanner & OCR 📱
+### Phase 10: Document Scanner & OCR 📱 🔄 NEXT
 **Goal:** Scan patient records at reception, sync to EMR
 
 - [ ] Integrate [OpenScan](https://github.com/ethereal-developers/OpenScan) into Flutter
@@ -206,6 +179,24 @@ Is task complex with clear tests?
 - [ ] Consolidated analytics
 - [ ] Branch-specific settings
 - [ ] Staff performance metrics
+
+### Phase 16: Practice AI Assistant 🤖
+**Goal:** Conversational AI for practice operations (NOT clinical)
+
+- [ ] Natural Language Analytics ("How many echos this month?")
+- [ ] Conversational Actions (book/reschedule via chat)
+- [ ] Proactive Intelligence (follow-up suggestions, schedule optimization)
+- [ ] Report Generation via chat ("Email me weekly summary")
+- [ ] Context-aware queries (session memory)
+- [ ] Function calling with existing services
+
+**Architecture:**
+- Extends existing Ollama + Qwen2.5 setup
+- Backend API: `/api/v1/ai/chat`
+- Mobile chat UI with voice input option
+- Clear boundary: NO clinical decision support (that's EMR's job)
+
+**Spec Document:** `.claude/specs/practice-ai-assistant.md`
 
 ---
 
