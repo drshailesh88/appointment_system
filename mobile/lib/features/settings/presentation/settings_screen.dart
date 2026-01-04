@@ -83,6 +83,25 @@ class SettingsScreen extends ConsumerWidget {
             ],
           ),
 
+          // Integrations section
+          _SettingsSection(
+            title: 'Integrations',
+            items: [
+              _SettingsItem(
+                icon: Icons.chat,
+                title: 'WhatsApp Bot',
+                subtitle: 'Configure two-way WhatsApp booking',
+                onTap: () => context.goNamed('whatsapp-settings'),
+              ),
+              _SettingsItem(
+                icon: Icons.record_voice_over,
+                title: 'Voice Agent',
+                subtitle: 'Voice cloning and language settings',
+                onTap: () => context.goNamed('voice-settings'),
+              ),
+            ],
+          ),
+
           // Notifications section
           _SettingsSection(
             title: 'Notifications',
@@ -102,12 +121,6 @@ class SettingsScreen extends ConsumerWidget {
                   value: true,
                   onChanged: (value) {},
                 ),
-              ),
-              _SettingsItem(
-                icon: Icons.chat,
-                title: 'WhatsApp Integration',
-                subtitle: 'Send reminders via WhatsApp',
-                onTap: () {},
               ),
             ],
           ),

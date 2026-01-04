@@ -13,6 +13,8 @@ import '../features/doctors/presentation/doctors_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/analytics/presentation/analytics_screen.dart';
 import '../features/waitlist/presentation/waitlist_screen.dart';
+import '../features/settings/presentation/integrations/whatsapp_settings_screen.dart';
+import '../features/settings/presentation/integrations/voice_settings_screen.dart';
 import '../core/providers/auth_provider.dart';
 
 /// Router provider
@@ -120,6 +122,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/settings',
             name: 'settings',
             builder: (context, state) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: 'whatsapp',
+                name: 'whatsapp-settings',
+                builder: (context, state) => const WhatsAppSettingsScreen(),
+              ),
+              GoRoute(
+                path: 'voice',
+                name: 'voice-settings',
+                builder: (context, state) => const VoiceSettingsScreen(),
+              ),
+            ],
           ),
         ],
       ),

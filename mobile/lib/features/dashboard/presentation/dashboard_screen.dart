@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/models/appointment.dart';
 import '../../../core/providers/appointments_provider.dart';
 import '../../../core/providers/auth_provider.dart';
+import '../../../core/providers/voice_booking_provider.dart';
 
 /// Dashboard screen
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -264,45 +265,321 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _showVoiceBookingDialog(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Voice Booking'),
-        content: Column(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const _VoiceBookingSheet(),
+    );
+  }
+}
+
+/// Voice booking bottom sheet
+class _VoiceBookingSheet extends ConsumerStatefulWidget {
+  const _VoiceBookingSheet();
+
+  @override
+  ConsumerState<_VoiceBookingSheet> createState() => _VoiceBookingSheetState();
+}
+
+class _VoiceBookingSheetState extends ConsumerState<_VoiceBookingSheet> {
+  final _textController = TextEditingController();
+  bool _useTextInput = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final voiceState = ref.watch(voiceBookingProvider);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.mic, size: 64, color: Colors.blue),
-            const SizedBox(height: 16),
-            const Text(
-              'Speak your booking request',
-              textAlign: TextAlign.center,
+            // Handle bar
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Title
+            Text(
+              'Voice Booking',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Example: "Book an appointment with Dr. Sharma for tomorrow at 10 AM"',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              _getStatusText(voiceState.status),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     color: Colors.grey,
                   ),
-              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            // Voice visualization or text input
+            if (_useTextInput) ...[
+              TextField(
+                controller: _textController,
+                decoration: InputDecoration(
+                  hintText: 'Type your booking request...',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.send),
+                    onPressed: () {
+                      if (_textController.text.isNotEmpty) {
+                        ref
+                            .read(voiceBookingProvider.notifier)
+                            .processTextInput(_textController.text);
+                      }
+                    },
+                  ),
+                ),
+                maxLines: 2,
+                enabled: !voiceState.isProcessing,
+              ),
+            ] else ...[
+              // Microphone button with animation
+              GestureDetector(
+                onTap: () => _toggleRecording(voiceState),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: voiceState.isListening ? 120 : 100,
+                  height: voiceState.isListening ? 120 : 100,
+                  decoration: BoxDecoration(
+                    color: voiceState.isListening
+                        ? Colors.red
+                        : voiceState.isProcessing
+                            ? Colors.orange
+                            : Colors.blue,
+                    shape: BoxShape.circle,
+                    boxShadow: voiceState.isListening
+                        ? [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.3),
+                              blurRadius: 20,
+                              spreadRadius: voiceState.audioLevel != null
+                                  ? voiceState.audioLevel! * 20
+                                  : 0,
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Icon(
+                    voiceState.isListening
+                        ? Icons.stop
+                        : voiceState.isProcessing
+                            ? Icons.hourglass_top
+                            : Icons.mic,
+                    color: Colors.white,
+                    size: 40,
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+
+            // Transcript display
+            if (voiceState.transcript != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'You said:',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      voiceState.transcript!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Response display
+            if (voiceState.response != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.smart_toy, size: 16, color: Colors.blue.shade700),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Assistant:',
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.blue.shade700,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      voiceState.response!,
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Error display
+            if (voiceState.hasError) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  voiceState.errorMessage ?? 'An error occurred',
+                  style: TextStyle(color: Colors.red.shade700),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Success result
+            if (voiceState.result?.success == true) ...[
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  if (voiceState.result?.appointmentId != null) {
+                    context.goNamed(
+                      'appointment-detail',
+                      pathParameters: {'id': voiceState.result!.appointmentId!},
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check_circle),
+                label: const Text('View Appointment'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
+            // Quick suggestions
+            if (!voiceState.isActive && voiceState.transcript == null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Try saying:',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: voiceBookingSuggestions.take(3).map((suggestion) {
+                  return ActionChip(
+                    label: Text(
+                      suggestion,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    onPressed: () {
+                      ref
+                          .read(voiceBookingProvider.notifier)
+                          .processTextInput(suggestion);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+            const SizedBox(height: 16),
+
+            // Toggle text/voice input
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() => _useTextInput = !_useTextInput);
+                  },
+                  icon: Icon(_useTextInput ? Icons.mic : Icons.keyboard),
+                  label: Text(_useTextInput ? 'Use Voice' : 'Type Instead'),
+                ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: () {
+                    ref.read(voiceBookingProvider.notifier).cancel();
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+              ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement voice recording
-              Navigator.pop(context);
-            },
-            icon: const Icon(Icons.mic),
-            label: const Text('Start Recording'),
-          ),
-        ],
       ),
     );
+  }
+
+  String _getStatusText(VoiceBookingStatus status) {
+    switch (status) {
+      case VoiceBookingStatus.idle:
+        return 'Tap the microphone to start';
+      case VoiceBookingStatus.listening:
+        return 'Listening... tap to stop';
+      case VoiceBookingStatus.processing:
+        return 'Processing your request...';
+      case VoiceBookingStatus.responding:
+        return 'Here\'s what I found...';
+      case VoiceBookingStatus.error:
+        return 'Something went wrong';
+    }
+  }
+
+  void _toggleRecording(VoiceBookingState state) {
+    final notifier = ref.read(voiceBookingProvider.notifier);
+    if (state.isListening) {
+      notifier.stopListening();
+    } else if (!state.isProcessing && !state.isResponding) {
+      notifier.startListening();
+    }
   }
 }
 
