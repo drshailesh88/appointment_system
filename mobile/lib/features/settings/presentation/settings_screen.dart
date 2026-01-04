@@ -75,6 +75,12 @@ class SettingsScreen extends ConsumerWidget {
                 onTap: () => context.goNamed('analytics'),
               ),
               _SettingsItem(
+                icon: Icons.picture_as_pdf,
+                title: 'Reports & Exports',
+                subtitle: 'Download PDF and Excel reports',
+                onTap: () => context.goNamed('reports'),
+              ),
+              _SettingsItem(
                 icon: Icons.hourglass_empty,
                 title: 'Waitlist Management',
                 subtitle: 'Manage patient waiting queue',

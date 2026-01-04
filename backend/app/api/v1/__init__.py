@@ -16,6 +16,7 @@ from app.api.v1 import (
     voice,
     search,
     analytics,
+    reports,
     waitlist,
     whatsapp,
     websocket,
@@ -35,6 +36,7 @@ api_router.include_router(payments.router, prefix="/payments", tags=["Payments"]
 api_router.include_router(voice.router, prefix="/voice", tags=["Voice Agent"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+api_router.include_router(reports.router, prefix="/reports", tags=["Reports & Exports"])
 api_router.include_router(waitlist.router, prefix="/waitlist", tags=["Waitlist"])
 api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp Bot"])
 api_router.include_router(websocket.router, tags=["WebSocket"])

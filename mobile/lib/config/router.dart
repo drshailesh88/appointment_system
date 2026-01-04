@@ -13,6 +13,7 @@ import '../features/doctors/presentation/doctors_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/analytics/presentation/analytics_screen.dart';
 import '../features/waitlist/presentation/waitlist_screen.dart';
+import '../features/reports/presentation/reports_screen.dart';
 import '../features/settings/presentation/integrations/whatsapp_settings_screen.dart';
 import '../features/settings/presentation/integrations/voice_settings_screen.dart';
 import '../core/providers/auth_provider.dart';
@@ -108,6 +109,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/analytics',
             name: 'analytics',
             builder: (context, state) => const AnalyticsScreen(),
+          ),
+
+          // Reports & Exports
+          GoRoute(
+            path: '/reports',
+            name: 'reports',
+            builder: (context, state) => const ReportsScreen(),
           ),
 
           // Waitlist
