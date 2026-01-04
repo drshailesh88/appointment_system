@@ -2,24 +2,27 @@
 Pytest configuration and fixtures for the test suite.
 """
 import os
+import sys
 from datetime import datetime, timedelta
-from typing import AsyncGenerator, Generator
+from typing import Generator
 from uuid import uuid4
 
 import pytest
+
+# Set test environment BEFORE importing app modules
+os.environ["TESTING"] = "1"
+os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/test_docassist"
+os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
+os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-only"
+
+# Now we can import app modules
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
-# Set test environment
-os.environ["TESTING"] = "1"
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
-os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
-
-from app.core.database import Base, get_db
 from app.core.security import get_password_hash, create_access_token
-from app.main import app
+from app.models.base import Base
 from app.models.user import User
 from app.models.clinic import Clinic
 from app.models.doctor import Doctor
@@ -30,7 +33,7 @@ from app.models.invoice import Invoice
 from app.models.payment import Payment
 
 
-# Create test engine with SQLite
+# Create test engine with SQLite (in-memory)
 TEST_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     TEST_DATABASE_URL,
@@ -38,6 +41,15 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def override_get_db():
+    """Override database dependency for tests."""
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @pytest.fixture(scope="function")
@@ -55,13 +67,11 @@ def db() -> Generator[Session, None, None]:
 @pytest.fixture(scope="function")
 def client(db: Session) -> Generator[TestClient, None, None]:
     """Create a test client with database override."""
-    def override_get_db():
-        try:
-            yield db
-        finally:
-            pass
+    # Import app here to avoid circular imports
+    from app.main import app
+    from app.core.database import get_db
 
-    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db] = lambda: db
     with TestClient(app) as c:
         yield c
     app.dependency_overrides.clear()
@@ -228,7 +238,6 @@ def auth_headers(test_user: User) -> dict:
 @pytest.fixture
 def doctor_auth_headers(db: Session, test_doctor: Doctor) -> dict:
     """Generate authentication headers for the test doctor."""
-    # Get the doctor's user
     user = db.query(User).filter(User.id == test_doctor.user_id).first()
     token = create_access_token(data={"sub": user.id})
     return {"Authorization": f"Bearer {token}"}
