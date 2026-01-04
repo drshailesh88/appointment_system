@@ -16,6 +16,7 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
     from app.models.patient import Patient
+    from app.models.procedure import Procedure
     from app.models.service import Service
 
 
@@ -177,6 +178,11 @@ class Appointment(BaseModel):
     patient: Mapped["Patient"] = relationship("Patient", back_populates="appointments")
     doctor: Mapped["Doctor"] = relationship("Doctor", back_populates="appointments")
     service: Mapped["Service | None"] = relationship("Service", back_populates="appointments")
+    procedure: Mapped["Procedure | None"] = relationship(
+        "Procedure",
+        back_populates="appointment",
+        uselist=False,
+    )
     rescheduled_from: Mapped["Appointment | None"] = relationship(
         "Appointment",
         remote_side="Appointment.id",

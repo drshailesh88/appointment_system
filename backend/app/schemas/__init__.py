@@ -51,6 +51,15 @@ from app.schemas.payment import (
     PaymentResponse,
     PaymentUpdate,
 )
+from app.schemas.procedure import (
+    ProcedureCreate,
+    ProcedureResponse,
+    ProcedureUpdate,
+    ProcedureListResponse,
+    ProcedureStats,
+    ProcedureQuickLog,
+    ProcedureTemplatesResponse,
+)
 
 __all__ = [
     # User
@@ -94,4 +103,12 @@ __all__ = [
     "PaymentCreate",
     "PaymentResponse",
     "PaymentUpdate",
+    # Procedure
+    "ProcedureCreate",
+    "ProcedureResponse",
+    "ProcedureUpdate",
+    "ProcedureListResponse",
+    "ProcedureStats",
+    "ProcedureQuickLog",
+    "ProcedureTemplatesResponse",
 ]

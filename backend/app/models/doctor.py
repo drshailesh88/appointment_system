@@ -15,6 +15,7 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
     from app.models.clinic import Clinic
+    from app.models.procedure import Procedure
 
 
 class Doctor(BaseModel):
@@ -86,6 +87,10 @@ class Doctor(BaseModel):
     clinic: Mapped["Clinic"] = relationship("Clinic", back_populates="doctors")
     appointments: Mapped[list["Appointment"]] = relationship(
         "Appointment",
+        back_populates="doctor",
+    )
+    procedures: Mapped[list["Procedure"]] = relationship(
+        "Procedure",
         back_populates="doctor",
     )
 

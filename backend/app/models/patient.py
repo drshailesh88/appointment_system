@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.appointment import Appointment
     from app.models.clinic import Clinic
     from app.models.invoice import Invoice
+    from app.models.procedure import Procedure
 
 
 class Patient(BaseModel):
@@ -85,6 +86,10 @@ class Patient(BaseModel):
         back_populates="patient",
     )
     invoices: Mapped[list["Invoice"]] = relationship("Invoice", back_populates="patient")
+    procedures: Mapped[list["Procedure"]] = relationship(
+        "Procedure",
+        back_populates="patient",
+    )
 
     @property
     def full_name(self) -> str:

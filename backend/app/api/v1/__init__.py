@@ -21,6 +21,7 @@ from app.api.v1 import (
     whatsapp,
     websocket,
     notifications,
+    procedures,
 )
 
 api_router = APIRouter()
@@ -41,3 +42,4 @@ api_router.include_router(waitlist.router, prefix="/waitlist", tags=["Waitlist"]
 api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp Bot"])
 api_router.include_router(websocket.router, tags=["WebSocket"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Push Notifications"])
+api_router.include_router(procedures.router, prefix="/procedures", tags=["Procedures"])
