@@ -60,6 +60,11 @@ pandas>=2.0.0
 openpyxl>=3.1.0
 xlsxwriter>=3.1.0
 
+# OCR & Image Processing (Phase 10)
+easyocr>=1.7.0  # Multi-language OCR (Hindi + English)
+Pillow>=10.0.0  # Image processing
+opencv-python-headless>=4.8.0  # Image preprocessing for OCR
+
 # Development & Testing
 pytest>=7.4.4
 pytest-asyncio>=0.23.3

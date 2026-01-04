@@ -18,6 +18,7 @@ from app.models.procedure import (
     ProcedureSeverity,
     PROCEDURE_TEMPLATES,
 )
+from app.models.document import Document, DOCUMENT_TYPES
 
 __all__ = [
     "User",
@@ -38,4 +39,6 @@ __all__ = [
     "ProcedureOutcome",
     "ProcedureSeverity",
     "PROCEDURE_TEMPLATES",
+    "Document",
+    "DOCUMENT_TYPES",
 ]

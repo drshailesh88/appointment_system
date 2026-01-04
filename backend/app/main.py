@@ -27,10 +27,26 @@ async def lifespan(app: FastAPI):
 
     print("Real-time WebSocket service initialized")
 
+    # Start background calendar sync (if configured)
+    from app.services.background_calendar_sync import start_background_sync
+    from app.integrations.google_calendar import get_google_calendar_integration
+
+    gcal = get_google_calendar_integration()
+    if gcal.is_configured():
+        await start_background_sync(interval_minutes=15)
+        print("Background calendar sync initialized")
+    else:
+        print("Google Calendar not configured, skipping background sync")
+
     yield
 
     # Shutdown
     print("Shutting down DocAssist Practice Manager API...")
+
+    # Stop background sync
+    from app.services.background_calendar_sync import stop_background_sync
+    await stop_background_sync()
+    print("Background calendar sync stopped")
 
 
 app = FastAPI(

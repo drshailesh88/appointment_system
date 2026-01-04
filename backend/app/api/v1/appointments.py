@@ -27,6 +27,7 @@ from app.schemas.appointment import (
     SlotAvailabilityRequest,
     SlotAvailabilityResponse,
 )
+from app.services.calendar_sync import CalendarSyncService
 
 router = APIRouter()
 
@@ -120,6 +121,16 @@ async def create_appointment(
     db.add(appointment)
     await db.commit()
     await db.refresh(appointment)
+
+    # Sync to Google Calendar (async, non-blocking)
+    calendar_service = CalendarSyncService(db)
+    try:
+        await calendar_service.sync_appointment(appointment)
+    except Exception as e:
+        # Log but don't fail the appointment creation
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to sync appointment to calendar: {e}")
 
     return appointment
 
@@ -296,6 +307,16 @@ async def update_appointment(
 
     await db.commit()
     await db.refresh(appointment)
+
+    # Sync to Google Calendar (async, non-blocking)
+    calendar_service = CalendarSyncService(db)
+    try:
+        await calendar_service.sync_appointment(appointment, force=True)
+    except Exception as e:
+        # Log but don't fail the appointment update
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Failed to sync appointment to calendar: {e}")
 
     return appointment
 

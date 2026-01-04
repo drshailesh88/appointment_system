@@ -60,6 +60,17 @@ from app.schemas.procedure import (
     ProcedureQuickLog,
     ProcedureTemplatesResponse,
 )
+from app.schemas.document import (
+    DocumentCreate,
+    DocumentResponse,
+    DocumentUpdate,
+    DocumentListResponse,
+    DocumentOCRRequest,
+    DocumentOCRResponse,
+    DocumentTextResponse,
+    DocumentUploadResponse,
+    DocumentStats,
+)
 
 __all__ = [
     # User
@@ -111,4 +122,14 @@ __all__ = [
     "ProcedureStats",
     "ProcedureQuickLog",
     "ProcedureTemplatesResponse",
+    # Document
+    "DocumentCreate",
+    "DocumentResponse",
+    "DocumentUpdate",
+    "DocumentListResponse",
+    "DocumentOCRRequest",
+    "DocumentOCRResponse",
+    "DocumentTextResponse",
+    "DocumentUploadResponse",
+    "DocumentStats",
 ]

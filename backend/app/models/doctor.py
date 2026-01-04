@@ -14,6 +14,7 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
+    from app.models.calendar_settings import DoctorCalendarSettings
     from app.models.clinic import Clinic
     from app.models.procedure import Procedure
 
@@ -92,6 +93,11 @@ class Doctor(BaseModel):
     procedures: Mapped[list["Procedure"]] = relationship(
         "Procedure",
         back_populates="doctor",
+    )
+    calendar_settings: Mapped["DoctorCalendarSettings | None"] = relationship(
+        "DoctorCalendarSettings",
+        back_populates="doctor",
+        uselist=False,
     )
 
     def __repr__(self) -> str:

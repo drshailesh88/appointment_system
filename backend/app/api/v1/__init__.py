@@ -22,6 +22,9 @@ from app.api.v1 import (
     websocket,
     notifications,
     procedures,
+    ai_chat,
+    documents,
+    calendar,
 )
 
 api_router = APIRouter()
@@ -43,3 +46,6 @@ api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp B
 api_router.include_router(websocket.router, tags=["WebSocket"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Push Notifications"])
 api_router.include_router(procedures.router, prefix="/procedures", tags=["Procedures"])
+api_router.include_router(ai_chat.router, prefix="/ai", tags=["AI Assistant"])
+api_router.include_router(documents.router, prefix="/documents", tags=["Documents & OCR"])
+api_router.include_router(calendar.router, prefix="/calendar", tags=["Google Calendar"])

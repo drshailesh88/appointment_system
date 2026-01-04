@@ -11,6 +11,7 @@ from app.models.base import BaseModel
 
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
+    from app.models.document import Document
     from app.models.patient import Patient
     from app.models.procedure import Procedure
     from app.models.service import Service
@@ -79,6 +80,7 @@ class Clinic(BaseModel):
     patients: Mapped[list["Patient"]] = relationship("Patient", back_populates="clinic")
     services: Mapped[list["Service"]] = relationship("Service", back_populates="clinic")
     procedures: Mapped[list["Procedure"]] = relationship("Procedure", back_populates="clinic")
+    documents: Mapped[list["Document"]] = relationship("Document", back_populates="clinic")
 
     def __repr__(self) -> str:
         return f"<Clinic {self.name}>"

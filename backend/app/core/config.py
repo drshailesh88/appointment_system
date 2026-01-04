@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "qwen2.5:3b"
 
+    # Google Calendar
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    google_redirect_uri: str | None = None
+    calendar_encryption_key: str | None = None
+
     # Rate Limiting
     rate_limit_per_minute: int = 60
 
