@@ -1,45 +1,64 @@
 # DocAssist Practice Manager - Development Instructions
 
-## Project Overview
+## 🎯 Mission: Kill Practo, HealthPlix & PM Cardio
 
-DocAssist Practice Manager is a premium appointment scheduling and practice management system for Indian doctors. It integrates seamlessly with [DocAssist EMR](https://github.com/drshailesh88/emr) to provide a complete digital practice solution.
+DocAssist Practice Manager is a premium appointment scheduling and practice management system for Indian doctors. It integrates seamlessly with [DocAssist EMR](https://github.com/drshailesh88/emr) to provide a complete digital practice solution that BEATS Practo, HealthPlix, and PM Cardio.
 
-**Core Differentiator:** Premium user experience with offline-first operation and AI-powered voice scheduling.
+**Core Differentiators:**
+- 100% offline-first (works without internet)
+- AI-powered voice scheduling in 23 Indian languages
+- Seamless EMR integration (not a separate silo)
+- No per-seat licensing (one-time purchase)
+- Doctor-owned data (no cloud lock-in)
 
 **Product Relationship:**
-- **EMR** = Doctor's clinical tool (notes, prescriptions, diagnosis)
-- **Practice Manager** = Front desk + patient engagement (scheduling, payments, reminders)
+- **EMR** = Doctor's clinical tool (notes, prescriptions, diagnosis) - https://github.com/drshailesh88/emr
+- **Practice Manager** = Front desk + patient engagement (scheduling, payments, reminders, analytics)
 
 ---
 
-## MANDATORY Development Toolkits
+## ⚠️ MANDATORY: Development Toolkits (NEVER FORGET)
 
-### 1. Spec-Kit (Spec-Driven Development)
+> **CRITICAL**: These toolkits MUST be used for ALL development. No exceptions.
+> This applies across ALL context windows and sessions.
+
+### 1. Spec-Kit (Spec-Driven Development) - USE FIRST
 **Source:** https://github.com/github/spec-kit
 
-All development MUST follow the Spec-Kit workflow:
+**BEFORE writing ANY code, run this workflow:**
 
-| Phase | Command | Purpose |
-|-------|---------|---------|
-| 1. Principles | `/speckit.constitution` | Core governance and constraints |
-| 2. Requirements | `/speckit.specify` | Define WHAT to build (not how) |
-| 3. Planning | `/speckit.plan` | Technical architecture decisions |
-| 4. Tasks | `/speckit.tasks` | Break into actionable items |
-| 5. Implementation | `/speckit.implement` | Execute the development |
-| 6. Validation | `/speckit.clarify` | Resolve ambiguities |
+```
+Step 1: /speckit.specify    → Define WHAT to build (requirements)
+Step 2: /speckit.clarify    → Resolve ambiguities
+Step 3: /speckit.plan       → Technical architecture
+Step 4: /speckit.tasks      → Break into actionable items
+Step 5: /speckit.implement  → Execute the development
+Step 6: /speckit.analyze    → Validate consistency
+```
+
+| Command | Purpose | When to Use |
+|---------|---------|-------------|
+| `/speckit.constitution` | Core governance and constraints | Project setup |
+| `/speckit.specify` | Define WHAT to build (not how) | Every new feature |
+| `/speckit.clarify` | Resolve underspecified areas | Before planning |
+| `/speckit.plan` | Technical architecture decisions | After requirements |
+| `/speckit.tasks` | Break into actionable items | Before coding |
+| `/speckit.implement` | Execute the development | Build phase |
+| `/speckit.analyze` | Cross-artifact consistency check | After tasks |
+| `/speckit.checklist` | Quality validation checklist | Before commit |
 
 **Spec-Kit Documents Location:** `.claude/commands/speckit.*.md`
 
-### 2. Ralph Wiggum (Iterative Development Loop)
+### 2. Ralph Wiggum (Iterative Development Loop) - USE FOR COMPLEX TASKS
 **Source:** https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum
 
-For any significant implementation, use Ralph's iterative loop:
+For any task with clear completion criteria:
 
 ```bash
-/ralph-loop "Your task description" --completion-promise "Tests pass"
+/ralph-loop "Your task description" --completion-promise "Tests pass" --max-iterations 50
 ```
 
-**How Ralph Works:**
+**How It Works:**
 1. You issue the command once
 2. Claude works on the task
 3. Stop hook blocks exit and re-feeds the prompt
@@ -47,105 +66,178 @@ For any significant implementation, use Ralph's iterative loop:
 5. Each iteration sees previous work in files/git
 
 **When to Use Ralph:**
-- Tasks with clear completion criteria (tests pass, build succeeds)
-- Greenfield implementations
-- Refactoring with test validation
-- Any task requiring iterative refinement
+- ✅ Tasks with testable completion (tests pass, build succeeds)
+- ✅ Greenfield implementations
+- ✅ Refactoring with test validation
+- ✅ Multi-step implementations
+- ❌ Tasks needing human judgment
+- ❌ Unclear success metrics
 
 **Ralph Loop Command:** `.claude/commands/ralph-loop.md`
 
----
+### 3. Workflow Decision Tree
 
-## Current Implementation Plan
-
-### Phase 1: Voice Agent Upgrade ✅ COMPLETED
-- [x] Replace Piper TTS with **Chatterbox** (`pip install chatterbox-tts`)
-- [x] Add voice cloning for doctor's personalized voice
-- [x] Enable Hindi/regional language support (23 languages)
-- [x] Add paralinguistic tags: [laugh], [cough], [chuckle]
-
-**Chatterbox Reference:** https://github.com/resemble-ai/chatterbox
-
-### Phase 2: RAG-Powered Search ✅ COMPLETED
-- [x] Add **Qdrant** vector database
-- [x] Implement hybrid search (semantic + keyword)
-- [x] Enable natural language queries on patient history
-- [x] Database routing for patients vs appointments
-
-**RAG Patterns Reference:** https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials
-
-### Phase 3: Analytics & Reports ✅ COMPLETED
-- [x] Daily/weekly/monthly appointment stats
-- [x] Doctor utilization reports
-- [x] Revenue tracking dashboard
-- [x] No-show analytics
-
-### Phase 4: Waitlist Management ✅ COMPLETED
-- [x] Queue when slots are full
-- [x] Auto-notify when slot opens (SMS/WhatsApp)
-- [x] Estimated wait time display
-- [x] Priority queue for emergencies
-
-### Phase 5: WhatsApp Bot ✅ COMPLETED
-- [x] Two-way booking via WhatsApp
-- [x] Appointment reminders
-- [x] Payment links
-- [x] Prescription sharing
-
-### Phase 6: Mobile App Enhancements ✅ COMPLETED
-- [x] Analytics dashboard screens
-- [x] Waitlist management UI
-- [x] WhatsApp integration settings
-- [x] Voice cloning settings for doctors
-- [x] Voice booking quick action with backend integration
-
-### Phase 7: Real-Time & Notifications ✅ COMPLETED
-- [x] WebSocket updates for waitlist/appointments
-- [x] Push notifications (FCM) for slot offers
-- [x] Real-time appointment status sync
-- [x] Background sync service
+```
+New Feature Request?
+    ↓
+    /speckit.specify → Define requirements
+    ↓
+    /speckit.plan → Technical approach
+    ↓
+    /speckit.tasks → Break into items
+    ↓
+Is task complex with clear tests?
+    ├── YES → /ralph-loop "task" --completion-promise "Tests pass"
+    └── NO → Implement directly with /speckit.implement
+```
 
 ---
 
-## Next Phase: Advanced Features
+## 📋 Complete Implementation Roadmap
 
-### Phase 8: Advanced Reports & Exports
-- [ ] PDF report generation
-- [ ] CSV/Excel export for analytics
+### Completed Phases (1-7) ✅
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Voice Agent (Chatterbox TTS, 23 languages) | ✅ DONE |
+| 2 | RAG Search (Qdrant, hybrid search) | ✅ DONE |
+| 3 | Analytics Dashboard | ✅ DONE |
+| 4 | Waitlist Management | ✅ DONE |
+| 5 | WhatsApp Bot | ✅ DONE |
+| 6 | Mobile App Enhancements | ✅ DONE |
+| 7 | Real-Time & Push Notifications | ✅ DONE |
+
+### Phase 8: Reports & Exports 🔄 NEXT
+**Goal:** Professional PDF/Excel reports for compliance and analysis
+
+- [ ] PDF report generation using [fpdf2](https://github.com/py-pdf/fpdf2)
+- [ ] Excel export with pandas + openpyxl
+- [ ] Branded report templates (clinic logo, letterhead)
 - [ ] Scheduled report emails
 - [ ] Custom date range reports
+- [ ] Print-ready formats
 
-### Phase 9: Advanced Integrations
-- [ ] Google Calendar sync
-- [ ] Apple Health integration
-- [ ] Insurance verification API
-- [ ] Lab result integration
+**Open Source:** [html-to-pdf-microservice](https://github.com/josmanuelsandrea/html-to-pdf-microservice), [pdf_reports](https://github.com/Edinburgh-Genome-Foundry/pdf_reports)
+
+### Phase 9: Procedure & Intervention Tracking 🔄
+**Goal:** Let ANY specialty track their procedures (not just cardiologists)
+
+- [ ] Flexible Procedure model (category, type, subtype)
+- [ ] Consumables tracking (stent brand, implant details)
+- [ ] Outcome recording (successful, partial, referred)
+- [ ] Procedure analytics ("How many echos this month?")
+- [ ] Specialty-specific dashboards
+- [ ] ICD/CPT code support for billing
+
+**Use Cases:**
+- Cardiologist: Echos, Angioplasties, Stents, Pacemakers
+- Orthopedist: Surgeries, Fracture fixations, Joint replacements
+- Ophthalmologist: Cataract surgeries, LASIK, Injections
+- Dermatologist: Biopsies, Procedures, Laser treatments
+- Any specialty: Custom procedure types
+
+### Phase 10: Document Scanner & OCR 📱
+**Goal:** Scan patient records at reception, sync to EMR
+
+- [ ] Integrate [OpenScan](https://github.com/ethereal-developers/OpenScan) into Flutter
+- [ ] Edge detection and auto-crop
+- [ ] Multi-page document scanning
+- [ ] OCR using Tesseract/EasyOCR (Hindi + English)
+- [ ] Extract structured data (patient name, date, values)
+- [ ] Push scanned docs to EMR SQLite
+- [ ] Link documents to patient records
+
+**Open Source:** [OpenScan](https://github.com/ethereal-developers/OpenScan), [OneScan](https://github.com/sparsh308/OneScan-Document-Scanner-Flutter-App)
+
+### Phase 11: Google Calendar Sync 📅
+**Goal:** Doctors see appointments in their personal calendar
+
+- [ ] Google OAuth integration
+- [ ] Bidirectional sync using [gcal_sync](https://github.com/allenporter/gcal_sync)
+- [ ] Recurring appointment support
+- [ ] Calendar event with patient details
+- [ ] Conflict detection
+- [ ] Multi-calendar support (personal + clinic)
+
+**Open Source:** [gcal_sync](https://github.com/allenporter/gcal_sync), [google-calendar-simple-api](https://github.com/kuzmoyev/google-calendar-simple-api)
+
+### Phase 12: Patient Booking Portal 🌐
+**Goal:** Patients book online like Practo (but without the platform fee)
+
+- [ ] Public web portal (Next.js/React)
+- [ ] Doctor discovery by specialty/location
+- [ ] Real-time slot availability
+- [ ] Online payment (Razorpay)
+- [ ] Appointment confirmation emails
+- [ ] Patient login/history view
+- [ ] Embedded widget for clinic websites
+
+**Open Source:** Fork [healthcare-appointment-scheduling-app](https://github.com/Project-Based-Learning-IT/healthcare-appointment-scheduling-app)
+
+### Phase 13: Advanced EMR Integration 🔗
+**Goal:** Seamless data flow between Practice Manager and EMR
+
+- [ ] Real-time sync (not just file watcher)
+- [ ] Prescription sharing from EMR
+- [ ] Lab result display
+- [ ] Visit history in appointment view
+- [ ] Clinical notes preview (read-only)
+- [ ] Patient timeline (appointments + visits + procedures)
+
+**EMR Repo:** https://github.com/drshailesh88/emr
+
+### Phase 14: Insurance & Billing 💳
+**Goal:** Complete billing workflow with insurance support
+
+- [ ] Insurance company database
+- [ ] Pre-authorization workflow
+- [ ] Claim submission tracking
+- [ ] TPA integration
+- [ ] CGST/SGST/IGST compliance (already partial)
+- [ ] Receipt printing
+- [ ] Payment reminders
+
+### Phase 15: Multi-Location & Staff Management 🏥
+**Goal:** Scale from single clinic to hospital chain
+
+- [ ] Multi-branch support
+- [ ] Staff role management
+- [ ] Cross-location patient records
+- [ ] Consolidated analytics
+- [ ] Branch-specific settings
+- [ ] Staff performance metrics
 
 ---
 
-## Technology Stack
+## 🛠️ Technology Stack
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
 | Backend | FastAPI + Python 3.11+ | Type hints mandatory |
 | Mobile | Flutter + Riverpod | Offline-first with sync |
+| Web Portal | Next.js + React | Patient booking (Phase 12) |
 | Database | PostgreSQL (prod) / SQLite (dev) | SQLAlchemy ORM |
 | Vectors | Qdrant | RAG for patient search |
 | LLM | Ollama + Qwen2.5 | Local inference |
 | Voice STT | Whisper (faster-whisper) | Local speech-to-text |
-| Voice TTS | **Chatterbox** | Voice cloning, emotions, 23 languages |
+| Voice TTS | Chatterbox | Voice cloning, emotions, 23 languages |
 | Payments | Razorpay | UPI, cards, wallets |
 | SMS | MSG91 | India-focused |
+| PDF | fpdf2 + WeasyPrint | Report generation |
+| Excel | pandas + openpyxl | Export analytics |
+| Calendar | gcal_sync | Google Calendar API |
+| OCR | Tesseract / EasyOCR | Document scanning |
 
 ### Forbidden Technologies
-- Electron
-- Cloud-only databases
+- Electron (too heavy)
+- Cloud-only databases (must work offline)
 - Proprietary voice APIs (ElevenLabs, etc.)
-- Technologies requiring per-seat licenses
+- Per-seat licensed software
+- Closed-source dependencies for core features
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 appointment_system/
@@ -157,19 +249,21 @@ appointment_system/
 │   │   ├── schemas/           # Pydantic schemas
 │   │   ├── services/          # Business logic
 │   │   ├── voice/             # Voice agent (STT, TTS, NLU)
-│   │   └── integrations/      # EMR, SMS, Razorpay
+│   │   └── integrations/      # EMR, SMS, Razorpay, Calendar
 │   ├── tests/                 # Pytest tests
 │   └── alembic/               # Database migrations
 ├── mobile/
 │   └── lib/
 │       ├── core/              # Models, providers, services
 │       └── features/          # UI screens
+├── web/                       # Patient booking portal (Phase 12)
+│   └── src/
 └── docs/                      # Documentation
 ```
 
 ---
 
-## EMR Integration
+## 🔗 EMR Integration Architecture
 
 Practice Manager integrates with DocAssist EMR via SQLite:
 
@@ -178,16 +272,18 @@ Practice Manager integrates with DocAssist EMR via SQLite:
 | Patients | EMR → PM | Read patient data (no duplication) |
 | Appointments | PM ↔ EMR | Bidirectional sync |
 | Visits | EMR → PM | Link visit to appointment after consultation |
+| Procedures | PM → EMR | Sync procedure records |
+| Documents | PM → EMR | Push scanned documents |
 | Clinical Notes | EMR only | Stay in EMR, never copied |
 
+**EMR Database Path:** `data/clinic.db` (configurable via ENV)
 **Integration Code:** `backend/app/integrations/emr.py`
 
 ---
 
-## Critical Implementation Rules
+## ✅ Critical Implementation Rules
 
-### 1. Always Use Spec-Kit First
-Before coding ANY new feature:
+### 1. ALWAYS Use Spec-Kit First
 ```bash
 /speckit.specify   # Define requirements
 /speckit.plan      # Technical approach
@@ -195,15 +291,13 @@ Before coding ANY new feature:
 ```
 
 ### 2. Use Ralph for Complex Tasks
-For implementations requiring iteration:
 ```bash
-/ralph-loop "Implement X with tests" --completion-promise "All tests pass"
+/ralph-loop "Implement X with tests" --completion-promise "All tests pass" --max-iterations 50
 ```
 
 ### 3. Draft Mode for AI Output
-AI-generated content MUST require explicit confirmation:
 ```python
-# CORRECT - require confirmation
+# AI suggestions require explicit confirmation
 ai_suggestion = llm.generate(prompt)
 show_draft_dialog(ai_suggestion, on_confirm=db.save)
 ```
@@ -216,14 +310,14 @@ show_draft_dialog(ai_suggestion, on_confirm=db.save)
 
 ### 5. Test Before Commit
 ```bash
-pytest tests/ -v --cov=src
-mypy src/ --strict
-ruff check src/
+pytest tests/ -v --cov=app
+mypy app/ --strict
+ruff check app/
 ```
 
 ---
 
-## Performance Targets
+## ⚡ Performance Targets
 
 | Operation | Target |
 |-----------|--------|
@@ -232,24 +326,53 @@ ruff check src/
 | Search results | < 200ms |
 | Voice recognition | < 1 second |
 | TTS response | < 500ms |
+| Document scan | < 3 seconds |
+| PDF generation | < 2 seconds |
 
 ---
 
-## Key References
+## 📚 Open Source Libraries to Use
+
+| Need | Library | URL |
+|------|---------|-----|
+| PDF Reports | fpdf2 | https://github.com/py-pdf/fpdf2 |
+| HTML→PDF | WeasyPrint | https://github.com/josmanuelsandrea/html-to-pdf-microservice |
+| Beautiful Reports | pdf_reports | https://github.com/Edinburgh-Genome-Foundry/pdf_reports |
+| Google Calendar | gcal_sync | https://github.com/allenporter/gcal_sync |
+| Document Scanner | OpenScan | https://github.com/ethereal-developers/OpenScan |
+| OCR Flutter | OneScan | https://github.com/sparsh308/OneScan-Document-Scanner-Flutter-App |
+| Booking Portal | Fork this | https://github.com/Project-Based-Learning-IT/healthcare-appointment-scheduling-app |
+| Healthcare Reference | awesome-healthcare | https://github.com/kakoni/awesome-healthcare |
+
+---
+
+## 🏆 Competitive Targets
+
+| Competitor | Their Weakness | Our Advantage |
+|------------|----------------|---------------|
+| **Practo** | Platform fees, data lock-in | Doctor-owned data, no fees |
+| **HealthPlix** | Cloud-only, expensive | Offline-first, affordable |
+| **PM Cardio** | Cardiology-only | All specialties supported |
+| **Generic EMRs** | Separate from practice mgmt | Seamless EMR integration |
+
+---
+
+## 🔑 Key References
 
 | Resource | URL | Purpose |
 |----------|-----|---------|
 | Spec-Kit | https://github.com/github/spec-kit | Spec-driven development |
 | Ralph Wiggum | https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum | Iterative loops |
-| Chatterbox TTS | https://github.com/resemble-ai/chatterbox | Voice synthesis |
-| awesome-llm-apps | https://github.com/Shubhamsaboo/awesome-llm-apps | Voice agents, RAG patterns |
 | DocAssist EMR | https://github.com/drshailesh88/emr | Parent EMR system |
+| Chatterbox TTS | https://github.com/resemble-ai/chatterbox | Voice synthesis |
+| awesome-healthcare | https://github.com/kakoni/awesome-healthcare | Healthcare OSS reference |
+| awesome-llm-apps | https://github.com/Shubhamsaboo/awesome-llm-apps | Voice agents, RAG patterns |
 
 ---
 
-## Documentation Synchronization
+## 📝 Documentation Sync
 
-**IMPORTANT:** Any changes to these instructions must be replicated across:
+**IMPORTANT:** Changes to these instructions must be replicated across:
 - `CLAUDE.md` (this file)
 - `AGENTS.md`
 - `CODEX.md`
@@ -259,3 +382,4 @@ ruff check src/
 ---
 
 *Last Updated: 2026-01-04*
+*Version: 2.0 - Practo Killer Edition*
