@@ -31,6 +31,13 @@ from app.models.insurance import (
     PreAuthStatus,
 )
 from app.models.otp import OTP
+from app.models.insight import (
+    ProactiveInsight,
+    FollowupSchedule,
+    UserDigestPreferences,
+    InsightType,
+    InsightPriority,
+)
 
 __all__ = [
     "User",
@@ -65,4 +72,9 @@ __all__ = [
     "ClaimStatus",
     "PreAuthStatus",
     "OTP",
+    "ProactiveInsight",
+    "FollowupSchedule",
+    "UserDigestPreferences",
+    "InsightType",
+    "InsightPriority",
 ]
