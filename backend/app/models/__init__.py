@@ -12,6 +12,12 @@ from app.models.invoice import Invoice, InvoiceItem
 from app.models.payment import Payment
 from app.models.waitlist import Waitlist, WaitlistPriority, WaitlistStatus
 from app.models.device_token import DeviceToken, DevicePlatform
+from app.models.scheduled_report import (
+    ScheduledReport,
+    ReportType,
+    ReportFormat,
+    ReportFrequency,
+)
 
 __all__ = [
     "User",
@@ -28,4 +34,8 @@ __all__ = [
     "WaitlistStatus",
     "DeviceToken",
     "DevicePlatform",
+    "ScheduledReport",
+    "ReportType",
+    "ReportFormat",
+    "ReportFrequency",
 ]

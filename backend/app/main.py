@@ -27,10 +27,22 @@ async def lifespan(app: FastAPI):
 
     print("Real-time WebSocket service initialized")
 
+    # Initialize report scheduler
+    from app.services.report_scheduler import start_scheduler
+
+    await start_scheduler()
+    print("Report scheduler initialized")
+
     yield
 
     # Shutdown
     print("Shutting down DocAssist Practice Manager API...")
+
+    # Stop report scheduler
+    from app.services.report_scheduler import stop_scheduler
+
+    await stop_scheduler()
+    print("Report scheduler stopped")
 
 
 app = FastAPI(

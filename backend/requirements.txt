@@ -50,9 +50,15 @@ python-dotenv>=1.0.0
 tenacity>=8.2.3
 phonenumbers>=8.13.27
 
-# PDF Generation
+# PDF Generation & Reports
 reportlab>=4.0.8
 qrcode[pil]>=7.4.2
+openpyxl>=3.1.2
+matplotlib>=3.8.2
+weasyprint>=60.2  # Alternative PDF generator
+
+# Task Scheduling
+APScheduler>=3.10.4
 
 # Development & Testing
 pytest>=7.4.4

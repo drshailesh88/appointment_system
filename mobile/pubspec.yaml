@@ -72,6 +72,11 @@ dependencies:
   # Share
   share_plus: ^7.2.1
 
+  # PDF & File Operations
+  flutter_pdfview: ^1.3.2
+  path_provider: ^2.1.2
+  open_file: ^3.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

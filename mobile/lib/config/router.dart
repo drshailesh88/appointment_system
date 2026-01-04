@@ -13,6 +13,9 @@ import '../features/doctors/presentation/doctors_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/analytics/presentation/analytics_screen.dart';
 import '../features/waitlist/presentation/waitlist_screen.dart';
+import '../features/reports/presentation/reports_screen.dart';
+import '../features/reports/presentation/scheduled_reports_screen.dart';
+import '../features/reports/presentation/report_preview_screen.dart';
 import '../features/settings/presentation/integrations/whatsapp_settings_screen.dart';
 import '../features/settings/presentation/integrations/voice_settings_screen.dart';
 import '../core/providers/auth_provider.dart';
@@ -115,6 +118,31 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/waitlist',
             name: 'waitlist',
             builder: (context, state) => const WaitlistScreen(),
+          ),
+
+          // Reports
+          GoRoute(
+            path: '/reports',
+            name: 'reports',
+            builder: (context, state) => const ReportsScreen(),
+            routes: [
+              GoRoute(
+                path: 'scheduled',
+                name: 'scheduled-reports',
+                builder: (context, state) => const ScheduledReportsScreen(),
+              ),
+              GoRoute(
+                path: 'preview',
+                name: 'report-preview',
+                builder: (context, state) {
+                  final extra = state.extra as Map<String, dynamic>;
+                  return ReportPreviewScreen(
+                    reportId: extra['reportId'] as String,
+                    filePath: extra['filePath'] as String,
+                  );
+                },
+              ),
+            ],
           ),
 
           // Settings
