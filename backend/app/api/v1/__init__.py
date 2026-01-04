@@ -13,6 +13,7 @@ from app.api.v1 import (
     services,
     invoices,
     payments,
+    insurance,
     voice,
     search,
     analytics,
@@ -25,6 +26,10 @@ from app.api.v1 import (
     ai_chat,
     documents,
     calendar,
+    emr,
+    public,
+    organizations,
+    staff,
 )
 
 api_router = APIRouter()
@@ -37,6 +42,7 @@ api_router.include_router(appointments.router, prefix="/appointments", tags=["Ap
 api_router.include_router(services.router, prefix="/services", tags=["Services"])
 api_router.include_router(invoices.router, prefix="/invoices", tags=["Invoices"])
 api_router.include_router(payments.router, prefix="/payments", tags=["Payments"])
+api_router.include_router(insurance.router, prefix="/insurance", tags=["Insurance & Billing"])
 api_router.include_router(voice.router, prefix="/voice", tags=["Voice Agent"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
@@ -49,3 +55,7 @@ api_router.include_router(procedures.router, prefix="/procedures", tags=["Proced
 api_router.include_router(ai_chat.router, prefix="/ai", tags=["AI Assistant"])
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents & OCR"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["Google Calendar"])
+api_router.include_router(emr.router, prefix="/emr", tags=["EMR Integration"])
+api_router.include_router(public.router, prefix="/public", tags=["Public Booking Portal"])
+api_router.include_router(organizations.router, prefix="/organizations", tags=["Organizations"])
+api_router.include_router(staff.router, prefix="/staff", tags=["Staff Management"])

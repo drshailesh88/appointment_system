@@ -3,7 +3,9 @@ SQLAlchemy models for DocAssist Practice Manager.
 """
 
 from app.models.user import User
+from app.models.organization import Organization
 from app.models.clinic import Clinic
+from app.models.staff import StaffRole, StaffAssignment, DEFAULT_PERMISSIONS
 from app.models.doctor import Doctor
 from app.models.patient import Patient
 from app.models.appointment import Appointment
@@ -19,10 +21,24 @@ from app.models.procedure import (
     PROCEDURE_TEMPLATES,
 )
 from app.models.document import Document, DOCUMENT_TYPES
+from app.models.insurance import (
+    InsuranceCompany,
+    PatientInsurance,
+    InsuranceClaim,
+    PreAuthorization,
+    CoverageType,
+    ClaimStatus,
+    PreAuthStatus,
+)
+from app.models.otp import OTP
 
 __all__ = [
     "User",
+    "Organization",
     "Clinic",
+    "StaffRole",
+    "StaffAssignment",
+    "DEFAULT_PERMISSIONS",
     "Doctor",
     "Patient",
     "Appointment",
@@ -41,4 +57,12 @@ __all__ = [
     "PROCEDURE_TEMPLATES",
     "Document",
     "DOCUMENT_TYPES",
+    "InsuranceCompany",
+    "PatientInsurance",
+    "InsuranceClaim",
+    "PreAuthorization",
+    "CoverageType",
+    "ClaimStatus",
+    "PreAuthStatus",
+    "OTP",
 ]

@@ -71,6 +71,26 @@ from app.schemas.document import (
     DocumentUploadResponse,
     DocumentStats,
 )
+from app.schemas.organization import (
+    OrganizationCreate,
+    OrganizationResponse,
+    OrganizationUpdate,
+    OrganizationStats,
+    OrganizationAddClinic,
+    OrganizationRemoveClinic,
+)
+from app.schemas.staff import (
+    StaffRoleCreate,
+    StaffRoleResponse,
+    StaffRoleUpdate,
+    StaffAssignmentCreate,
+    StaffAssignmentResponse,
+    StaffAssignmentUpdate,
+    StaffPerformanceMetrics,
+    PermissionCheckRequest,
+    PermissionCheckResponse,
+    StaffTransferRequest,
+)
 
 __all__ = [
     # User
@@ -132,4 +152,22 @@ __all__ = [
     "DocumentTextResponse",
     "DocumentUploadResponse",
     "DocumentStats",
+    # Organization
+    "OrganizationCreate",
+    "OrganizationResponse",
+    "OrganizationUpdate",
+    "OrganizationStats",
+    "OrganizationAddClinic",
+    "OrganizationRemoveClinic",
+    # Staff
+    "StaffRoleCreate",
+    "StaffRoleResponse",
+    "StaffRoleUpdate",
+    "StaffAssignmentCreate",
+    "StaffAssignmentResponse",
+    "StaffAssignmentUpdate",
+    "StaffPerformanceMetrics",
+    "PermissionCheckRequest",
+    "PermissionCheckResponse",
+    "StaffTransferRequest",
 ]

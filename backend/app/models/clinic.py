@@ -2,9 +2,11 @@
 Clinic model for multi-tenant support.
 """
 
+import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, String, Text
+from sqlalchemy import Boolean, ForeignKey, String, Text
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -12,6 +14,7 @@ from app.models.base import BaseModel
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
     from app.models.document import Document
+    from app.models.organization import Organization
     from app.models.patient import Patient
     from app.models.procedure import Procedure
     from app.models.service import Service
@@ -39,6 +42,14 @@ class Clinic(BaseModel):
     """
 
     __tablename__ = "clinics"
+
+    # Organization (for multi-location support)
+    organization_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("organizations.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
 
     # Basic Info
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -75,6 +86,11 @@ class Clinic(BaseModel):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationships
+    organization: Mapped["Organization | None"] = relationship(
+        "Organization",
+        back_populates="clinics",
+        foreign_keys=[organization_id],
+    )
     users: Mapped[list["User"]] = relationship("User", back_populates="clinic")
     doctors: Mapped[list["Doctor"]] = relationship("Doctor", back_populates="clinic")
     patients: Mapped[list["Patient"]] = relationship("Patient", back_populates="clinic")

@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     google_redirect_uri: str | None = None
     calendar_encryption_key: str | None = None
 
+    # EMR Integration
+    emr_database_path: str | None = None
+    emr_sync_enabled: bool = True
+    emr_sync_interval_seconds: int = 300  # 5 minutes
+
     # Rate Limiting
     rate_limit_per_minute: int = 60
 

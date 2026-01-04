@@ -3,10 +3,10 @@ Patient model for patient management.
 """
 
 import uuid
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Date, ForeignKey, String, Text
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.appointment import Appointment
     from app.models.clinic import Clinic
     from app.models.document import Document
+    from app.models.insurance import PatientInsurance
     from app.models.invoice import Invoice
     from app.models.procedure import Procedure
 
@@ -65,6 +66,10 @@ class Patient(BaseModel):
 
     # EMR Integration
     emr_patient_id: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
+    emr_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
 
     # Medical Info (basic, detailed in EMR)
     blood_group: Mapped[str | None] = mapped_column(String(5), nullable=True)
@@ -92,6 +97,10 @@ class Patient(BaseModel):
         back_populates="patient",
     )
     documents: Mapped[list["Document"]] = relationship("Document", back_populates="patient")
+    insurances: Mapped[list["PatientInsurance"]] = relationship(
+        "PatientInsurance",
+        back_populates="patient",
+    )
 
     @property
     def full_name(self) -> str:
