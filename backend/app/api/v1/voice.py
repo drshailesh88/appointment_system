@@ -163,23 +163,125 @@ async def cancel_session(
 async def synthesize_speech(
     current_user: CurrentUser,
     text: str,
-    voice: str = "en_IN",
+    language: str = "en",
     speed: float = 1.0,
+    exaggeration: float = 0.5,
 ):
     """
-    Synthesize speech from text (TTS only).
+    Synthesize speech from text using Chatterbox TTS.
+
+    Features:
+    - Multi-language support (en, hi, ta, te, bn, mr, gu, kn, ml, pa)
+    - Paralinguistic tags in text: [laugh], [cough], [sigh], [gasp], [chuckle]
+    - Exaggeration: 0.0 (neutral) to 1.0 (very expressive)
 
     Returns audio as base64 encoded string.
     """
     from app.voice.tts import TextToSpeechAsync
 
-    tts = TextToSpeechAsync(voice)
-    audio = await tts.synthesize(text, speed=speed)
+    tts = TextToSpeechAsync(language)
+    audio = await tts.synthesize(
+        text,
+        language=language,
+        speed=speed,
+        exaggeration=exaggeration,
+    )
 
     return {
         "text": text,
         "audio_base64": base64.b64encode(audio).decode("utf-8"),
-        "voice": voice,
+        "language": language,
+        "exaggeration": exaggeration,
+        "format": "wav",
+    }
+
+
+@router.post("/clone-voice")
+async def clone_voice(
+    db: DbSession,
+    current_user: CurrentUser,
+    voice_sample: UploadFile = File(...),
+    doctor_id: Optional[UUID] = None,
+):
+    """
+    Upload a voice sample for voice cloning.
+
+    The voice sample should be 3-10 seconds of clear speech.
+    Once uploaded, synthesized speech will use this voice.
+
+    Args:
+        voice_sample: WAV audio file (3-10 seconds recommended)
+        doctor_id: Optional doctor ID to associate voice with
+    """
+    from pathlib import Path
+    from app.voice.tts import ChatterboxTTS
+
+    # Validate file type
+    if not voice_sample.filename.endswith(('.wav', '.mp3', '.m4a', '.ogg')):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Audio file must be WAV, MP3, M4A, or OGG format",
+        )
+
+    # Read audio data
+    audio_data = await voice_sample.read()
+
+    # Validate size (limit to 10MB)
+    if len(audio_data) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Audio file too large (max 10MB)",
+        )
+
+    # Save voice sample
+    tts = ChatterboxTTS()
+    voice_path = tts.clone_voice_from_bytes(audio_data)
+
+    return {
+        "message": "Voice sample uploaded successfully",
+        "voice_path": str(voice_path),
+        "doctor_id": doctor_id,
+        "file_size_bytes": len(audio_data),
+    }
+
+
+@router.post("/synthesize-with-voice")
+async def synthesize_with_cloned_voice(
+    current_user: CurrentUser,
+    text: str,
+    voice_sample: UploadFile = File(...),
+    language: str = "en",
+    exaggeration: float = 0.5,
+):
+    """
+    Synthesize speech using a provided voice sample (zero-shot cloning).
+
+    Upload a voice sample along with text to get speech in that voice.
+
+    Args:
+        text: Text to synthesize (can include [laugh], [sigh], etc.)
+        voice_sample: Reference voice audio (3-10 seconds)
+        language: Language code (en, hi, etc.)
+        exaggeration: Emotion intensity 0.0-1.0
+    """
+    from app.voice.tts import TextToSpeechAsync
+
+    # Read voice sample
+    voice_data = await voice_sample.read()
+
+    tts = TextToSpeechAsync(language)
+    audio = await tts.synthesize(
+        text,
+        language=language,
+        voice_sample=voice_data,
+        exaggeration=exaggeration,
+    )
+
+    return {
+        "text": text,
+        "audio_base64": base64.b64encode(audio).decode("utf-8"),
+        "language": language,
+        "voice_cloned": True,
         "format": "wav",
     }
 

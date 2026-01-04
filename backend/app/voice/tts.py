@@ -1,175 +1,185 @@
 """
-Text-to-Speech using Piper.
+Text-to-Speech using Chatterbox.
 
-Piper is a fast, local neural text-to-speech system that works entirely offline.
-It supports multiple languages and voices with natural-sounding output.
+Chatterbox is a state-of-the-art zero-shot voice cloning TTS system that:
+- Works entirely offline
+- Supports 23+ languages including Hindi
+- Enables voice cloning from short audio samples
+- Supports paralinguistic tags: [laugh], [cough], [sigh], [gasp], [chuckle]
+- Provides emotion control via exaggeration parameter
+
+Reference: https://github.com/resemble-ai/chatterbox
 """
 
 import io
 import logging
-import subprocess
 import tempfile
 import wave
 from pathlib import Path
 from typing import Optional
 
+import torch
+
 logger = logging.getLogger(__name__)
 
-# Voice models for Indian languages
-VOICE_MODELS = {
-    "en_IN": "en_IN-cmu_indic_hin_ab-medium",  # Indian English
-    "en_US": "en_US-lessac-medium",  # American English
-    "en_GB": "en_GB-cori-medium",  # British English
-    "hi_IN": "hi_IN-swara-medium",  # Hindi
+# Supported languages (subset - Chatterbox supports 23+)
+SUPPORTED_LANGUAGES = {
+    "en": "English",
+    "hi": "Hindi",
+    "ta": "Tamil",
+    "te": "Telugu",
+    "bn": "Bengali",
+    "mr": "Marathi",
+    "gu": "Gujarati",
+    "kn": "Kannada",
+    "ml": "Malayalam",
+    "pa": "Punjabi",
 }
 
-DEFAULT_VOICE = "en_IN"
+# Paralinguistic tags supported by Chatterbox
+PARALINGUISTIC_TAGS = ["[laugh]", "[cough]", "[sigh]", "[gasp]", "[chuckle]", "[clear_throat]"]
+
+DEFAULT_VOICE = "en"
+DEFAULT_SAMPLE_RATE = 24000
 
 
-class TextToSpeech:
+class ChatterboxTTS:
     """
-    Text-to-Speech synthesis using Piper.
+    Text-to-Speech synthesis using Chatterbox.
 
-    Supports:
-    - Indian English accent
-    - Hindi
-    - Multiple voices per language
-    - Adjustable speed and pitch
+    Features:
+    - Zero-shot voice cloning from 3-10 second audio sample
+    - 23+ language support including Indian languages
+    - Paralinguistic expressions ([laugh], [cough], etc.)
+    - Emotion/exaggeration control (0.0-1.0)
+    - Fully offline operation
     """
 
     def __init__(
         self,
-        voice: str = DEFAULT_VOICE,
-        model_path: Optional[Path] = None,
+        device: Optional[str] = None,
+        voice_sample_path: Optional[Path] = None,
     ):
         """
-        Initialize TTS engine.
+        Initialize Chatterbox TTS engine.
 
         Args:
-            voice: Voice identifier (e.g., "en_IN", "hi_IN")
-            model_path: Path to Piper models directory
+            device: "cuda" or "cpu" (auto-detected if None)
+            voice_sample_path: Path to reference voice audio for cloning
         """
-        self.voice = voice
-        self.model_path = model_path or Path.home() / ".local" / "share" / "piper"
-        self._piper_path = None
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.voice_sample_path = voice_sample_path
+        self._model = None
+        self._model_loaded = False
 
-    def _get_piper_path(self) -> Optional[str]:
-        """Find Piper executable."""
-        if self._piper_path:
-            return self._piper_path
+    def _load_model(self):
+        """Lazy load the Chatterbox model."""
+        if self._model_loaded:
+            return
 
-        # Check common locations
-        locations = [
-            "/usr/bin/piper",
-            "/usr/local/bin/piper",
-            str(Path.home() / ".local" / "bin" / "piper"),
-        ]
-
-        for loc in locations:
-            if Path(loc).exists():
-                self._piper_path = loc
-                return loc
-
-        # Try to find in PATH
         try:
-            result = subprocess.run(
-                ["which", "piper"],
-                capture_output=True,
-                text=True,
-            )
-            if result.returncode == 0:
-                self._piper_path = result.stdout.strip()
-                return self._piper_path
-        except Exception:
-            pass
+            from chatterbox.tts import ChatterboxTTS as CBModel
 
-        return None
+            logger.info(f"Loading Chatterbox TTS model on {self.device}...")
+            self._model = CBModel.from_pretrained(device=self.device)
+            self._model_loaded = True
+            logger.info("Chatterbox TTS model loaded successfully")
 
-    def _get_model_file(self, voice: str) -> Optional[Path]:
-        """Get the model file for a voice."""
-        model_name = VOICE_MODELS.get(voice, VOICE_MODELS[DEFAULT_VOICE])
-        model_file = self.model_path / f"{model_name}.onnx"
+        except ImportError:
+            logger.warning("Chatterbox not installed. Using fallback TTS.")
+            self._model = None
+            self._model_loaded = True
 
-        if model_file.exists():
-            return model_file
-
-        # Try to download model
-        logger.warning(f"Voice model not found: {model_file}")
-        return None
+        except Exception as e:
+            logger.error(f"Error loading Chatterbox: {e}")
+            self._model = None
+            self._model_loaded = True
 
     def synthesize(
         self,
         text: str,
-        voice: Optional[str] = None,
+        language: str = "en",
+        voice_sample: Optional[bytes] = None,
+        voice_sample_path: Optional[Path] = None,
+        exaggeration: float = 0.5,
         speed: float = 1.0,
-        output_format: str = "wav",
     ) -> bytes:
         """
         Synthesize speech from text.
 
         Args:
-            text: Text to speak
-            voice: Voice to use (defaults to instance voice)
-            speed: Speech speed multiplier (0.5 = half speed, 2.0 = double speed)
-            output_format: Output audio format ("wav" or "raw")
+            text: Text to speak (can include paralinguistic tags like [laugh])
+            language: Language code (e.g., "en", "hi", "ta")
+            voice_sample: Audio bytes for voice cloning
+            voice_sample_path: Path to voice sample audio file
+            exaggeration: Emotion intensity (0.0 = neutral, 1.0 = very expressive)
+            speed: Speech speed multiplier (0.5 = slow, 2.0 = fast)
 
         Returns:
-            Audio data as bytes
+            Audio data as WAV bytes
         """
-        voice = voice or self.voice
+        self._load_model()
 
-        # Try Piper first
-        piper_path = self._get_piper_path()
-        model_file = self._get_model_file(voice)
-
-        if piper_path and model_file:
-            return self._synthesize_piper(text, model_file, speed)
-
-        # Fallback to pyttsx3 (offline) or gTTS (online)
-        return self._synthesize_fallback(text, speed)
-
-    def _synthesize_piper(
-        self,
-        text: str,
-        model_file: Path,
-        speed: float,
-    ) -> bytes:
-        """Synthesize using Piper."""
-        piper_path = self._get_piper_path()
-
-        with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as f:
-            output_file = f.name
+        if self._model is None:
+            return self._synthesize_fallback(text, speed)
 
         try:
-            # Run Piper
-            cmd = [
-                piper_path,
-                "--model", str(model_file),
-                "--output_file", output_file,
-                "--length_scale", str(1.0 / speed),  # Inverse for speed
-            ]
+            # Determine voice sample to use
+            audio_prompt = voice_sample_path or self.voice_sample_path
 
-            process = subprocess.run(
-                cmd,
-                input=text,
-                capture_output=True,
-                text=True,
-            )
+            # If bytes provided, save to temp file
+            temp_voice_file = None
+            if voice_sample:
+                temp_voice_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+                temp_voice_file.write(voice_sample)
+                temp_voice_file.close()
+                audio_prompt = Path(temp_voice_file.name)
 
-            if process.returncode != 0:
-                logger.error(f"Piper error: {process.stderr}")
-                raise RuntimeError(f"Piper synthesis failed: {process.stderr}")
+            # Generate speech
+            if audio_prompt and Path(audio_prompt).exists():
+                # Voice cloning mode
+                wav_tensor = self._model.generate(
+                    text,
+                    audio_prompt_path=str(audio_prompt),
+                    exaggeration=exaggeration,
+                )
+            else:
+                # Default voice mode
+                wav_tensor = self._model.generate(
+                    text,
+                    exaggeration=exaggeration,
+                )
 
-            # Read output file
-            with open(output_file, "rb") as f:
-                return f.read()
+            # Cleanup temp file
+            if temp_voice_file:
+                Path(temp_voice_file.name).unlink(missing_ok=True)
 
-        finally:
-            # Cleanup
-            Path(output_file).unlink(missing_ok=True)
+            # Convert tensor to WAV bytes
+            return self._tensor_to_wav(wav_tensor, speed)
+
+        except Exception as e:
+            logger.error(f"Chatterbox synthesis error: {e}")
+            return self._synthesize_fallback(text, speed)
+
+    def _tensor_to_wav(self, wav_tensor: torch.Tensor, speed: float = 1.0) -> bytes:
+        """Convert PyTorch tensor to WAV bytes."""
+        import torchaudio
+
+        # Adjust sample rate for speed
+        sample_rate = int(DEFAULT_SAMPLE_RATE * speed)
+
+        buffer = io.BytesIO()
+        torchaudio.save(
+            buffer,
+            wav_tensor.cpu(),
+            sample_rate,
+            format="wav",
+        )
+        buffer.seek(0)
+        return buffer.read()
 
     def _synthesize_fallback(self, text: str, speed: float) -> bytes:
-        """Fallback TTS using pyttsx3 or simple tone."""
+        """Fallback TTS using pyttsx3."""
         try:
             import pyttsx3
 
@@ -193,8 +203,8 @@ class TextToSpeech:
             return self._generate_silent_audio(len(text) * 0.1)
 
     def _generate_silent_audio(self, duration: float) -> bytes:
-        """Generate silent WAV audio."""
-        sample_rate = 22050
+        """Generate silent WAV audio as last resort."""
+        sample_rate = DEFAULT_SAMPLE_RATE
         num_samples = int(sample_rate * duration)
 
         buffer = io.BytesIO()
@@ -206,40 +216,122 @@ class TextToSpeech:
 
         return buffer.getvalue()
 
-    def synthesize_ssml(self, ssml: str, voice: Optional[str] = None) -> bytes:
+    def set_voice_sample(self, voice_sample_path: Path):
         """
-        Synthesize from SSML (Speech Synthesis Markup Language).
+        Set the reference voice for cloning.
 
-        Note: Piper has limited SSML support. Complex SSML is converted to plain text.
+        Args:
+            voice_sample_path: Path to 3-10 second audio sample
         """
-        # Strip SSML tags for basic support
-        import re
-        text = re.sub(r"<[^>]+>", "", ssml)
-        return self.synthesize(text, voice)
+        if not voice_sample_path.exists():
+            raise FileNotFoundError(f"Voice sample not found: {voice_sample_path}")
+        self.voice_sample_path = voice_sample_path
+        logger.info(f"Voice sample set: {voice_sample_path}")
+
+    def clone_voice_from_bytes(self, audio_bytes: bytes) -> Path:
+        """
+        Save voice sample from bytes for cloning.
+
+        Args:
+            audio_bytes: WAV audio bytes (3-10 seconds recommended)
+
+        Returns:
+            Path to saved voice sample
+        """
+        voice_dir = Path.home() / ".docassist" / "voices"
+        voice_dir.mkdir(parents=True, exist_ok=True)
+
+        import hashlib
+        voice_hash = hashlib.md5(audio_bytes).hexdigest()[:8]
+        voice_path = voice_dir / f"voice_{voice_hash}.wav"
+
+        voice_path.write_bytes(audio_bytes)
+        self.voice_sample_path = voice_path
+        logger.info(f"Voice sample saved: {voice_path}")
+        return voice_path
+
+
+class TextToSpeech(ChatterboxTTS):
+    """
+    Legacy alias for backward compatibility.
+    Use ChatterboxTTS for new code.
+    """
+
+    def __init__(
+        self,
+        voice: str = DEFAULT_VOICE,
+        model_path: Optional[Path] = None,
+    ):
+        """
+        Initialize TTS with legacy interface.
+
+        Args:
+            voice: Language/voice identifier
+            model_path: Ignored (for Piper compatibility)
+        """
+        super().__init__()
+        self.voice = voice
 
 
 class TextToSpeechAsync:
     """Async wrapper for Text-to-Speech."""
 
-    def __init__(self, voice: str = DEFAULT_VOICE):
-        self.tts = TextToSpeech(voice)
+    def __init__(
+        self,
+        voice: str = DEFAULT_VOICE,
+        voice_sample_path: Optional[Path] = None,
+    ):
+        """
+        Initialize async TTS.
+
+        Args:
+            voice: Language/voice identifier
+            voice_sample_path: Optional path to voice sample for cloning
+        """
+        self.tts = ChatterboxTTS(voice_sample_path=voice_sample_path)
+        self.voice = voice
 
     async def synthesize(
         self,
         text: str,
-        voice: Optional[str] = None,
+        language: Optional[str] = None,
+        voice_sample: Optional[bytes] = None,
+        exaggeration: float = 0.5,
         speed: float = 1.0,
     ) -> bytes:
-        """Async synthesize (runs in thread pool)."""
+        """
+        Async synthesize (runs in thread pool).
+
+        Args:
+            text: Text to speak
+            language: Language code (defaults to instance voice)
+            voice_sample: Optional audio bytes for voice cloning
+            exaggeration: Emotion intensity (0.0-1.0)
+            speed: Speech speed multiplier
+
+        Returns:
+            Audio data as WAV bytes
+        """
         import asyncio
+
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None,
-            lambda: self.tts.synthesize(text, voice, speed),
+            lambda: self.tts.synthesize(
+                text,
+                language=language or self.voice,
+                voice_sample=voice_sample,
+                exaggeration=exaggeration,
+                speed=speed,
+            ),
         )
 
+    def set_voice_sample(self, voice_sample_path: Path):
+        """Set voice sample for cloning."""
+        self.tts.set_voice_sample(voice_sample_path)
 
-# Pre-defined responses for common scenarios
+
+# Pre-defined responses for common scenarios (multilingual)
 VOICE_RESPONSES = {
     "greeting": {
         "en": "Hello! Welcome to DocAssist. How can I help you today?",
@@ -265,4 +357,30 @@ VOICE_RESPONSES = {
         "en": "Thank you for using DocAssist. Take care and stay healthy!",
         "hi": "डॉकअसिस्ट का उपयोग करने के लिए धन्यवाद। अपना ख्याल रखें और स्वस्थ रहें!",
     },
+    # Expressive responses using paralinguistic tags
+    "booking_success": {
+        "en": "[chuckle] Great news! Your appointment has been booked successfully!",
+        "hi": "[chuckle] बहुत अच्छा! आपकी अपॉइंटमेंट सफलतापूर्वक बुक हो गई है!",
+    },
+    "no_slots": {
+        "en": "[sigh] I'm sorry, there are no available slots on that date. Would you like to try another day?",
+        "hi": "[sigh] मुझे खेद है, उस तारीख पर कोई स्लॉट उपलब्ध नहीं है। क्या आप कोई और दिन आज़माना चाहेंगे?",
+    },
 }
+
+
+def add_expression(text: str, expression: str = "[chuckle]") -> str:
+    """
+    Add paralinguistic expression to text.
+
+    Args:
+        text: Original text
+        expression: Paralinguistic tag to add
+
+    Returns:
+        Text with expression prepended
+    """
+    if expression not in PARALINGUISTIC_TAGS:
+        logger.warning(f"Unknown expression: {expression}")
+        return text
+    return f"{expression} {text}"

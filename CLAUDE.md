@@ -2,54 +2,116 @@
 
 ## Project Overview
 
-DocAssist Practice Manager is a premium appointment scheduling and practice management system for Indian doctors. It integrates seamlessly with DocAssist EMR to provide a complete digital practice solution.
+DocAssist Practice Manager is a premium appointment scheduling and practice management system for Indian doctors. It integrates seamlessly with [DocAssist EMR](https://github.com/drshailesh88/emr) to provide a complete digital practice solution.
 
 **Core Differentiator:** Premium user experience with offline-first operation and AI-powered voice scheduling.
 
+**Product Relationship:**
+- **EMR** = Doctor's clinical tool (notes, prescriptions, diagnosis)
+- **Practice Manager** = Front desk + patient engagement (scheduling, payments, reminders)
+
 ---
 
-## Development Methodology
+## MANDATORY Development Toolkits
 
-### Spec-Driven Development (Spec-Kit)
+### 1. Spec-Kit (Spec-Driven Development)
+**Source:** https://github.com/github/spec-kit
 
-All development follows the Spec-Kit workflow. **ALWAYS** reference these documents:
+All development MUST follow the Spec-Kit workflow:
 
-| Document | Location | Purpose |
-|----------|----------|---------|
-| Constitution | `.claude/commands/speckit.constitution.md` | Core principles and constraints |
-| Specifications | `.claude/commands/speckit.specify.md` | Feature requirements |
-| Technical Plan | `.claude/commands/speckit.plan.md` | Architecture and approach |
-| Task Breakdown | `.claude/commands/speckit.tasks.md` | Detailed tasks with status |
+| Phase | Command | Purpose |
+|-------|---------|---------|
+| 1. Principles | `/speckit.constitution` | Core governance and constraints |
+| 2. Requirements | `/speckit.specify` | Define WHAT to build (not how) |
+| 3. Planning | `/speckit.plan` | Technical architecture decisions |
+| 4. Tasks | `/speckit.tasks` | Break into actionable items |
+| 5. Implementation | `/speckit.implement` | Execute the development |
+| 6. Validation | `/speckit.clarify` | Resolve ambiguities |
 
-### Ralph Wiggum Iterative Development
+**Spec-Kit Documents Location:** `.claude/commands/speckit.*.md`
 
-For any significant implementation:
-1. Use `/ralph-loop [task]` to start iterative development
-2. Work until tests pass and completion criteria met
-3. Commit working code at each iteration
-4. Self-correct based on test failures
+### 2. Ralph Wiggum (Iterative Development Loop)
+**Source:** https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum
+
+For any significant implementation, use Ralph's iterative loop:
+
+```bash
+/ralph-loop "Your task description" --completion-promise "Tests pass"
+```
+
+**How Ralph Works:**
+1. You issue the command once
+2. Claude works on the task
+3. Stop hook blocks exit and re-feeds the prompt
+4. Loop continues until completion criteria met
+5. Each iteration sees previous work in files/git
+
+**When to Use Ralph:**
+- Tasks with clear completion criteria (tests pass, build succeeds)
+- Greenfield implementations
+- Refactoring with test validation
+- Any task requiring iterative refinement
 
 **Ralph Loop Command:** `.claude/commands/ralph-loop.md`
 
 ---
 
-## Fixed Technology Stack
+## Current Implementation Plan
+
+### Phase 1: Voice Agent Upgrade (Priority)
+- [ ] Replace Piper TTS with **Chatterbox** (`pip install chatterbox-tts`)
+- [ ] Add voice cloning for doctor's personalized voice
+- [ ] Enable Hindi/regional language support (23 languages)
+- [ ] Add paralinguistic tags: [laugh], [cough], [chuckle]
+
+**Chatterbox Reference:** https://github.com/resemble-ai/chatterbox
+
+### Phase 2: RAG-Powered Search
+- [ ] Add **Qdrant** vector database
+- [ ] Implement hybrid search (semantic + keyword)
+- [ ] Enable natural language queries on patient history
+- [ ] Database routing for patients vs appointments
+
+**RAG Patterns Reference:** https://github.com/Shubhamsaboo/awesome-llm-apps/tree/main/rag_tutorials
+
+### Phase 3: Analytics & Reports
+- [ ] Daily/weekly/monthly appointment stats
+- [ ] Doctor utilization reports
+- [ ] Revenue tracking dashboard
+- [ ] No-show analytics
+
+### Phase 4: Waitlist Management
+- [ ] Queue when slots are full
+- [ ] Auto-notify when slot opens (SMS/WhatsApp)
+- [ ] Estimated wait time display
+- [ ] Priority queue for emergencies
+
+### Phase 5: WhatsApp Bot
+- [ ] Two-way booking via WhatsApp
+- [ ] Appointment reminders
+- [ ] Payment links
+- [ ] Prescription sharing
+
+---
+
+## Technology Stack
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| Language | Python 3.11+ | Type hints mandatory |
-| UI | Flet | Cross-platform, Python-native |
-| Database | SQLite + SQLAlchemy | Offline-first |
-| Vectors | ChromaDB | Local RAG |
-| LLM | Ollama + Qwen | Local inference |
-| Voice STT | Whisper | Local speech-to-text |
-| Voice TTS | Piper | Local text-to-speech |
-| API | FastAPI | For integrations |
+| Backend | FastAPI + Python 3.11+ | Type hints mandatory |
+| Mobile | Flutter + Riverpod | Offline-first with sync |
+| Database | PostgreSQL (prod) / SQLite (dev) | SQLAlchemy ORM |
+| Vectors | Qdrant | RAG for patient search |
+| LLM | Ollama + Qwen2.5 | Local inference |
+| Voice STT | Whisper (faster-whisper) | Local speech-to-text |
+| Voice TTS | **Chatterbox** | Voice cloning, emotions, 23 languages |
+| Payments | Razorpay | UPI, cards, wallets |
+| SMS | MSG91 | India-focused |
 
 ### Forbidden Technologies
 - Electron
 - Cloud-only databases
-- Proprietary voice APIs
+- Proprietary voice APIs (ElevenLabs, etc.)
 - Technologies requiring per-seat licenses
 
 ---
@@ -57,57 +119,61 @@ For any significant implementation:
 ## Project Structure
 
 ```
-docassist-practice-manager/
-├── .claude/commands/          # Spec-Kit documents
-├── src/
-│   ├── models/                # SQLAlchemy models
-│   ├── services/              # Business logic
-│   ├── ui/                    # Flet UI components
-│   │   ├── components/        # Reusable widgets
-│   │   └── pages/             # Page views
-│   ├── voice/                 # Voice agent
-│   └── integrations/          # EMR, SMS, WhatsApp
-├── tests/                     # Pytest tests
-├── prompts/                   # LLM prompts
-├── data/                      # Runtime data (gitignored)
+appointment_system/
+├── .claude/commands/          # Spec-Kit & Ralph commands
+├── backend/
+│   ├── app/
+│   │   ├── api/v1/            # REST endpoints
+│   │   ├── models/            # SQLAlchemy models
+│   │   ├── schemas/           # Pydantic schemas
+│   │   ├── services/          # Business logic
+│   │   ├── voice/             # Voice agent (STT, TTS, NLU)
+│   │   └── integrations/      # EMR, SMS, Razorpay
+│   ├── tests/                 # Pytest tests
+│   └── alembic/               # Database migrations
+├── mobile/
+│   └── lib/
+│       ├── core/              # Models, providers, services
+│       └── features/          # UI screens
 └── docs/                      # Documentation
 ```
 
 ---
 
+## EMR Integration
+
+Practice Manager integrates with DocAssist EMR via SQLite:
+
+| Data Flow | Direction | Description |
+|-----------|-----------|-------------|
+| Patients | EMR → PM | Read patient data (no duplication) |
+| Appointments | PM ↔ EMR | Bidirectional sync |
+| Visits | EMR → PM | Link visit to appointment after consultation |
+| Clinical Notes | EMR only | Stay in EMR, never copied |
+
+**Integration Code:** `backend/app/integrations/emr.py`
+
+---
+
 ## Critical Implementation Rules
 
-### 1. Threading for LLM Operations
-All LLM calls MUST run in background threads to prevent UI blocking:
-```python
-import threading
-
-def async_llm_call(prompt: str, callback: Callable):
-    def run():
-        result = ollama.generate(model="qwen2.5:3b", prompt=prompt)
-        callback(result)
-    threading.Thread(target=run, daemon=True).start()
+### 1. Always Use Spec-Kit First
+Before coding ANY new feature:
+```bash
+/speckit.specify   # Define requirements
+/speckit.plan      # Technical approach
+/speckit.tasks     # Break into tasks
 ```
 
-### 2. Pydantic Validation
-All data models must use Pydantic for validation:
-```python
-from pydantic import BaseModel, Field
-
-class AppointmentCreate(BaseModel):
-    patient_id: str
-    doctor_id: str
-    start_time: datetime
-    duration_minutes: int = Field(ge=5, le=120)
+### 2. Use Ralph for Complex Tasks
+For implementations requiring iteration:
+```bash
+/ralph-loop "Implement X with tests" --completion-promise "All tests pass"
 ```
 
 ### 3. Draft Mode for AI Output
 AI-generated content MUST require explicit confirmation:
 ```python
-# WRONG - auto-saving AI output
-ai_suggestion = llm.generate(prompt)
-db.save(ai_suggestion)
-
 # CORRECT - require confirmation
 ai_suggestion = llm.generate(prompt)
 show_draft_dialog(ai_suggestion, on_confirm=db.save)
@@ -116,28 +182,15 @@ show_draft_dialog(ai_suggestion, on_confirm=db.save)
 ### 4. Offline-First Design
 - All core features work without internet
 - Gracefully handle missing Ollama
-- Local data storage only
+- Local data storage with sync queue
 - No cloud telemetry
 
-### 5. EMR Integration
-- Shared patient data via SQLite
-- Read clinical records from EMR (read-only)
-- Appointments sync bidirectionally
-- Use watchdog for file system sync
-
----
-
-## Testing Requirements
-
-- Minimum 80% code coverage
-- All models must have unit tests
-- All services must have integration tests
-- Run before every commit:
-  ```bash
-  pytest tests/ -v --cov=src
-  mypy src/ --strict
-  ruff check src/
-  ```
+### 5. Test Before Commit
+```bash
+pytest tests/ -v --cov=src
+mypy src/ --strict
+ruff check src/
+```
 
 ---
 
@@ -149,16 +202,19 @@ show_draft_dialog(ai_suggestion, on_confirm=db.save)
 | Appointment booking | < 500ms |
 | Search results | < 200ms |
 | Voice recognition | < 1 second |
+| TTS response | < 500ms |
 
 ---
 
-## Code Style
+## Key References
 
-- Type hints on all functions
-- Docstrings for public APIs
-- Max line length: 100 characters
-- Use `ruff` and `black` for formatting
-- Follow Google Python Style Guide
+| Resource | URL | Purpose |
+|----------|-----|---------|
+| Spec-Kit | https://github.com/github/spec-kit | Spec-driven development |
+| Ralph Wiggum | https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum | Iterative loops |
+| Chatterbox TTS | https://github.com/resemble-ai/chatterbox | Voice synthesis |
+| awesome-llm-apps | https://github.com/Shubhamsaboo/awesome-llm-apps | Voice agents, RAG patterns |
+| DocAssist EMR | https://github.com/drshailesh88/emr | Parent EMR system |
 
 ---
 
@@ -173,37 +229,4 @@ show_draft_dialog(ai_suggestion, on_confirm=db.save)
 
 ---
 
-## Common Commands
-
-```bash
-# Run application
-python main.py
-
-# Run tests
-pytest tests/ -v
-
-# Type checking
-mypy src/ --strict
-
-# Lint
-ruff check src/
-
-# Format
-black src/ tests/
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
----
-
-## Getting Help
-
-1. Check Spec-Kit documents for requirements
-2. Review existing code patterns
-3. Run tests to understand expected behavior
-4. Ask for clarification if blocked
-
----
-
-*Last Updated: 2026-01-03*
+*Last Updated: 2026-01-04*
