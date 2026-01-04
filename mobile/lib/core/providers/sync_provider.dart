@@ -6,6 +6,7 @@ import '../repositories/appointment_repository.dart';
 import '../repositories/doctor_repository.dart';
 import '../repositories/patient_repository.dart';
 import '../services/offline_sync_service.dart';
+import '../services/background_sync_service.dart' as bg_sync;
 import 'auth_provider.dart';
 
 /// Sync state
@@ -129,4 +130,53 @@ final doctorRepositoryProvider = Provider<DoctorRepository>((ref) {
   final apiClient = ref.watch(apiClientProvider);
   final syncService = ref.watch(offlineSyncServiceProvider);
   return DoctorRepository(apiClient, syncService);
+});
+
+// ============ Background Sync Service ============
+
+/// Background sync service provider (enhanced sync with retry logic)
+final backgroundSyncServiceProvider = Provider<bg_sync.BackgroundSyncService>((ref) {
+  final apiClient = ref.watch(apiClientProvider);
+  final service = bg_sync.BackgroundSyncService(apiClient);
+
+  // Initialize on first access
+  service.initialize();
+
+  // Dispose when provider is disposed
+  ref.onDispose(() => service.dispose());
+
+  return service;
+});
+
+/// Background sync state stream provider
+final backgroundSyncStateProvider = StreamProvider<bg_sync.SyncState>((ref) {
+  final service = ref.watch(backgroundSyncServiceProvider);
+  return service.stateStream;
+});
+
+/// Pending background sync count provider
+final pendingBackgroundSyncCountProvider = Provider<int>((ref) {
+  final asyncState = ref.watch(backgroundSyncStateProvider);
+  return asyncState.maybeWhen(
+    data: (state) => state.pendingCount,
+    orElse: () => 0,
+  );
+});
+
+/// Failed background sync count provider
+final failedBackgroundSyncCountProvider = Provider<int>((ref) {
+  final asyncState = ref.watch(backgroundSyncStateProvider);
+  return asyncState.maybeWhen(
+    data: (state) => state.failedCount,
+    orElse: () => 0,
+  );
+});
+
+/// Background sync queue items provider
+final backgroundSyncQueueProvider = Provider<List<bg_sync.SyncQueueItem>>((ref) {
+  final asyncState = ref.watch(backgroundSyncStateProvider);
+  return asyncState.maybeWhen(
+    data: (state) => state.queue,
+    orElse: () => [],
+  );
 });
