@@ -17,6 +17,7 @@ from app.api.v1 import (
     search,
     analytics,
     waitlist,
+    whatsapp,
 )
 
 api_router = APIRouter()
@@ -33,3 +34,4 @@ api_router.include_router(voice.router, prefix="/voice", tags=["Voice Agent"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 api_router.include_router(waitlist.router, prefix="/waitlist", tags=["Waitlist"])
+api_router.include_router(whatsapp.router, prefix="/whatsapp", tags=["WhatsApp Bot"])
