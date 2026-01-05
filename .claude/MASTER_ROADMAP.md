@@ -2,9 +2,9 @@
 
 **🎯 Mission: Kill Practo, HealthPlix & PM Cardio**
 
-**Last Updated:** 2026-01-05
-**Project Status:** Active Development
-**Current Focus:** Phase 15 & 17 (Multi-Location + Advanced Features)
+**Last Updated:** 2026-01-05 (Session 2)
+**Project Status:** Near Production Ready (~90% Complete)
+**Current Focus:** Final Testing & Security Audit
 
 > **SINGLE SOURCE OF TRUTH** - This document persists across ALL sessions.
 > Read this FIRST when starting any new session.
@@ -382,9 +382,9 @@
 
 ---
 
-### ✅ PHASE 15: Multi-Location & Staff Management (BACKEND COMPLETE)
-**Status:** 75% Complete (Backend ✅, Mobile UI Pending)
-**Completion Date:** Backend: 2026-01-04
+### ✅ PHASE 15: Multi-Location & Staff Management (COMPLETE)
+**Status:** 100% Complete
+**Completion Date:** 2026-01-05
 
 **Implemented:**
 - Organization model (multi-clinic)
@@ -420,32 +420,43 @@
 
 ---
 
-### ✅ PHASE 16: Practice AI Assistant (PARTIAL - 3 Sub-phases Complete)
-**Status:** 60% Complete
+### ✅ PHASE 16: Practice AI Assistant (COMPLETE)
+**Status:** 100% Complete (All 3 Sub-phases)
 
-#### 16A: Natural Language Analytics (TODO)
-**Status:** Planned
+#### 16A: Natural Language Analytics (COMPLETE)
+**Status:** 100% Complete
+**Completion Date:** 2026-01-05
 
-**Planned:**
+**Implemented:**
 - Chat UI for analytics queries
-- Query understanding with LLM
-- Natural language to SQL
-- Response generation
+- Query understanding with LLM (Ollama + Qwen2.5)
+- Natural language to structured queries
+- Time period detection
+- Entity extraction (doctors, procedures, etc.)
 
-**Key Files:** None yet
+**Key Files:**
+- `/backend/app/services/nl_analytics.py`
+- `/backend/app/api/v1/ai_analytics.py`
+- `/backend/app/schemas/ai_analytics.py`
 
 **Spec:** `/.claude/specs/practice-ai-assistant.md`
 
-#### 16B: Conversational Actions (TODO)
-**Status:** Planned
+#### 16B: Conversational Actions (COMPLETE)
+**Status:** 100% Complete
+**Completion Date:** 2026-01-05
 
-**Planned:**
-- Book/reschedule via chat
+**Implemented:**
+- Book/reschedule/cancel via chat
 - Patient lookup via NL
-- Quick actions
+- Intent detection and slot extraction
 - Confirmation flows
+- Undo capability
+- Hinglish support
 
-**Key Files:** None yet
+**Key Files:**
+- `/backend/app/services/ai_action_executor.py`
+- `/backend/app/services/ai_entity_extractor.py`
+- `/backend/app/api/v1/ai_chat.py`
 
 #### 16C: Proactive Intelligence (COMPLETE)
 **Status:** 100% Complete
@@ -478,9 +489,9 @@
 
 ---
 
-### 🆕 PHASE 17: Telemedicine (NEW - Backend Complete)
-**Status:** Backend 100%, Mobile UI Pending
-**Completion Date:** Backend: 2026-01-05
+### ✅ PHASE 17: Telemedicine (COMPLETE)
+**Status:** 100% Complete
+**Completion Date:** 2026-01-05
 
 **Implemented:**
 - Video consultation model
@@ -488,20 +499,21 @@
 - Consultation recording
 - Chat during calls
 - Prescription sharing
+- Flutter WebRTC integration
+- Mobile video call UI
+- Frontend signaling client
 
 **Key Files:**
 - `/backend/app/models/telemedicine.py`
 - `/backend/app/api/v1/telemedicine.py`
 - `/backend/app/api/v1/ws_telemedicine.py`
+- `/mobile/lib/features/telemedicine/` (video call screens and widgets)
+- `/mobile/lib/core/services/webrtc_service.dart`
+- `/mobile/lib/core/services/signaling_service.dart`
 - Migration: `011_add_telemedicine.py`
 
 **Spec:** TBD
 **Implementation Doc:** TBD
-
-**What's Missing:**
-- Flutter WebRTC integration
-- Mobile UI for video calls
-- Frontend signaling client
 
 ---
 
@@ -522,16 +534,17 @@ Timeline:
 ├── Phase 10:     COMPLETE ✅ (Document Scanner - Jan 4)
 ├── Phase 11:     COMPLETE ✅ (Google Calendar - Jan 4)
 ├── Phase 12:     COMPLETE ✅ (Booking Portal - Jan 4)
-├── Phase 13:     COMPLETE ✅ (EMR Integration - Jan 4)
-├── Phase 14:     COMPLETE ✅ (Insurance - Jan 4)
-├── Phase 15:     75% DONE (Multi-Location Backend ✅, UI Pending)
-├── Phase 16A-B:  NOT STARTED ⏸️
-├── Phase 16C:    COMPLETE ✅ (Proactive Intelligence - Jan 4)
-├── Phase 17:     Backend DONE ✅ (Telemedicine - Jan 5), UI Pending
-└── Phase 18-21:  NOT STARTED ⏸️
+├── Phase 13:     COMPLETE ✅ (EMR Integration - Jan 4) + Flutter UI Jan 5
+├── Phase 14:     COMPLETE ✅ (Insurance - Jan 4) + Flutter UI Jan 5
+├── Phase 15:     COMPLETE ✅ (Multi-Location - Jan 5) - Backend + Flutter UI
+├── Phase 16A:    COMPLETE ✅ (NL Analytics - Jan 5)
+├── Phase 16B:    COMPLETE ✅ (Conversational Actions - Jan 5)
+├── Phase 16C:    COMPLETE ✅ (Proactive Intelligence - Jan 4) + Flutter UI Jan 5
+├── Phase 17:     COMPLETE ✅ (Telemedicine - Jan 5) - Backend + Flutter UI
+└── Phase 18-21:  NOT STARTED ⏸️ (Post-launch features)
 ```
 
-**Overall Completion:** ~70% of core platform complete
+**Overall Completion:** ~90% of core platform complete (Phases 1-17 DONE)
 
 ---
 
