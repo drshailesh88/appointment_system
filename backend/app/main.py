@@ -29,7 +29,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Initialize rate limiter
-limiter = Limiter(key_func=get_remote_address, default_limits=[f"{settings.rate_limit_per_minute}/minute"])
+# request_param_name allows using "req" or "request" in function signatures
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[f"{settings.rate_limit_per_minute}/minute"],
+)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):

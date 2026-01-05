@@ -76,13 +76,13 @@ async def get_patient_from_token(
 @router.post("/otp/send", response_model=OTPSendResponse)
 @limiter.limit("5/minute")  # Strict rate limit for OTP to prevent abuse
 async def send_otp(
-    req: Request,
-    request: OTPSendRequest,
+    request: Request,
+    body: OTPSendRequest,
     db: DbSession,
 ) -> dict:
     """Send OTP to phone number."""
     otp_service = OTPService(db)
-    otp = await otp_service.send_otp(request.phone)
+    otp = await otp_service.send_otp(body.phone)
 
     return {
         "message": "OTP sent successfully",
@@ -93,13 +93,13 @@ async def send_otp(
 @router.post("/otp/verify", response_model=OTPVerifyResponse)
 @limiter.limit("10/minute")  # Rate limit OTP verification
 async def verify_otp(
-    req: Request,
-    request: OTPVerifyRequest,
+    request: Request,
+    body: OTPVerifyRequest,
     db: DbSession,
 ) -> dict:
     """Verify OTP and get access token."""
     otp_service = OTPService(db)
-    token = await otp_service.verify_otp(request.phone, request.otp_code)
+    token = await otp_service.verify_otp(body.phone, body.otp_code)
 
     if not token:
         raise HTTPException(
@@ -290,7 +290,7 @@ async def get_doctor_slots(
 @router.post("/appointments", response_model=PublicAppointmentResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("10/minute")  # Rate limit appointment booking
 async def book_appointment_public(
-    req: Request,
+    request: Request,
     db: DbSession,
     booking: PublicBookingRequest,
     phone: str = Depends(get_patient_from_token),
