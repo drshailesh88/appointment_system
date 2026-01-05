@@ -126,7 +126,7 @@ async def test_doctor(async_session: AsyncSession, test_clinic: Clinic) -> Docto
         id=uuid4(),
         email="doctor@test.com",
         phone="+919876543211",
-        hashed_password="hashed_password",
+        password_hash="hashed_password",
         name="Dr. Test Doctor",
         role="doctor",
         clinic_id=test_clinic.id,

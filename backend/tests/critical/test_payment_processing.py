@@ -109,7 +109,7 @@ async def test_user(async_db: AsyncSession, test_clinic: Clinic) -> User:
         id=uuid4(),
         email="admin@test.com",
         phone="+919876543210",
-        hashed_password=get_password_hash("testpassword123"),
+        password_hash=get_password_hash("testpassword123"),
         name="Test Admin",
         role="admin",
         clinic_id=test_clinic.id,
@@ -128,7 +128,7 @@ async def test_doctor(async_db: AsyncSession, test_clinic: Clinic) -> Doctor:
         id=uuid4(),
         email="doctor@test.com",
         phone="+919876543211",
-        hashed_password=get_password_hash("doctorpass123"),
+        password_hash=get_password_hash("doctorpass123"),
         name="Dr. Test Doctor",
         role="doctor",
         clinic_id=test_clinic.id,
@@ -139,7 +139,6 @@ async def test_doctor(async_db: AsyncSession, test_clinic: Clinic) -> Doctor:
 
     doctor = Doctor(
         id=uuid4(),
-        user_id=user.id,
         clinic_id=test_clinic.id,
         name="Dr. Test Doctor",
         specialization="Cardiology",
@@ -153,6 +152,11 @@ async def test_doctor(async_db: AsyncSession, test_clinic: Clinic) -> Doctor:
     async_db.add(doctor)
     await async_db.commit()
     await async_db.refresh(doctor)
+
+    # Link user to doctor
+    user.doctor_id = doctor.id
+    await async_db.commit()
+
     return doctor
 
 
@@ -162,7 +166,8 @@ async def test_patient(async_db: AsyncSession, test_clinic: Clinic) -> Patient:
     patient = Patient(
         id=uuid4(),
         clinic_id=test_clinic.id,
-        name="Test Patient",
+        first_name="Test",
+        last_name="Patient",
         phone="+919876543212",
         email="patient@test.com",
         gender="male",

@@ -514,7 +514,7 @@ class TestDoctorsAPI:
         user = User(
             email="deactivate_doctor@test.com",
             phone="+919876543226",
-            hashed_password=get_password_hash("testpass"),
+            password_hash=get_password_hash("testpass"),
             name="Dr. Deactivate",
             role="doctor",
             clinic_id=str(test_clinic.id),

@@ -171,7 +171,7 @@ class TestAnalyticsPermissions:
             id=str(uuid4()),
             email="staff@test.com",
             phone="+919876543299",
-            hashed_password=get_password_hash("staffpass123"),
+            password_hash=get_password_hash("staffpass123"),
             name="Staff User",
             role="staff",
             clinic_id=test_clinic.id,
@@ -180,7 +180,7 @@ class TestAnalyticsPermissions:
         db.add(staff_user)
         db.commit()
 
-        staff_token = create_access_token(data={"sub": staff_user.id})
+        staff_token = create_access_token(subject=staff_user.id)
         staff_headers = {"Authorization": f"Bearer {staff_token}"}
 
         response = client.get(

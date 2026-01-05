@@ -76,7 +76,7 @@ def test_staff_user(db: Session, test_clinic: Clinic) -> User:
         id=uuid4(),
         email="staff@test.com",
         phone="+919876543213",
-        hashed_password=get_password_hash("staffpass123"),
+        password_hash=get_password_hash("staffpass123"),
         name="Test Staff",
         role="staff",
         clinic_id=test_clinic.id,
@@ -114,7 +114,7 @@ def test_staff_assignment(
 @pytest.fixture
 def staff_auth_headers(test_staff_user: User) -> dict:
     """Generate authentication headers for staff user."""
-    token = create_access_token(data={"sub": str(test_staff_user.id)})
+    token = create_access_token(subject=str(test_staff_user.id))
     return {"Authorization": f"Bearer {token}"}
 
 

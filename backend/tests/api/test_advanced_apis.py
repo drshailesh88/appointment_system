@@ -119,7 +119,7 @@ class TestAIChatAPI:
             id=str(uuid4()),
             email="noclinic@test.com",
             phone="+919999999999",
-            hashed_password=get_password_hash("test"),
+            password_hash=get_password_hash("test"),
             name="No Clinic User",
             role="admin",
             clinic_id=None,  # No clinic
@@ -127,7 +127,7 @@ class TestAIChatAPI:
         db.add(user)
         db.commit()
 
-        token = create_access_token(data={"sub": user.id})
+        token = create_access_token(subject=user.id)
         headers = {"Authorization": f"Bearer {token}"}
 
         response = client.post(
@@ -1141,7 +1141,7 @@ class TestWebSocketEndpoints:
         """Test successful WebSocket connection."""
         from app.core.security import create_access_token
 
-        token = create_access_token(data={"sub": test_user.id, "type": "access"})
+        token = create_access_token(subject=test_user.id, "type": "access")
 
         # Note: TestClient WebSocket support is limited
         # In production, use websockets library for full testing
@@ -1166,7 +1166,7 @@ class TestWebSocketEndpoints:
         """Test WebSocket heartbeat/ping-pong."""
         from app.core.security import create_access_token
 
-        token = create_access_token(data={"sub": test_user.id, "type": "access"})
+        token = create_access_token(subject=test_user.id, "type": "access")
 
         try:
             with client.websocket_connect(

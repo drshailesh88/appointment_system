@@ -105,7 +105,7 @@ def test_user(db: Session, test_clinic: Clinic) -> User:
         id=str(uuid4()),
         email="admin@test.com",
         phone="+919876543210",
-        hashed_password=get_password_hash("testpassword123"),
+        password_hash=get_password_hash("testpassword123"),
         name="Test Admin",
         role="admin",
         clinic_id=test_clinic.id,
@@ -125,7 +125,7 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
         id=str(uuid4()),
         email="doctor@test.com",
         phone="+919876543211",
-        hashed_password=get_password_hash("doctorpass123"),
+        password_hash=get_password_hash("doctorpass123"),
         name="Dr. Test Doctor",
         role="doctor",
         clinic_id=test_clinic.id,
@@ -136,7 +136,6 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
 
     doctor = Doctor(
         id=str(uuid4()),
-        user_id=user.id,
         clinic_id=test_clinic.id,
         name="Dr. Test Doctor",
         specialization="General Medicine",
@@ -157,6 +156,11 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
     db.add(doctor)
     db.commit()
     db.refresh(doctor)
+
+    # Link user to doctor
+    user.doctor_id = doctor.id
+    db.commit()
+
     return doctor
 
 
@@ -166,7 +170,8 @@ def test_patient(db: Session, test_clinic: Clinic) -> Patient:
     patient = Patient(
         id=str(uuid4()),
         clinic_id=test_clinic.id,
-        name="Test Patient",
+        first_name="Test",
+        last_name="Patient",
         phone="+919876543212",
         email="patient@test.com",
         gender="male",
@@ -208,17 +213,16 @@ def test_appointment(
 ) -> Appointment:
     """Create a test appointment."""
     now = datetime.now()
-    start_time = now.replace(hour=10, minute=0, second=0, microsecond=0)
-    if start_time < now:
-        start_time += timedelta(days=1)
+    scheduled_start = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    if scheduled_start < now:
+        scheduled_start += timedelta(days=1)
 
     appointment = Appointment(
         id=str(uuid4()),
-        clinic_id=test_clinic.id,
         doctor_id=test_doctor.id,
         patient_id=test_patient.id,
-        start_time=start_time,
-        end_time=start_time + timedelta(minutes=15),
+        scheduled_start=scheduled_start,
+        scheduled_end=scheduled_start + timedelta(minutes=15),
         status="scheduled",
         appointment_type="new_consultation",
         chief_complaint="General checkup",
@@ -232,13 +236,13 @@ def test_appointment(
 @pytest.fixture
 def auth_headers(test_user: User) -> dict:
     """Generate authentication headers for the test user."""
-    token = create_access_token(data={"sub": test_user.id})
+    token = create_access_token(subject=test_user.id)
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def doctor_auth_headers(db: Session, test_doctor: Doctor) -> dict:
     """Generate authentication headers for the test doctor."""
-    user = db.query(User).filter(User.id == test_doctor.user_id).first()
-    token = create_access_token(data={"sub": user.id})
+    user = db.query(User).filter(User.doctor_id == test_doctor.id).first()
+    token = create_access_token(subject=user.id)
     return {"Authorization": f"Bearer {token}"}

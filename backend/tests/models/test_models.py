@@ -64,7 +64,7 @@ class TestUserModel:
             id=str(uuid4()),
             email="testuser@test.com",
             phone="+919876543299",
-            hashed_password=get_password_hash("testpass123"),
+            password_hash=get_password_hash("testpass123"),
             name="Test User",
             role="staff",
             clinic_id=test_clinic.id,
@@ -84,7 +84,8 @@ class TestUserModel:
         user = User(
             id=str(uuid4()),
             email="hashtest@test.com",
-            hashed_password=get_password_hash(password),
+            phone="+919876543298",
+            password_hash=get_password_hash(password),
             name="Hash Test",
             role="staff",
             clinic_id=test_clinic.id,
@@ -92,8 +93,8 @@ class TestUserModel:
         db.add(user)
         db.commit()
 
-        assert user.hashed_password != password
-        assert len(user.hashed_password) > 20
+        assert user.password_hash != password
+        assert len(user.password_hash) > 20
 
 
 class TestDoctorModel:
@@ -132,11 +133,11 @@ class TestAppointmentModel:
         """Test appointment creation."""
         assert test_appointment.id is not None
         assert test_appointment.status == "scheduled"
-        assert test_appointment.start_time < test_appointment.end_time
+        assert test_appointment.scheduled_start < test_appointment.scheduled_end
 
     def test_appointment_duration(self, test_appointment):
         """Test appointment duration."""
-        duration = test_appointment.end_time - test_appointment.start_time
+        duration = test_appointment.scheduled_end - test_appointment.scheduled_start
         assert duration == timedelta(minutes=15)
 
     def test_appointment_status_values(self, db: Session, test_appointment):
@@ -169,14 +170,14 @@ class TestServiceModel:
 class TestInvoiceModel:
     """Invoice model tests."""
 
-    def test_create_invoice(self, db: Session, test_clinic, test_patient, test_appointment):
+    def test_create_invoice(self, db: Session, test_clinic, test_patient):
         """Test creating an invoice."""
         invoice = Invoice(
             id=str(uuid4()),
             clinic_id=test_clinic.id,
             patient_id=test_patient.id,
-            appointment_id=test_appointment.id,
             invoice_number="INV-001",
+            invoice_date=datetime.now().date(),
             subtotal=500.0,
             tax_amount=90.0,
             discount_amount=0.0,
@@ -191,7 +192,7 @@ class TestInvoiceModel:
         assert invoice.total_amount == 590.0
         assert invoice.status == "pending"
 
-    def test_invoice_calculations(self, db: Session, test_clinic, test_patient, test_appointment):
+    def test_invoice_calculations(self, db: Session, test_clinic, test_patient):
         """Test invoice amount calculations."""
         subtotal = 1000.0
         tax = subtotal * 0.18  # 18% GST
@@ -202,8 +203,8 @@ class TestInvoiceModel:
             id=str(uuid4()),
             clinic_id=test_clinic.id,
             patient_id=test_patient.id,
-            appointment_id=test_appointment.id,
             invoice_number="INV-002",
+            invoice_date=datetime.now().date(),
             subtotal=subtotal,
             tax_amount=tax,
             discount_amount=discount,
@@ -219,15 +220,15 @@ class TestInvoiceModel:
 class TestPaymentModel:
     """Payment model tests."""
 
-    def test_create_payment(self, db: Session, test_clinic, test_patient, test_appointment):
+    def test_create_payment(self, db: Session, test_clinic, test_patient):
         """Test creating a payment."""
         # First create an invoice
         invoice = Invoice(
             id=str(uuid4()),
             clinic_id=test_clinic.id,
             patient_id=test_patient.id,
-            appointment_id=test_appointment.id,
             invoice_number="INV-003",
+            invoice_date=datetime.now().date(),
             subtotal=500.0,
             total_amount=500.0,
             status="pending",
@@ -240,6 +241,7 @@ class TestPaymentModel:
             invoice_id=invoice.id,
             amount=500.0,
             payment_method="cash",
+            payment_date=datetime.now(),
             status="completed",
             transaction_id="TXN-001",
         )
