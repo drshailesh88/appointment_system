@@ -38,6 +38,22 @@ from app.models.insight import (
     InsightType,
     InsightPriority,
 )
+from app.models.phone_call import (
+    PhoneCall,
+    CallTranscriptSegment,
+    CallStatus,
+    CallDirection,
+    CallIntent,
+)
+from app.models.consultation import (
+    Consultation,
+    ConsultationParticipant,
+    ConsultationRecording,
+    ConsultationStatus,
+    ParticipantRole,
+    ConnectionType,
+    ConnectionQuality,
+)
 
 __all__ = [
     "User",
@@ -77,4 +93,16 @@ __all__ = [
     "UserDigestPreferences",
     "InsightType",
     "InsightPriority",
+    "PhoneCall",
+    "CallTranscriptSegment",
+    "CallStatus",
+    "CallDirection",
+    "CallIntent",
+    "Consultation",
+    "ConsultationParticipant",
+    "ConsultationRecording",
+    "ConsultationStatus",
+    "ParticipantRole",
+    "ConnectionType",
+    "ConnectionQuality",
 ]

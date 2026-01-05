@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.insurance import PatientInsurance
     from app.models.invoice import Invoice
+    from app.models.phone_call import PhoneCall
     from app.models.procedure import Procedure
 
 
@@ -100,6 +101,11 @@ class Patient(BaseModel):
     insurances: Mapped[list["PatientInsurance"]] = relationship(
         "PatientInsurance",
         back_populates="patient",
+    )
+    phone_calls: Mapped[list["PhoneCall"]] = relationship(
+        "PhoneCall",
+        back_populates="patient",
+        foreign_keys="PhoneCall.patient_id",
     )
 
     @property

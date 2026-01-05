@@ -80,6 +80,35 @@ class Settings(BaseSettings):
     emr_sync_enabled: bool = True
     emr_sync_interval_seconds: int = 300  # 5 minutes
 
+    # Twilio / Voice Bot
+    twilio_account_sid: str | None = None
+    twilio_auth_token: str | None = None
+    twilio_phone_number: str | None = None  # Your Twilio number (E.164 format)
+    twilio_webhook_url: str | None = None  # Public URL for webhooks
+
+    # Voice Bot Settings
+    voice_bot_enabled: bool = False
+    voice_bot_default_language: str = "hi"  # Hindi default
+    voice_bot_supported_languages: list[str] = [
+        "hi",  # Hindi
+        "en",  # English
+        "ta",  # Tamil
+        "te",  # Telugu
+        "bn",  # Bengali
+        "mr",  # Marathi
+        "gu",  # Gujarati
+    ]
+    voice_bot_max_call_duration_minutes: int = 10
+    voice_bot_silence_timeout_seconds: int = 5
+
+    # Jitsi/Telemedicine
+    jitsi_domain: str = "meet.jit.si"  # Default to public Jitsi, should be self-hosted
+    jitsi_app_id: str = "docassist_telemedicine"
+    jitsi_jwt_secret: str | None = None  # Required for JWT authentication
+    jitsi_recording_enabled: bool = False
+    consultation_max_duration_minutes: int = 60
+    waiting_room_timeout_minutes: int = 30
+
     # Rate Limiting
     rate_limit_per_minute: int = 60
 

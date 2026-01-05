@@ -15,6 +15,7 @@ from app.api.v1 import (
     payments,
     insurance,
     voice,
+    voice_bot,
     search,
     analytics,
     reports,
@@ -30,6 +31,8 @@ from app.api.v1 import (
     public,
     organizations,
     staff,
+    telemedicine,
+    ws_telemedicine,
 )
 
 api_router = APIRouter()
@@ -44,6 +47,7 @@ api_router.include_router(invoices.router, prefix="/invoices", tags=["Invoices"]
 api_router.include_router(payments.router, prefix="/payments", tags=["Payments"])
 api_router.include_router(insurance.router, prefix="/insurance", tags=["Insurance & Billing"])
 api_router.include_router(voice.router, prefix="/voice", tags=["Voice Agent"])
+api_router.include_router(voice_bot.router, prefix="/voice-bot", tags=["Voice Bot / Phone Automation"])
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
 api_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 api_router.include_router(reports.router, prefix="/reports", tags=["Reports & Exports"])
@@ -59,3 +63,5 @@ api_router.include_router(emr.router, prefix="/emr", tags=["EMR Integration"])
 api_router.include_router(public.router, prefix="/public", tags=["Public Booking Portal"])
 api_router.include_router(organizations.router, prefix="/organizations", tags=["Organizations"])
 api_router.include_router(staff.router, prefix="/staff", tags=["Staff Management"])
+api_router.include_router(telemedicine.router, prefix="/telemedicine", tags=["Telemedicine"])
+api_router.include_router(ws_telemedicine.router, tags=["Telemedicine WebSocket"])

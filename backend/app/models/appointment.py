@@ -14,8 +14,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import BaseModel
 
 if TYPE_CHECKING:
+    from app.models.consultation import Consultation
     from app.models.doctor import Doctor
     from app.models.patient import Patient
+    from app.models.phone_call import PhoneCall
     from app.models.procedure import Procedure
     from app.models.service import Service
 
@@ -183,10 +185,20 @@ class Appointment(BaseModel):
         back_populates="appointment",
         uselist=False,
     )
+    consultation: Mapped["Consultation | None"] = relationship(
+        "Consultation",
+        back_populates="appointment",
+        uselist=False,
+    )
     rescheduled_from: Mapped["Appointment | None"] = relationship(
         "Appointment",
         remote_side="Appointment.id",
         backref="rescheduled_to",
+    )
+    phone_calls: Mapped[list["PhoneCall"]] = relationship(
+        "PhoneCall",
+        back_populates="appointment",
+        foreign_keys="PhoneCall.appointment_id",
     )
 
     @property

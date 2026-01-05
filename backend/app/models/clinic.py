@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from app.models.document import Document
     from app.models.organization import Organization
     from app.models.patient import Patient
+    from app.models.phone_call import PhoneCall
     from app.models.procedure import Procedure
     from app.models.service import Service
     from app.models.user import User
@@ -97,6 +98,11 @@ class Clinic(BaseModel):
     services: Mapped[list["Service"]] = relationship("Service", back_populates="clinic")
     procedures: Mapped[list["Procedure"]] = relationship("Procedure", back_populates="clinic")
     documents: Mapped[list["Document"]] = relationship("Document", back_populates="clinic")
+    phone_calls: Mapped[list["PhoneCall"]] = relationship(
+        "PhoneCall",
+        back_populates="clinic",
+        foreign_keys="PhoneCall.clinic_id",
+    )
 
     def __repr__(self) -> str:
         return f"<Clinic {self.name}>"
