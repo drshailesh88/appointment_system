@@ -105,3 +105,4 @@ desktop.ini
 
 # ============ Keep data directory structure ============
 !data/.gitkeep
+backend/uploads/
