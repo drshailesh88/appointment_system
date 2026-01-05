@@ -39,6 +39,7 @@ from app.models.calendar_sync import (
     ConflictResolution,
 )
 from app.models.health_record import HealthRecord
+from app.models.noshow_prediction import NoShowPrediction, RiskLevel
 
 __all__ = [
     "User",
@@ -74,4 +75,6 @@ __all__ = [
     "SyncStatus",
     "ConflictResolution",
     "HealthRecord",
+    "NoShowPrediction",
+    "RiskLevel",
 ]
