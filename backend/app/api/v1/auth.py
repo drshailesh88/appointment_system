@@ -4,8 +4,10 @@ Authentication API endpoints.
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,10 +29,13 @@ from app.schemas.user import (
 )
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")  # Strict rate limit for registration
 async def register(
+    request: Request,
     db: DbSession,
     user_in: UserCreate,
 ) -> User:
@@ -71,7 +76,9 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")  # Rate limit login attempts
 async def login(
+    request: Request,
     db: DbSession,
     form_data: OAuth2PasswordRequestForm = Depends(),
 ) -> dict:
@@ -123,7 +130,9 @@ async def login(
 
 
 @router.post("/login/json", response_model=Token)
+@limiter.limit("10/minute")  # Rate limit login attempts
 async def login_json(
+    request: Request,
     db: DbSession,
     credentials: UserLogin,
 ) -> dict:
@@ -173,7 +182,9 @@ async def login_json(
 
 
 @router.post("/refresh", response_model=Token)
+@limiter.limit("20/minute")  # More lenient for token refresh
 async def refresh_token(
+    request: Request,
     db: DbSession,
     refresh_token: str,
 ) -> dict:

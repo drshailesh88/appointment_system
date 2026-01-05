@@ -404,7 +404,8 @@ class TestAppointmentBookingEdgeCases:
         patient2 = Patient(
             id=uuid4(),
             clinic_id=test_patient.clinic_id,
-            name="Second Patient",
+            first_name="Second",
+            last_name="Patient",
             phone="+919876543299",
             gender="female",
             date_of_birth=datetime(1985, 5, 20).date(),
@@ -456,7 +457,8 @@ class TestAppointmentBookingEdgeCases:
         patient2 = Patient(
             id=uuid4(),
             clinic_id=test_patient.clinic_id,
-            name="Second Patient",
+            first_name="Second",
+            last_name="Patient",
             phone="+919876543288",
             gender="male",
             date_of_birth=datetime(1992, 3, 10).date(),
@@ -613,7 +615,8 @@ class TestAppointmentBookingEdgeCases:
         other_patient = Patient(
             id=uuid4(),
             clinic_id=other_clinic.id,
-            name="Other Clinic Patient",
+            first_name="Other",
+            last_name="Patient",
             phone="+919876543277",
             gender="female",
             date_of_birth=datetime(1988, 7, 25).date(),
@@ -1447,7 +1450,8 @@ class TestAppointmentConcurrency:
         patient2 = Patient(
             id=uuid4(),
             clinic_id=test_patient.clinic_id,
-            name="Concurrent Patient",
+            first_name="Concurrent",
+            last_name="Patient",
             phone="+919876543266",
             gender="male",
             date_of_birth=datetime(1991, 6, 15).date(),

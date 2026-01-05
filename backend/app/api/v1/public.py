@@ -7,7 +7,9 @@ These endpoints are accessible without authentication.
 from datetime import date, datetime, time, timedelta, timezone
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -32,6 +34,7 @@ from app.schemas.public import (
 from app.services.otp_service import OTPService
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 
 async def get_patient_from_token(
@@ -71,7 +74,9 @@ async def get_patient_from_token(
 
 # OTP Endpoints
 @router.post("/otp/send", response_model=OTPSendResponse)
+@limiter.limit("5/minute")  # Strict rate limit for OTP to prevent abuse
 async def send_otp(
+    req: Request,
     request: OTPSendRequest,
     db: DbSession,
 ) -> dict:
@@ -86,7 +91,9 @@ async def send_otp(
 
 
 @router.post("/otp/verify", response_model=OTPVerifyResponse)
+@limiter.limit("10/minute")  # Rate limit OTP verification
 async def verify_otp(
+    req: Request,
     request: OTPVerifyRequest,
     db: DbSession,
 ) -> dict:
@@ -281,7 +288,9 @@ async def get_doctor_slots(
 
 # Appointment Booking Endpoints (require OTP token)
 @router.post("/appointments", response_model=PublicAppointmentResponse, status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")  # Rate limit appointment booking
 async def book_appointment_public(
+    req: Request,
     db: DbSession,
     booking: PublicBookingRequest,
     phone: str = Depends(get_patient_from_token),

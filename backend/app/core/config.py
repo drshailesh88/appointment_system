@@ -6,8 +6,9 @@ All settings can be overridden via environment variables.
 
 from functools import lru_cache
 from typing import Literal
+import warnings
 
-from pydantic import PostgresDsn, field_validator
+from pydantic import PostgresDsn, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -118,6 +119,41 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [origin.strip() for origin in v.split(",")]
         return v
+
+    @model_validator(mode="after")
+    def validate_security_settings(self) -> "Settings":
+        """Validate security-critical settings."""
+        # Check JWT secret in production
+        default_jwt_secrets = [
+            "change-this-in-production-use-openssl-rand-hex-32",
+            "dev-secret-key-change-in-production",
+        ]
+
+        if self.environment == "production":
+            if self.jwt_secret_key in default_jwt_secrets:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: Default JWT secret detected in production. "
+                    "Set JWT_SECRET_KEY environment variable to a secure random value. "
+                    "Generate one with: openssl rand -hex 32"
+                )
+
+            # Check JWT secret length (minimum 32 characters for security)
+            if len(self.jwt_secret_key) < 32:
+                raise ValueError(
+                    "CRITICAL SECURITY ERROR: JWT secret must be at least 32 characters long in production. "
+                    "Generate a secure secret with: openssl rand -hex 32"
+                )
+        else:
+            # Warn in non-production environments
+            if self.jwt_secret_key in default_jwt_secrets:
+                warnings.warn(
+                    f"WARNING: Using default JWT secret in {self.environment} environment. "
+                    "This is OK for development but MUST be changed for production.",
+                    UserWarning,
+                    stacklevel=2
+                )
+
+        return self
 
     @property
     def async_database_url(self) -> str:
