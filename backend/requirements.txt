@@ -86,3 +86,7 @@ requests>=2.31.0
 
 # Push Notifications
 firebase-admin>=6.4.0
+
+# Load Testing
+locust>=2.20.0  # Load testing framework
+Faker>=22.0.0  # Generate fake test data
