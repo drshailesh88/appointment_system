@@ -44,7 +44,7 @@ class TestNotificationsAPI:
     ):
         """Test registering a device token for push notifications."""
         response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "test_fcm_token_12345",
@@ -73,7 +73,7 @@ class TestNotificationsAPI:
         """Test registering same device token updates existing record."""
         # First registration
         response1 = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "duplicate_token_123",
@@ -84,7 +84,7 @@ class TestNotificationsAPI:
 
         # Second registration with same token
         response2 = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "duplicate_token_123",
@@ -107,7 +107,7 @@ class TestNotificationsAPI:
     ):
         """Test registering device with invalid platform."""
         response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "test_token",
@@ -125,7 +125,7 @@ class TestNotificationsAPI:
     ):
         """Test validation for token length."""
         response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "short",  # Too short (< 10 chars)
@@ -146,7 +146,7 @@ class TestNotificationsAPI:
         """Test unregistering a device token."""
         # Register first
         register_response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={
                 "device_token": "token_to_unregister",
@@ -157,7 +157,7 @@ class TestNotificationsAPI:
 
         # Unregister
         response = await client.delete(
-            "/api/v1/notifications/unregister",
+            "/api/v1/notifications/unregister/",
             headers=auth_headers,
             params={"device_token": "token_to_unregister"},
         )
@@ -172,7 +172,7 @@ class TestNotificationsAPI:
     ):
         """Test unregistering non-existent token returns 404."""
         response = await client.delete(
-            "/api/v1/notifications/unregister",
+            "/api/v1/notifications/unregister/",
             headers=auth_headers,
             params={"device_token": "nonexistent_token_123"},
         )
@@ -190,12 +190,12 @@ class TestNotificationsAPI:
         """Test getting all registered devices for current user."""
         # Register multiple devices
         client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={"device_token": "device1", "platform": "android"},
         )
         client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={"device_token": "device2", "platform": "ios"},
         )
@@ -222,7 +222,7 @@ class TestNotificationsAPI:
         """Test getting devices including inactive ones."""
         # Register a device
         response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={"device_token": "device_active", "platform": "android"},
         )
@@ -266,7 +266,7 @@ class TestNotificationsAPI:
         """Test removing a specific device by ID."""
         # Register device
         register_response = await client.post(
-            "/api/v1/notifications/register",
+            "/api/v1/notifications/register/",
             headers=auth_headers,
             json={"device_token": "device_to_remove", "platform": "android"},
         )
@@ -345,7 +345,7 @@ class TestNotificationsAPI:
         mock_send.return_value = {"success": 1, "failed": 0}
 
         response = await client.post(
-            "/api/v1/notifications/send",
+            "/api/v1/notifications/send/",
             headers=auth_headers,
             json={
                 "user_id": str(test_user.id),
@@ -377,7 +377,7 @@ class TestNotificationsAPI:
 
         other_user_id = uuid4()
         response = await client.post(
-            "/api/v1/notifications/send",
+            "/api/v1/notifications/send/",
             headers=auth_headers,
             json={
                 "user_id": str(other_user_id),
@@ -398,7 +398,7 @@ class TestNotificationsAPI:
         mock_subscribe.return_value = {"success": 1, "failed": 0}
 
         response = await client.post(
-            "/api/v1/notifications/topics/subscribe",
+            "/api/v1/notifications/topics/subscribe/",
             headers=auth_headers,
             json={"topic": "clinic_12345"},
         )
@@ -419,7 +419,7 @@ class TestNotificationsAPI:
         mock_unsubscribe.return_value = {"success": 1, "failed": 0}
 
         response = await client.post(
-            "/api/v1/notifications/topics/unsubscribe",
+            "/api/v1/notifications/topics/unsubscribe/",
             headers=auth_headers,
             json={"topic": "clinic_12345"},
         )
@@ -518,7 +518,7 @@ class TestWhatsAppAPI:
         mock_send.return_value = True
 
         response = await client.post(
-            "/api/v1/whatsapp/webhook",
+            "/api/v1/whatsapp/webhook/",
             json={
                 "object": "whatsapp_business_account",
                 "entry": [
@@ -551,7 +551,7 @@ class TestWhatsAppAPI:
     ):
         """Test webhook ignores non-WhatsApp messages."""
         response = await client.post(
-            "/api/v1/whatsapp/webhook",
+            "/api/v1/whatsapp/webhook/",
             json={
                 "object": "instagram",
                 "entry": [],
@@ -573,7 +573,7 @@ class TestWhatsAppAPI:
         mock_send.return_value = True
 
         response = await client.post(
-            "/api/v1/whatsapp/send",
+            "/api/v1/whatsapp/send/",
             headers=auth_headers,
             params={
                 "to_phone": "+919876543210",
@@ -601,7 +601,7 @@ class TestWhatsAppAPI:
         await db.commit()
 
         response = await client.post(
-            "/api/v1/whatsapp/send",
+            "/api/v1/whatsapp/send/",
             headers=auth_headers,
             params={
                 "to_phone": "+919876543210",
@@ -622,7 +622,7 @@ class TestWhatsAppAPI:
         mock_send_buttons.return_value = True
 
         response = await client.post(
-            "/api/v1/whatsapp/send-buttons",
+            "/api/v1/whatsapp/send-buttons/",
             headers=auth_headers,
             params={
                 "to_phone": "+919876543210",
@@ -648,7 +648,7 @@ class TestWhatsAppAPI:
     ):
         """Test sending more than 3 buttons returns error."""
         response = await client.post(
-            "/api/v1/whatsapp/send-buttons",
+            "/api/v1/whatsapp/send-buttons/",
             headers=auth_headers,
             params={
                 "to_phone": "+919876543210",
@@ -679,7 +679,7 @@ class TestWhatsAppAPI:
         mock_send.return_value = True
 
         response = await client.post(
-            "/api/v1/whatsapp/send-appointment-reminder",
+            "/api/v1/whatsapp/send-appointment-reminder/",
             headers=auth_headers,
             params={"appointment_id": str(test_appointment.id)},
         )
@@ -699,7 +699,7 @@ class TestWhatsAppAPI:
         """Test sending reminder for non-existent appointment."""
         fake_id = uuid4()
         response = await client.post(
-            "/api/v1/whatsapp/send-appointment-reminder",
+            "/api/v1/whatsapp/send-appointment-reminder/",
             headers=auth_headers,
             params={"appointment_id": str(fake_id)},
         )
@@ -723,7 +723,7 @@ class TestWhatsAppAPI:
         await db.commit()
 
         response = await client.post(
-            "/api/v1/whatsapp/send-appointment-reminder",
+            "/api/v1/whatsapp/send-appointment-reminder/",
             headers=auth_headers,
             params={"appointment_id": str(test_appointment.id)},
         )
@@ -758,7 +758,7 @@ class TestWhatsAppAPI:
         await db.commit()
 
         response = await client.post(
-            "/api/v1/whatsapp/send-waitlist-notification",
+            "/api/v1/whatsapp/send-waitlist-notification/",
             headers=auth_headers,
             params={
                 "waitlist_id": str(waitlist.id),
@@ -805,7 +805,7 @@ class TestVoiceAPI:
         files = {"audio_file": ("test.wav", BytesIO(audio_data), "audio/wav")}
 
         response = await client.post(
-            "/api/v1/voice/process-audio",
+            "/api/v1/voice/process-audio/",
             headers=auth_headers,
             files=files,
             data={"clinic_id": str(test_clinic.id)},
@@ -839,7 +839,7 @@ class TestVoiceAPI:
         mock_process.return_value = mock_response
 
         response = await client.post(
-            "/api/v1/voice/process-text",
+            "/api/v1/voice/process-text/",
             headers=auth_headers,
             json={
                 "text": "I want to book an appointment",
@@ -941,7 +941,7 @@ class TestVoiceAPI:
         mock_synthesize.return_value = mock_audio
 
         response = await client.post(
-            "/api/v1/voice/synthesize",
+            "/api/v1/voice/synthesize/",
             headers=auth_headers,
             params={
                 "text": "Hello, how can I help you?",
@@ -973,7 +973,7 @@ class TestVoiceAPI:
         files = {"voice_sample": ("sample.wav", BytesIO(audio_data), "audio/wav")}
 
         response = await client.post(
-            "/api/v1/voice/clone-voice",
+            "/api/v1/voice/clone-voice/",
             headers=auth_headers,
             files=files,
         )
@@ -994,7 +994,7 @@ class TestVoiceAPI:
         files = {"voice_sample": ("sample.txt", BytesIO(b"text"), "text/plain")}
 
         response = await client.post(
-            "/api/v1/voice/clone-voice",
+            "/api/v1/voice/clone-voice/",
             headers=auth_headers,
             files=files,
         )
@@ -1014,7 +1014,7 @@ class TestVoiceAPI:
         files = {"voice_sample": ("large.wav", BytesIO(large_data), "audio/wav")}
 
         response = await client.post(
-            "/api/v1/voice/clone-voice",
+            "/api/v1/voice/clone-voice/",
             headers=auth_headers,
             files=files,
         )
@@ -1039,7 +1039,7 @@ class TestVoiceAPI:
         }
 
         response = await client.post(
-            "/api/v1/voice/synthesize-with-voice",
+            "/api/v1/voice/synthesize-with-voice/",
             headers=auth_headers,
             files=files,
             data={
@@ -1077,7 +1077,7 @@ class TestVoiceAPI:
         files = {"audio_file": ("speech.wav", BytesIO(audio_data), "audio/wav")}
 
         response = await client.post(
-            "/api/v1/voice/transcribe",
+            "/api/v1/voice/transcribe/",
             headers=auth_headers,
             files=files,
         )
@@ -1117,7 +1117,7 @@ class TestVoiceBotAPI:
         }
 
         response = await client.post(
-            "/api/v1/voice_bot/incoming",
+            "/api/v1/voice_bot/incoming/",
             data=form_data,
         )
         assert response.status_code == 200
@@ -1147,7 +1147,7 @@ class TestVoiceBotAPI:
         }
 
         response = await client.post(
-            "/api/v1/voice_bot/incoming",
+            "/api/v1/voice_bot/incoming/",
             data=form_data,
         )
         assert response.status_code == 200
@@ -1183,7 +1183,7 @@ class TestVoiceBotAPI:
         }
 
         response = await client.post(
-            "/api/v1/voice_bot/status",
+            "/api/v1/voice_bot/status/",
             data=form_data,
         )
         assert response.status_code == 200
@@ -1213,7 +1213,7 @@ class TestVoiceBotAPI:
         }
 
         response = await client.post(
-            "/api/v1/voice_bot/outbound",
+            "/api/v1/voice_bot/outbound/",
             headers=auth_headers,
             json={
                 "to_number": "+919876543210",
@@ -1510,7 +1510,7 @@ class TestCommunicationAPIErrorHandling:
         # Send multiple messages rapidly
         for i in range(5):
             response = await client.post(
-                "/api/v1/whatsapp/send",
+                "/api/v1/whatsapp/send/",
                 headers=auth_headers,
                 params={
                     "to_phone": "+919876543210",
@@ -1548,7 +1548,7 @@ class TestCommunicationAPIErrorHandling:
         mock_process.side_effect = Exception("Processing failed")
 
         response = await client.post(
-            "/api/v1/voice/process-text",
+            "/api/v1/voice/process-text/",
             headers=auth_headers,
             json={
                 "text": "Book appointment",
@@ -1566,7 +1566,7 @@ class TestCommunicationAPIErrorHandling:
     ):
         """Test WhatsApp webhook handles malformed payload."""
         response = await client.post(
-            "/api/v1/whatsapp/webhook",
+            "/api/v1/whatsapp/webhook/",
             json={"invalid": "payload"},
         )
         assert response.status_code == 200

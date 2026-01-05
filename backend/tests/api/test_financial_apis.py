@@ -438,7 +438,7 @@ class TestPaymentsAPI:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_payment.id
+        assert data["id"] == str(test_payment.id)
         assert data["amount"] == "500.00"
 
     @pytest.mark.asyncio
@@ -614,7 +614,7 @@ class TestInvoicesAPI:
         assert response.status_code == 201
         data = response.json()
         assert "invoice_number" in data
-        assert data["patient_id"] == test_patient.id
+        assert data["patient_id"] == str(test_patient.id)
         assert data["status"] == "pending"
         assert "subtotal" in data
         assert "total_amount" in data
@@ -770,7 +770,7 @@ class TestInvoicesAPI:
         data = response.json()
         assert isinstance(data, list)
         if len(data) > 0:
-            assert data[0]["patient_id"] == test_patient.id
+            assert data[0]["patient_id"] == str(test_patient.id)
 
     @pytest.mark.asyncio
 
@@ -827,7 +827,7 @@ class TestInvoicesAPI:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_invoice.id
+        assert data["id"] == str(test_invoice.id)
         assert "items" in data
         assert "patient" in data
 
@@ -961,7 +961,7 @@ class TestInsuranceAPI:
     ):
         """Test creating an insurance company."""
         response = await client.post(
-            "/api/v1/insurance/companies",
+            "/api/v1/insurance/companies/",
             headers=auth_headers,
             json={
                 "name": "HDFC Ergo Health Insurance",
@@ -990,7 +990,7 @@ class TestInsuranceAPI:
     ):
         """Test creating insurance company with duplicate code."""
         response = await client.post(
-            "/api/v1/insurance/companies",
+            "/api/v1/insurance/companies/",
             headers=auth_headers,
             json={
                 "name": "Another Star Health",
@@ -1034,7 +1034,7 @@ class TestInsuranceAPI:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_insurance_company.id
+        assert data["id"] == str(test_insurance_company.id)
         assert data["name"] == "Star Health Insurance"
 
     @pytest.mark.asyncio
@@ -1072,7 +1072,7 @@ class TestInsuranceAPI:
         """Test creating patient insurance policy."""
         today = date.today()
         response = await client.post(
-            "/api/v1/insurance/patient-insurance",
+            "/api/v1/insurance/patient-insurance/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),
@@ -1101,7 +1101,7 @@ class TestInsuranceAPI:
         """Test creating insurance with invalid patient."""
         today = date.today()
         response = await client.post(
-            "/api/v1/insurance/patient-insurance",
+            "/api/v1/insurance/patient-insurance/",
             headers=auth_headers,
             json={
                 "patient_id": str(uuid4()),
@@ -1168,7 +1168,7 @@ class TestInsuranceAPI:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_patient_insurance.id
+        assert data["id"] == str(test_patient_insurance.id)
         assert data["policy_number"] == "POL123456"
         assert "is_valid" in data
 
@@ -1207,7 +1207,7 @@ class TestInsuranceAPI:
     ):
         """Test creating an insurance claim."""
         response = await client.post(
-            "/api/v1/insurance/claims",
+            "/api/v1/insurance/claims/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),
@@ -1379,7 +1379,7 @@ class TestInsuranceAPI:
         """Test creating a pre-authorization request."""
         today = date.today()
         response = await client.post(
-            "/api/v1/insurance/preauthorizations",
+            "/api/v1/insurance/preauthorizations/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),
@@ -1613,7 +1613,7 @@ class TestFinancialAPIsAuthorization:
     ):
         """Test creating insurance company as non-admin (should fail)."""
         response = await client.post(
-            "/api/v1/insurance/companies",
+            "/api/v1/insurance/companies/",
             headers=doctor_auth_headers,
             json={
                 "name": "Test Insurance",
@@ -1726,7 +1726,7 @@ class TestFinancialAPIsEdgeCases:
         await db.commit()
 
         response = await client.post(
-            "/api/v1/insurance/claims",
+            "/api/v1/insurance/claims/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),
@@ -1781,7 +1781,7 @@ class TestFinancialAPIsEdgeCases:
         """Test creating pre-auth for patient without insurance."""
         today = date.today()
         response = await client.post(
-            "/api/v1/insurance/preauthorizations",
+            "/api/v1/insurance/preauthorizations/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),

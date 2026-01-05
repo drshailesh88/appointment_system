@@ -101,10 +101,11 @@ async def test_patient(async_session: AsyncSession, test_clinic: Clinic) -> Pati
     patient = Patient(
         id=uuid4(),
         clinic_id=test_clinic.id,
-        name="Test Patient",
+        first_name="Test",
+        last_name="Patient",
         phone="+919876543212",
         email="patient@test.com",
-        gender="male",
+        gender="M",
         date_of_birth=date(1990, 1, 15),
         address="456 Patient Road",
         city="Mumbai",
@@ -841,9 +842,10 @@ class TestInsuranceClaimsService:
         patient = Patient(
             id=uuid4(),
             clinic_id=uuid4(),
-            name="Test Patient",
+            first_name="Test",
+            last_name="Patient",
             phone="+911234567890",
-            gender="male",
+            gender="M",
         )
         async_session.add(patient)
 

@@ -453,7 +453,7 @@ class TestStaffAPI:
     ):
         """Test creating a staff role."""
         response = await client.post(
-            "/api/v1/staff/roles",
+            "/api/v1/staff/roles/",
             headers=auth_headers,
             json={
                 "name": "Nurse",
@@ -479,7 +479,7 @@ class TestStaffAPI:
     ):
         """Test creating staff role with invalid permission format."""
         response = await client.post(
-            "/api/v1/staff/roles",
+            "/api/v1/staff/roles/",
             headers=auth_headers,
             json={
                 "name": "Invalid Role",
@@ -632,7 +632,7 @@ class TestStaffAPI:
     ):
         """Test assigning staff to a clinic."""
         response = await client.post(
-            "/api/v1/staff/assignments",
+            "/api/v1/staff/assignments/",
             headers=auth_headers,
             json={
                 "user_id": str(test_staff_user.id),
@@ -789,7 +789,7 @@ class TestStaffAPI:
         await db.commit()
 
         response = await client.post(
-            "/api/v1/staff/transfer",
+            "/api/v1/staff/transfer/",
             headers=auth_headers,
             json={
                 "user_id": str(test_staff_user.id),
@@ -818,7 +818,7 @@ class TestStaffAPI:
     ):
         """Test checking user permissions."""
         response = await client.post(
-            "/api/v1/staff/permissions/check",
+            "/api/v1/staff/permissions/check/",
             headers=auth_headers,
             json={
                 "user_id": str(test_staff_user.id),
@@ -843,7 +843,7 @@ class TestStaffAPI:
     ):
         """Test that users can only check their own permissions."""
         response = await client.post(
-            "/api/v1/staff/permissions/check",
+            "/api/v1/staff/permissions/check/",
             headers=staff_auth_headers,
             json={
                 "user_id": str(test_user.id),
@@ -894,7 +894,7 @@ class TestEMRAPI:
         mock_service.return_value = mock_instance
 
         response = await client.post(
-            "/api/v1/emr/sync",
+            "/api/v1/emr/sync/",
             headers=auth_headers,
         )
 
@@ -917,7 +917,7 @@ class TestEMRAPI:
         mock_service.return_value = mock_instance
 
         response = await client.post(
-            "/api/v1/emr/sync",
+            "/api/v1/emr/sync/",
             headers=auth_headers,
         )
 
@@ -1123,7 +1123,7 @@ class TestPublicAPI:
         mock_send.return_value = "123456"
 
         response = await client.post(
-            "/api/v1/public/otp/send",
+            "/api/v1/public/otp/send/",
             json={"phone": "+919876543210"},
         )
 
@@ -1139,7 +1139,7 @@ class TestPublicAPI:
         mock_verify.return_value = "mock-token-12345"
 
         response = await client.post(
-            "/api/v1/public/otp/verify",
+            "/api/v1/public/otp/verify/",
             json={
                 "phone": "+919876543210",
                 "otp_code": "123456",
@@ -1158,7 +1158,7 @@ class TestPublicAPI:
         mock_verify.return_value = None
 
         response = await client.post(
-            "/api/v1/public/otp/verify",
+            "/api/v1/public/otp/verify/",
             json={
                 "phone": "+919876543210",
                 "otp_code": "000000",
@@ -1299,7 +1299,7 @@ class TestPublicAPI:
         start_time = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         response = await client.post(
-            "/api/v1/public/appointments",
+            "/api/v1/public/appointments/",
             headers={"Authorization": "Bearer mock-token"},
             json={
                 "doctor_id": str(test_doctor.id),
@@ -1329,7 +1329,7 @@ class TestPublicAPI:
         start_time = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         response = await client.post(
-            "/api/v1/public/appointments",
+            "/api/v1/public/appointments/",
             json={
                 "doctor_id": str(test_doctor.id),
                 "scheduled_start": start_time.isoformat(),
@@ -1355,7 +1355,7 @@ class TestPublicAPI:
 
         # Try to book at same time as existing appointment
         response = await client.post(
-            "/api/v1/public/appointments",
+            "/api/v1/public/appointments/",
             headers={"Authorization": "Bearer mock-token"},
             json={
                 "doctor_id": str(test_doctor.id),

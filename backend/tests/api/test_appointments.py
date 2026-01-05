@@ -37,7 +37,7 @@ class TestAppointments:
     ):
         """Test getting appointments with filters."""
         response = await client.get(
-            f"/api/v1/appointments?doctor_id={str(test_doctor.id)}",
+            f"/api/v1/appointments/?doctor_id={str(test_doctor.id)}",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -57,7 +57,7 @@ class TestAppointments:
         start_time = tomorrow.replace(hour=11, minute=0, second=0, microsecond=0)
 
         response = await client.post(
-            "/api/v1/appointments",
+            "/api/v1/appointments/",
             headers=auth_headers,
             json={
                 "doctor_id": str(test_doctor.id),
@@ -70,8 +70,8 @@ class TestAppointments:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["doctor_id"] == test_doctor.id
-        assert data["patient_id"] == test_patient.id
+        assert data["doctor_id"] == str(test_doctor.id)
+        assert data["patient_id"] == str(test_patient.id)
         assert data["status"] == "scheduled"
 
     @pytest.mark.asyncio
@@ -86,7 +86,7 @@ class TestAppointments:
         start_time = tomorrow.replace(hour=11, minute=0, second=0, microsecond=0)
 
         response = await client.post(
-            "/api/v1/appointments",
+            "/api/v1/appointments/",
             headers=auth_headers,
             json={
                 "doctor_id": str(uuid4()),
@@ -112,7 +112,7 @@ class TestAppointments:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_appointment.id
+        assert data["id"] == str(test_appointment.id)
 
     @pytest.mark.asyncio
     async def test_get_appointment_not_found(
@@ -191,7 +191,7 @@ class TestAppointments:
         tomorrow = (datetime.now() + timedelta(days=1)).strftime("%Y-%m-%d")
 
         response = await client.post(
-            "/api/v1/appointments/slots/availability",
+            "/api/v1/appointments/slots/availability/",
             headers=auth_headers,
             json={
                 "doctor_id": str(test_doctor.id),
@@ -237,7 +237,7 @@ class TestAppointmentConflicts:
         """Test creating appointment at conflicting time."""
         # Try to create appointment at same time
         response = await client.post(
-            "/api/v1/appointments",
+            "/api/v1/appointments/",
             headers=auth_headers,
             json={
                 "doctor_id": str(test_doctor.id),

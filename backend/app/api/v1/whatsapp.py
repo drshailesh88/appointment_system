@@ -67,8 +67,38 @@ async def receive_webhook(
     Processes messages and sends responses via the bot.
     """
     try:
+        from app.core.config import settings
+        from app.core.security import verify_meta_webhook_signature
+
+        # Get raw body for signature verification
+        body = await request.body()
+
+        # Verify webhook signature if app secret is configured
+        if settings.whatsapp_app_secret:
+            signature_header = request.headers.get("X-Hub-Signature-256", "")
+            if not signature_header:
+                logger.warning("WhatsApp webhook missing signature header")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Missing signature header",
+                )
+
+            if not verify_meta_webhook_signature(
+                body,
+                signature_header,
+                settings.whatsapp_app_secret,
+            ):
+                logger.warning("WhatsApp webhook signature verification failed")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid signature",
+                )
+
         # Parse JSON body
-        payload = await request.json()
+        payload = request.json() if isinstance(body, bytes) else body
+        if isinstance(body, bytes):
+            import json
+            payload = json.loads(body)
         logger.info(f"Received WhatsApp webhook: {payload}")
 
         # Verify it's a WhatsApp notification

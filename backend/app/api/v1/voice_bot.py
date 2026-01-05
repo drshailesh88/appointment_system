@@ -74,10 +74,43 @@ async def handle_incoming_call(
     Returns TwiML to connect to WebSocket.
     """
     try:
-        form = await request.form()
-        call_sid = form.get("CallSid")
-        from_number = form.get("From")
-        to_number = form.get("To")
+        from app.core.security import verify_twilio_signature
+
+        # Verify Twilio signature if auth token is configured
+        if settings.twilio_auth_token:
+            signature = request.headers.get("X-Twilio-Signature", "")
+            if not signature:
+                logger.warning("Twilio webhook missing signature header")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Missing Twilio signature",
+                )
+
+            # Get full URL including protocol and domain
+            url = str(request.url)
+
+            # Get form params as dict
+            form_data = await request.form()
+            params = {key: value for key, value in form_data.items()}
+
+            if not verify_twilio_signature(
+                url,
+                params,
+                signature,
+                settings.twilio_auth_token,
+            ):
+                logger.warning("Twilio webhook signature verification failed")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Twilio signature",
+                )
+        else:
+            form_data = await request.form()
+            params = {key: value for key, value in form_data.items()}
+
+        call_sid = params.get("CallSid")
+        from_number = params.get("From")
+        to_number = params.get("To")
 
         logger.info(f"Incoming call: {call_sid} from {from_number} to {to_number}")
 
@@ -304,10 +337,40 @@ async def call_status_callback(
 ):
     """Twilio status callback."""
     try:
-        form = await request.form()
-        call_sid = form.get("CallSid")
-        call_status = form.get("CallStatus")
-        duration = form.get("CallDuration")
+        from app.core.security import verify_twilio_signature
+
+        # Verify Twilio signature if auth token is configured
+        if settings.twilio_auth_token:
+            signature = request.headers.get("X-Twilio-Signature", "")
+            if not signature:
+                logger.warning("Twilio status webhook missing signature header")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Missing Twilio signature",
+                )
+
+            url = str(request.url)
+            form_data = await request.form()
+            params = {key: value for key, value in form_data.items()}
+
+            if not verify_twilio_signature(
+                url,
+                params,
+                signature,
+                settings.twilio_auth_token,
+            ):
+                logger.warning("Twilio status webhook signature verification failed")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Twilio signature",
+                )
+        else:
+            form_data = await request.form()
+            params = {key: value for key, value in form_data.items()}
+
+        call_sid = params.get("CallSid")
+        call_status = params.get("CallStatus")
+        duration = params.get("CallDuration")
 
         logger.info(f"Call status: {call_sid} - {call_status}")
 

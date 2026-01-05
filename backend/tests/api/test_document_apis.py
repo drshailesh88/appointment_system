@@ -185,7 +185,7 @@ class TestDocumentsAPI:
         img_bytes = create_test_image()
 
         response = await client.post(
-            "/api/v1/documents/upload",
+            "/api/v1/documents/upload/",
             headers=auth_headers,
             data={
                 "patient_id": str(test_patient.id),
@@ -216,7 +216,7 @@ class TestDocumentsAPI:
         pdf_bytes = create_test_pdf()
 
         response = await client.post(
-            "/api/v1/documents/upload",
+            "/api/v1/documents/upload/",
             headers=auth_headers,
             data={
                 "patient_id": str(test_patient.id),
@@ -242,7 +242,7 @@ class TestDocumentsAPI:
         img_bytes = create_test_image()
 
         response = await client.post(
-            "/api/v1/documents/upload",
+            "/api/v1/documents/upload/",
             headers=auth_headers,
             data={
                 "patient_id": str(uuid4()),
@@ -266,7 +266,7 @@ class TestDocumentsAPI:
         invalid_file = io.BytesIO(b"Invalid file content")
 
         response = await client.post(
-            "/api/v1/documents/upload",
+            "/api/v1/documents/upload/",
             headers=auth_headers,
             data={
                 "patient_id": str(test_patient.id),
@@ -993,7 +993,7 @@ class TestCalendarAPI:
     ):
         """Test triggering sync when calendar not connected."""
         response = await client.post(
-            "/api/v1/calendar/sync",
+            "/api/v1/calendar/sync/",
             headers=auth_headers,
             json={"doctor_id": str(test_doctor.id), "force": False},
         )
@@ -1023,7 +1023,7 @@ class TestCalendarAPI:
         await db.commit()
 
         response = await client.delete(
-            "/api/v1/calendar/disconnect",
+            "/api/v1/calendar/disconnect/",
             headers=auth_headers,
             json={"doctor_id": str(test_doctor.id)},
         )
@@ -1045,7 +1045,7 @@ class TestCalendarAPI:
         end_time = start_time + timedelta(hours=1)
 
         response = await client.post(
-            "/api/v1/calendar/conflicts",
+            "/api/v1/calendar/conflicts/",
             headers=auth_headers,
             json={
                 "doctor_id": str(test_doctor.id),
@@ -1077,7 +1077,7 @@ class TestProceduresAPI:
     ):
         """Test creating a new procedure record."""
         response = await client.post(
-            "/api/v1/procedures",
+            "/api/v1/procedures/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),
@@ -1112,7 +1112,7 @@ class TestProceduresAPI:
     ):
         """Test quick logging a procedure with minimal fields."""
         response = await client.post(
-            "/api/v1/procedures/quick",
+            "/api/v1/procedures/quick/",
             headers=auth_headers,
             json={
                 "patient_id": str(test_patient.id),

@@ -126,7 +126,18 @@ async def create_invoice(
 
     db.add(invoice)
     await db.commit()
-    await db.refresh(invoice)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Invoice)
+        .options(
+            selectinload(Invoice.items),
+            selectinload(Invoice.patient),
+            selectinload(Invoice.doctor),
+        )
+        .where(Invoice.id == invoice.id)
+    )
+    invoice = result.scalar_one()
 
     return invoice
 
@@ -284,7 +295,18 @@ async def update_invoice(
         )
 
     await db.commit()
-    await db.refresh(invoice)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Invoice)
+        .options(
+            selectinload(Invoice.items),
+            selectinload(Invoice.patient),
+            selectinload(Invoice.doctor),
+        )
+        .where(Invoice.id == invoice_id)
+    )
+    invoice = result.scalar_one()
 
     return invoice
 
@@ -319,7 +341,18 @@ async def cancel_invoice(
     invoice.cancellation_reason = reason
 
     await db.commit()
-    await db.refresh(invoice)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Invoice)
+        .options(
+            selectinload(Invoice.items),
+            selectinload(Invoice.patient),
+            selectinload(Invoice.doctor),
+        )
+        .where(Invoice.id == invoice_id)
+    )
+    invoice = result.scalar_one()
 
     return invoice
 

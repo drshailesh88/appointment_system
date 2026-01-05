@@ -152,6 +152,23 @@ async def upload_document(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=f"File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB",
             )
+
+        # Validate file type using magic bytes
+        from app.core.security import validate_file_magic_bytes
+
+        file_ext = Path(file.filename).suffix.lower().lstrip(".")
+        if not validate_file_magic_bytes(contents, file_ext):
+            logger.warning(
+                f"File magic bytes validation failed for {file.filename} "
+                f"(claimed type: {file_ext})"
+            )
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"File type mismatch. The file content does not match the extension .{file_ext}",
+            )
+
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Failed to read uploaded file: {e}")
         raise HTTPException(
@@ -160,7 +177,10 @@ async def upload_document(
         )
 
     # Generate unique filename
+    from app.core.security import sanitize_filename, is_safe_path
+
     file_ext = Path(file.filename).suffix.lower()
+    safe_filename = sanitize_filename(file.filename)
     unique_filename = f"{uuid.uuid4()}{file_ext}"
 
     # Create clinic-specific subdirectory
@@ -169,6 +189,14 @@ async def upload_document(
 
     file_path = clinic_dir / unique_filename
     relative_path = f"uploads/documents/{current_user.clinic_id}/{unique_filename}"
+
+    # Verify path is safe (prevent path traversal)
+    if not is_safe_path(str(get_upload_directory()), str(file_path)):
+        logger.error(f"Path traversal attempt detected: {file_path}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file path",
+        )
 
     # Save file
     try:

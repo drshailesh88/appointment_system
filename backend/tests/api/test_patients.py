@@ -72,7 +72,7 @@ class TestPatients:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_patient.id
+        assert data["id"] == str(test_patient.id)
         assert data["full_name"] == test_patient.full_name
 
     @pytest.mark.asyncio
@@ -106,7 +106,7 @@ class TestPatients:
         data = response.json()
         assert isinstance(data, list)
         assert len(data) >= 1
-        assert any(p["id"] == test_patient.id for p in data)
+        assert any(p["id"] == str(test_patient.id) for p in data)
 
     @pytest.mark.asyncio
 

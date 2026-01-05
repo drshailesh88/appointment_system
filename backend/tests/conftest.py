@@ -171,11 +171,11 @@ async def test_doctor(db: AsyncSession, test_clinic: Clinic) -> Doctor:
         followup_fee=300.0,
         slot_duration=15,
         working_hours={
-            "monday": {"start": "09:00", "end": "17:00"},
-            "tuesday": {"start": "09:00", "end": "17:00"},
-            "wednesday": {"start": "09:00", "end": "17:00"},
-            "thursday": {"start": "09:00", "end": "17:00"},
-            "friday": {"start": "09:00", "end": "17:00"},
+            "monday": [{"start": "09:00", "end": "17:00"}],
+            "tuesday": [{"start": "09:00", "end": "17:00"}],
+            "wednesday": [{"start": "09:00", "end": "17:00"}],
+            "thursday": [{"start": "09:00", "end": "17:00"}],
+            "friday": [{"start": "09:00", "end": "17:00"}],
         },
         is_active=True,
     )

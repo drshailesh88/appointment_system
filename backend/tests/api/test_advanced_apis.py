@@ -73,7 +73,7 @@ class TestAIChatAPI:
     ):
         """Test sending a natural language query to AI."""
         response = await client.post(
-            "/api/v1/ai/chat",
+            "/api/v1/ai/chat/",
             headers=auth_headers,
             json={
                 "message": "How many appointments today?",
@@ -98,7 +98,7 @@ class TestAIChatAPI:
     ):
         """Test sending message with session context."""
         response = await client.post(
-            "/api/v1/ai/chat",
+            "/api/v1/ai/chat/",
             headers=auth_headers,
             json={
                 "message": "And tomorrow?",
@@ -137,7 +137,7 @@ class TestAIChatAPI:
         headers = {"Authorization": f"Bearer {token}"}
 
         response = await client.post(
-            "/api/v1/ai/chat",
+            "/api/v1/ai/chat/",
             headers=headers,
             json={"message": "Test query"},
         )
@@ -161,7 +161,7 @@ class TestAIChatAPI:
             mock.return_value = assistant
 
             response = await client.post(
-                "/api/v1/ai/chat",
+                "/api/v1/ai/chat/",
                 headers=auth_headers,
                 json={"message": "Test query"},
             )
@@ -298,7 +298,7 @@ class TestAIChatAPI:
             mock.return_value = assistant
 
             response = await client.delete(
-                "/api/v1/ai/sessions/nonexistent",
+                "/api/v1/ai/sessions/nonexistent/",
                 headers=auth_headers,
             )
             assert response.status_code == 200
@@ -344,7 +344,7 @@ class TestAIActionsAPI:
             mock_extractor.return_value = extractor
 
             response = await client.post(
-                "/api/v1/ai/chat/action",
+                "/api/v1/ai/chat/action/",
                 headers=auth_headers,
                 json={
                     "message": f"Book {test_patient.full_name} for tomorrow at 3pm",
@@ -375,7 +375,7 @@ class TestAIActionsAPI:
             mock_extractor.return_value = extractor
 
             response = await client.post(
-                "/api/v1/ai/chat/action",
+                "/api/v1/ai/chat/action/",
                 headers=auth_headers,
                 json={"message": "Book Unknown Patient tomorrow"},
             )
@@ -405,7 +405,7 @@ class TestAIActionsAPI:
             mock_assistant.return_value = assistant
 
             response = await client.post(
-                "/api/v1/ai/chat/action",
+                "/api/v1/ai/chat/action/",
                 headers=auth_headers,
                 json={"message": "How many appointments today?"},
             )
@@ -454,7 +454,7 @@ class TestAIActionsAPI:
             }
 
             response = await client.post(
-                "/api/v1/ai/chat/confirm",
+                "/api/v1/ai/chat/confirm/",
                 headers=auth_headers,
                 json={
                     "action_id": action_id,
@@ -487,7 +487,7 @@ class TestAIActionsAPI:
         }
 
         response = await client.post(
-            "/api/v1/ai/chat/confirm",
+            "/api/v1/ai/chat/confirm/",
             headers=auth_headers,
             json={
                 "action_id": action_id,
@@ -508,7 +508,7 @@ class TestAIActionsAPI:
     ):
         """Test confirming non-existent action."""
         response = await client.post(
-            "/api/v1/ai/chat/confirm",
+            "/api/v1/ai/chat/confirm/",
             headers=auth_headers,
             json={
                 "action_id": str(uuid4()),
@@ -539,7 +539,7 @@ class TestAIActionsAPI:
         }
 
         response = await client.post(
-            "/api/v1/ai/chat/confirm",
+            "/api/v1/ai/chat/confirm/",
             headers=auth_headers,
             json={
                 "action_id": action_id,
@@ -571,7 +571,7 @@ class TestAIActionsAPI:
             mock_executor.return_value = executor
 
             response = await client.post(
-                "/api/v1/ai/chat/undo",
+                "/api/v1/ai/chat/undo/",
                 headers=auth_headers,
                 json={"session_id": "test-session"},
             )
@@ -784,7 +784,7 @@ class TestProactiveInsightsAPI:
             mock_service.return_value = service
 
             response = await client.put(
-                "/api/v1/ai/preferences/digest",
+                "/api/v1/ai/preferences/digest/",
                 headers=auth_headers,
                 json={
                     "enabled": False,
@@ -831,7 +831,7 @@ class TestTelemedicineAPI:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/telemedicine/consultations",
+                "/api/v1/telemedicine/consultations/",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
             )
@@ -851,7 +851,7 @@ class TestTelemedicineAPI:
         """Test creating consultation for non-existent appointment."""
         fake_id = uuid4()
         response = await client.post(
-            "/api/v1/telemedicine/consultations",
+            "/api/v1/telemedicine/consultations/",
             headers=auth_headers,
             json={"appointment_id": str(fake_id)},
         )
@@ -1388,7 +1388,7 @@ class TestWaitlistAdvanced:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/waitlist/cleanup",
+                "/api/v1/waitlist/cleanup/",
                 headers=auth_headers,
             )
             assert response.status_code == 200
@@ -1420,7 +1420,7 @@ class TestWaitlistAdvanced:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/waitlist/process-cancellation",
+                "/api/v1/waitlist/process-cancellation/",
                 headers=auth_headers,
                 params={
                     "doctor_id": str(test_doctor.id),
@@ -1449,7 +1449,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test AI endpoints require authentication."""
         response = await client.post(
-            "/api/v1/ai/chat",
+            "/api/v1/ai/chat/",
             json={"message": "Test"},
         )
         assert response.status_code == 401
@@ -1462,7 +1462,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test telemedicine endpoints require authentication."""
         response = await client.post(
-            "/api/v1/telemedicine/consultations",
+            "/api/v1/telemedicine/consultations/",
             json={"appointment_id": str(uuid4())},
         )
         assert response.status_code == 401
@@ -1500,7 +1500,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test validation errors for missing fields."""
         response = await client.post(
-            "/api/v1/ai/chat",
+            "/api/v1/ai/chat/",
             headers=auth_headers,
             json={},  # Missing required 'message' field
         )
@@ -1571,7 +1571,7 @@ class TestAdvancedAPIsIntegration:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/telemedicine/consultations",
+                "/api/v1/telemedicine/consultations/",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
             )

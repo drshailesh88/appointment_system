@@ -47,8 +47,8 @@ class TestWaitlistEndpoints:
         )
         assert response.status_code == 201
         data = response.json()
-        assert data["patient_id"] == test_patient.id
-        assert data["doctor_id"] == test_doctor.id
+        assert data["patient_id"] == str(test_patient.id)
+        assert data["doctor_id"] == str(test_doctor.id)
         assert data["priority"] == "normal"
         assert data["status"] == "waiting"
         assert data["queue_position"] >= 1
@@ -116,7 +116,7 @@ class TestWaitlistEndpoints:
         assert response.status_code == 200
         data = response.json()
         assert len(data) >= 1
-        assert data[0]["patient_id"] == test_patient.id
+        assert data[0]["patient_id"] == str(test_patient.id)
 
     @pytest.mark.asyncio
 
@@ -143,7 +143,7 @@ class TestWaitlistEndpoints:
         assert response.status_code == 200
         data = response.json()
         for entry in data:
-            assert entry["doctor_id"] == test_doctor.id
+            assert entry["doctor_id"] == str(test_doctor.id)
 
     @pytest.mark.asyncio
 

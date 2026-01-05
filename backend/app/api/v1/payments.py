@@ -93,7 +93,14 @@ async def create_payment(
         invoice.status = InvoiceStatus.PARTIALLY_PAID.value
 
     await db.commit()
-    await db.refresh(payment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Payment)
+        .options(selectinload(Payment.invoice))
+        .where(Payment.id == payment.id)
+    )
+    payment = result.scalar_one()
 
     return payment
 
@@ -239,7 +246,14 @@ async def refund_payment(
             payment.invoice.status = InvoiceStatus.PARTIALLY_PAID.value
 
     await db.commit()
-    await db.refresh(payment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Payment)
+        .options(selectinload(Payment.invoice))
+        .where(Payment.id == payment_id)
+    )
+    payment = result.scalar_one()
 
     return payment
 

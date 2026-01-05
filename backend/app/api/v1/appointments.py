@@ -120,7 +120,6 @@ async def create_appointment(
     )
     db.add(appointment)
     await db.commit()
-    await db.refresh(appointment)
 
     # Sync to Google Calendar (async, non-blocking)
     calendar_service = CalendarSyncService(db)
@@ -131,6 +130,14 @@ async def create_appointment(
         import logging
         logger = logging.getLogger(__name__)
         logger.warning(f"Failed to sync appointment to calendar: {e}")
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment.id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -306,7 +313,6 @@ async def update_appointment(
             setattr(appointment, field, value)
 
     await db.commit()
-    await db.refresh(appointment)
 
     # Sync to Google Calendar (async, non-blocking)
     calendar_service = CalendarSyncService(db)
@@ -317,6 +323,14 @@ async def update_appointment(
         import logging
         logger = logging.getLogger(__name__)
         logger.warning(f"Failed to sync appointment to calendar: {e}")
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -368,7 +382,14 @@ async def check_in_patient(
         appointment.token_number = max_token + 1
 
     await db.commit()
-    await db.refresh(appointment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -401,7 +422,14 @@ async def start_consultation(
     appointment.start_time = datetime.now(timezone.utc)
 
     await db.commit()
-    await db.refresh(appointment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -441,7 +469,14 @@ async def complete_consultation(
             appointment.emr_visit_id = complete_data.emr_visit_id
 
     await db.commit()
-    await db.refresh(appointment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -479,7 +514,14 @@ async def cancel_appointment(
     appointment.cancelled_by = current_user.name
 
     await db.commit()
-    await db.refresh(appointment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 
@@ -505,7 +547,14 @@ async def mark_no_show(
     appointment.status = AppointmentStatus.NO_SHOW.value
 
     await db.commit()
-    await db.refresh(appointment)
+
+    # Reload with relationships for response
+    result = await db.execute(
+        select(Appointment)
+        .options(selectinload(Appointment.patient), selectinload(Appointment.doctor))
+        .where(Appointment.id == appointment_id)
+    )
+    appointment = result.scalar_one()
 
     return appointment
 

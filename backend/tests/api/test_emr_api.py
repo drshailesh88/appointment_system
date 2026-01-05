@@ -39,7 +39,7 @@ class TestEMRStatusEndpoints:
     async def test_trigger_manual_sync_unavailable(self, client, auth_headers):
         """Test manual sync when EMR is unavailable."""
         response = await client.post(
-            "/api/v1/emr/sync",
+            "/api/v1/emr/sync/",
             headers=auth_headers,
         )
 

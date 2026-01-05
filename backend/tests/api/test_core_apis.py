@@ -1002,7 +1002,7 @@ class TestSearchAPI:
     ):
         """Test initializing search index."""
         response = await client.post(
-            "/api/v1/search/initialize",
+            "/api/v1/search/initialize/",
             headers=auth_headers,
         )
         # This might fail if user doesn't have admin role
