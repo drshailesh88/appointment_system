@@ -15,9 +15,9 @@ from typing import Generator
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from jose import jwt
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import (
@@ -36,7 +36,7 @@ from app.models.user import User, UserRole
 
 
 @pytest.fixture
-def second_clinic(db: Session) -> Clinic:
+async def second_clinic(db: AsyncSession) -> Clinic:
     """Create a second clinic for cross-clinic access tests."""
     clinic = Clinic(
         id=str(uuid4()),
@@ -51,13 +51,13 @@ def second_clinic(db: Session) -> Clinic:
         subscription_tier="basic",
     )
     db.add(clinic)
-    db.commit()
-    db.refresh(clinic)
+    await db.commit()
+    await db.refresh(clinic)
     return clinic
 
 
 @pytest.fixture
-def doctor_user(db: Session, test_clinic: Clinic) -> User:
+async def doctor_user(db: AsyncSession, test_clinic: Clinic) -> User:
     """Create a doctor user."""
     user = User(
         id=str(uuid4()),
@@ -70,13 +70,13 @@ def doctor_user(db: Session, test_clinic: Clinic) -> User:
         is_active=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
 @pytest.fixture
-def staff_user(db: Session, test_clinic: Clinic) -> User:
+async def staff_user(db: AsyncSession, test_clinic: Clinic) -> User:
     """Create a staff (receptionist) user."""
     user = User(
         id=str(uuid4()),
@@ -89,13 +89,13 @@ def staff_user(db: Session, test_clinic: Clinic) -> User:
         is_active=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
 @pytest.fixture
-def deactivated_user(db: Session, test_clinic: Clinic) -> User:
+async def deactivated_user(db: AsyncSession, test_clinic: Clinic) -> User:
     """Create a deactivated user."""
     user = User(
         id=str(uuid4()),
@@ -108,13 +108,13 @@ def deactivated_user(db: Session, test_clinic: Clinic) -> User:
         is_active=False,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
 @pytest.fixture
-def other_clinic_user(db: Session, second_clinic: Clinic) -> User:
+async def other_clinic_user(db: AsyncSession, second_clinic: Clinic) -> User:
     """Create a user belonging to a different clinic."""
     user = User(
         id=str(uuid4()),
@@ -127,8 +127,8 @@ def other_clinic_user(db: Session, second_clinic: Clinic) -> User:
         is_active=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
@@ -140,9 +140,12 @@ def other_clinic_user(db: Session, second_clinic: Clinic) -> User:
 class TestLoginLogout:
     """Test user login and logout flows."""
 
-    def test_login_with_email_success(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_with_email_success(self, client: AsyncClient, test_user: User):
         """Test successful login using email."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -162,9 +165,12 @@ class TestLoginLogout:
         # Verify tokens are different
         assert data["access_token"] != data["refresh_token"]
 
-    def test_login_with_phone_success(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_with_phone_success(self, client: AsyncClient, test_user: User):
         """Test successful login using phone number."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.phone,
@@ -177,9 +183,12 @@ class TestLoginLogout:
         assert "access_token" in data
         assert "refresh_token" in data
 
-    def test_login_json_endpoint(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_json_endpoint(self, client: AsyncClient, test_user: User):
         """Test login with JSON body instead of form data."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login/json",
             json={
                 "email": test_user.email,
@@ -192,9 +201,12 @@ class TestLoginLogout:
         assert "access_token" in data
         assert "refresh_token" in data
 
-    def test_login_wrong_password(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_wrong_password(self, client: AsyncClient, test_user: User):
         """Test login fails with incorrect password."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -205,9 +217,12 @@ class TestLoginLogout:
         assert response.status_code == 401
         assert "Incorrect email/phone or password" in response.json()["detail"]
 
-    def test_login_nonexistent_user(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_login_nonexistent_user(self, client: AsyncClient):
         """Test login fails with non-existent user."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": "nonexistent@example.com",
@@ -218,9 +233,12 @@ class TestLoginLogout:
         assert response.status_code == 401
         assert "Incorrect email/phone or password" in response.json()["detail"]
 
-    def test_login_deactivated_user(self, client: TestClient, deactivated_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_deactivated_user(self, client: AsyncClient, deactivated_user: User):
         """Test login fails for deactivated user account."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": deactivated_user.email,
@@ -231,14 +249,17 @@ class TestLoginLogout:
         assert response.status_code == 403
         assert "deactivated" in response.json()["detail"].lower()
 
-    def test_login_updates_last_login(
-        self, client: TestClient, test_user: User, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_login_updates_last_login(
+        self, client: AsyncClient, test_user: User, db: AsyncSession
     ):
         """Test that login updates the last_login timestamp."""
         # Record initial last_login (should be None)
         initial_last_login = test_user.last_login
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -249,17 +270,20 @@ class TestLoginLogout:
         assert response.status_code == 200
 
         # Refresh user from database
-        db.refresh(test_user)
+        await db.refresh(test_user)
 
         # Verify last_login was updated
         assert test_user.last_login is not None
         assert test_user.last_login != initial_last_login
         assert test_user.last_login > datetime.now(timezone.utc) - timedelta(seconds=5)
 
-    def test_logout_success(self, client: TestClient, auth_headers: dict, test_user: User, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_logout_success(self, client: AsyncClient, auth_headers: dict, test_user: User, db: AsyncSession):
         """Test successful logout invalidates refresh token."""
         # First login to get refresh token
-        login_response = client.post(
+        login_response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -269,22 +293,25 @@ class TestLoginLogout:
         refresh_token = login_response.json()["refresh_token"]
 
         # Verify refresh token is stored
-        db.refresh(test_user)
+        await db.refresh(test_user)
         assert test_user.refresh_token == refresh_token
 
         # Logout
-        response = client.post("/api/v1/auth/logout", headers=auth_headers)
+        response = await client.post("/api/v1/auth/logout", headers=auth_headers)
 
         assert response.status_code == 200
         assert "logout" in response.json()["message"].lower()
 
         # Verify refresh token is cleared
-        db.refresh(test_user)
+        await db.refresh(test_user)
         assert test_user.refresh_token is None
 
-    def test_logout_requires_authentication(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_logout_requires_authentication(self, client: AsyncClient):
         """Test that logout requires valid authentication."""
-        response = client.post("/api/v1/auth/logout")
+        response = await client.post("/api/v1/auth/logout")
         assert response.status_code == 401
 
 
@@ -296,10 +323,13 @@ class TestLoginLogout:
 class TestTokenRefresh:
     """Test JWT token refresh flows."""
 
-    def test_refresh_token_success(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_token_success(self, client: AsyncClient, test_user: User):
         """Test successful token refresh."""
         # Login to get refresh token
-        login_response = client.post(
+        login_response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -314,7 +344,7 @@ class TestTokenRefresh:
         time.sleep(0.1)
 
         # Refresh the token
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_token},
         )
@@ -327,9 +357,12 @@ class TestTokenRefresh:
         assert data["refresh_token"] != refresh_token
         assert data["token_type"] == "bearer"
 
-    def test_refresh_with_invalid_token(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_with_invalid_token(self, client: AsyncClient):
         """Test refresh fails with invalid token."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": "invalid.token.here"},
         )
@@ -337,10 +370,13 @@ class TestTokenRefresh:
         assert response.status_code == 401
         assert "Invalid refresh token" in response.json()["detail"]
 
-    def test_refresh_with_access_token_fails(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_with_access_token_fails(self, client: AsyncClient, test_user: User):
         """Test that using access token for refresh fails (wrong token type)."""
         # Login to get access token
-        login_response = client.post(
+        login_response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -351,7 +387,7 @@ class TestTokenRefresh:
         access_token = login_response.json()["access_token"]
 
         # Try to use access token for refresh
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": access_token},
         )
@@ -359,7 +395,10 @@ class TestTokenRefresh:
         assert response.status_code == 401
         assert "Invalid refresh token" in response.json()["detail"]
 
-    def test_refresh_with_expired_token(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_with_expired_token(self, client: AsyncClient, test_user: User):
         """Test refresh fails with expired token."""
         # Create an expired refresh token
         expired_token = create_refresh_token(
@@ -367,15 +406,18 @@ class TestTokenRefresh:
             expires_delta=timedelta(seconds=-1),
         )
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": expired_token},
         )
 
         assert response.status_code == 401
 
-    def test_refresh_token_not_in_database(
-        self, client: TestClient, test_user: User, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_token_not_in_database(
+        self, client: AsyncClient, test_user: User, db: AsyncSession
     ):
         """Test refresh fails if token not stored in user record."""
         # Create a valid refresh token but don't store it in DB
@@ -383,9 +425,9 @@ class TestTokenRefresh:
 
         # Ensure user has no refresh token in DB
         test_user.refresh_token = None
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_token},
         )
@@ -393,16 +435,19 @@ class TestTokenRefresh:
         assert response.status_code == 401
         assert "Invalid refresh token" in response.json()["detail"]
 
-    def test_refresh_for_deactivated_user(
-        self, client: TestClient, deactivated_user: User, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_for_deactivated_user(
+        self, client: AsyncClient, deactivated_user: User, db: AsyncSession
     ):
         """Test refresh fails for deactivated user even with valid token."""
         # Create a valid refresh token for deactivated user
         refresh_token = create_refresh_token(subject=str(deactivated_user.id))
         deactivated_user.refresh_token = refresh_token
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_token},
         )
@@ -419,7 +464,10 @@ class TestTokenRefresh:
 class TestTokenSecurity:
     """Test JWT token security and validation."""
 
-    def test_expired_access_token_rejected(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_expired_access_token_rejected(self, client: AsyncClient, test_user: User):
         """Test that expired access tokens are rejected."""
         # Create an expired access token
         expired_token = create_access_token(
@@ -428,11 +476,14 @@ class TestTokenSecurity:
         )
 
         headers = {"Authorization": f"Bearer {expired_token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == 401
 
-    def test_invalid_signature_rejected(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_signature_rejected(self, client: AsyncClient, test_user: User):
         """Test that tokens with invalid signatures are rejected."""
         # Create a token with wrong secret key
         invalid_token = jwt.encode(
@@ -446,12 +497,15 @@ class TestTokenSecurity:
         )
 
         headers = {"Authorization": f"Bearer {invalid_token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == 401
 
-    def test_refresh_token_as_access_rejected(
-        self, client: TestClient, test_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_token_as_access_rejected(
+        self, client: AsyncClient, test_user: User
     ):
         """Test that refresh token cannot be used as access token."""
         # Create a refresh token
@@ -459,45 +513,60 @@ class TestTokenSecurity:
 
         # Try to use it as access token
         headers = {"Authorization": f"Bearer {refresh_token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == 401
 
-    def test_missing_token_rejected(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_missing_token_rejected(self, client: AsyncClient):
         """Test that requests without token are rejected."""
-        response = client.get("/api/v1/auth/me")
+        response = await client.get("/api/v1/auth/me")
         assert response.status_code == 401
 
-    def test_malformed_token_rejected(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_malformed_token_rejected(self, client: AsyncClient):
         """Test that malformed tokens are rejected."""
         headers = {"Authorization": "Bearer not.a.valid.jwt.token"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 401
 
-    def test_token_missing_bearer_prefix(self, client: TestClient, auth_headers: dict):
+    @pytest.mark.asyncio
+
+
+    async def test_token_missing_bearer_prefix(self, client: AsyncClient, auth_headers: dict):
         """Test that token without 'Bearer' prefix is rejected."""
         # Extract token without Bearer prefix
         token = auth_headers["Authorization"].split(" ")[1]
         headers = {"Authorization": token}
 
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 401
 
-    def test_token_with_nonexistent_user_id(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_token_with_nonexistent_user_id(self, client: AsyncClient):
         """Test that token with non-existent user ID is rejected."""
         fake_user_id = str(uuid4())
         token = create_access_token(subject=fake_user_id)
 
         headers = {"Authorization": f"Bearer {token}"}
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
 
         assert response.status_code == 401
 
-    def test_token_payload_includes_role_and_clinic(
-        self, client: TestClient, test_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_token_payload_includes_role_and_clinic(
+        self, client: AsyncClient, test_user: User
     ):
         """Test that token payload includes user role and clinic_id."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -528,8 +597,11 @@ class TestTokenSecurity:
 class TestRoleBasedAccessControl:
     """Test role-based access control and permissions."""
 
-    def test_admin_can_access_admin_endpoint(
-        self, client: TestClient, test_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_admin_can_access_admin_endpoint(
+        self, client: AsyncClient, test_user: User
     ):
         """Test that admin users can access admin-only endpoints."""
         # test_user is an admin by default
@@ -544,13 +616,16 @@ class TestRoleBasedAccessControl:
 
         # Note: This test assumes there's an admin-only endpoint
         # For now, we verify the user info shows admin role
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 200
         assert response.json()["role"] == "admin"
 
-    def test_doctor_cannot_access_other_clinic_data(
+    @pytest.mark.asyncio
+
+
+    async def test_doctor_cannot_access_other_clinic_data(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_user: User,
         test_clinic: Clinic,
         second_clinic: Clinic,
@@ -567,13 +642,16 @@ class TestRoleBasedAccessControl:
         headers = {"Authorization": f"Bearer {token}"}
 
         # Verify doctor's clinic_id
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 200
         assert response.json()["clinic_id"] == str(test_clinic.id)
         assert response.json()["clinic_id"] != str(second_clinic.id)
 
-    def test_staff_has_limited_role(
-        self, client: TestClient, staff_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_staff_has_limited_role(
+        self, client: AsyncClient, staff_user: User
     ):
         """Test that staff users have receptionist role."""
         token = create_access_token(
@@ -585,13 +663,16 @@ class TestRoleBasedAccessControl:
         )
         headers = {"Authorization": f"Bearer {token}"}
 
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 200
         assert response.json()["role"] == UserRole.RECEPTIONIST.value
 
-    def test_cross_clinic_access_prevention(
+    @pytest.mark.asyncio
+
+
+    async def test_cross_clinic_access_prevention(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_clinic: Clinic,
         other_clinic_user: User,
     ):
@@ -607,13 +688,16 @@ class TestRoleBasedAccessControl:
         headers = {"Authorization": f"Bearer {token}"}
 
         # Verify user belongs to different clinic
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["clinic_id"] != str(test_clinic.id)
 
-    def test_deactivated_user_rejected_with_valid_token(
-        self, client: TestClient, deactivated_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_deactivated_user_rejected_with_valid_token(
+        self, client: AsyncClient, deactivated_user: User
     ):
         """Test that deactivated users are rejected even with valid tokens."""
         # Create a valid token for deactivated user
@@ -626,7 +710,7 @@ class TestRoleBasedAccessControl:
         )
         headers = {"Authorization": f"Bearer {token}"}
 
-        response = client.get("/api/v1/auth/me", headers=headers)
+        response = await client.get("/api/v1/auth/me", headers=headers)
         assert response.status_code == 403
         assert "deactivated" in response.json()["detail"].lower()
 
@@ -639,7 +723,10 @@ class TestRoleBasedAccessControl:
 class TestOTPAuthentication:
     """Test OTP-based authentication for patients."""
 
-    def test_otp_generation(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_otp_generation(self, db: AsyncSession):
         """Test OTP code generation."""
         from app.services.otp_service import OTPService
 
@@ -651,7 +738,9 @@ class TestOTPAuthentication:
         assert otp_code.isdigit()
 
     @pytest.mark.asyncio
-    async def test_send_otp_creates_record(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_send_otp_creates_record(self, db: AsyncSession):
         """Test that sending OTP creates database record."""
         from app.services.otp_service import OTPService
 
@@ -671,7 +760,9 @@ class TestOTPAuthentication:
             assert otp_record.expires_at > datetime.now(timezone.utc)
 
     @pytest.mark.asyncio
-    async def test_otp_verification_success(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_otp_verification_success(self, db: AsyncSession):
         """Test successful OTP verification."""
         from app.services.otp_service import OTPService
         from app.core.database import async_session_maker
@@ -700,7 +791,9 @@ class TestOTPAuthentication:
             assert payload["type"] == "patient_otp"
 
     @pytest.mark.asyncio
-    async def test_otp_verification_wrong_code(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_otp_verification_wrong_code(self, db: AsyncSession):
         """Test OTP verification fails with wrong code."""
         from app.services.otp_service import OTPService
         from app.core.database import async_session_maker
@@ -718,7 +811,9 @@ class TestOTPAuthentication:
             assert token is None
 
     @pytest.mark.asyncio
-    async def test_otp_expiration(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_otp_expiration(self, db: AsyncSession):
         """Test that expired OTPs are rejected."""
         from app.core.database import async_session_maker
 
@@ -744,7 +839,9 @@ class TestOTPAuthentication:
             assert token is None
 
     @pytest.mark.asyncio
-    async def test_otp_max_attempts(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_otp_max_attempts(self, db: AsyncSession):
         """Test that OTP is rejected after max attempts."""
         from app.core.database import async_session_maker
 
@@ -770,7 +867,9 @@ class TestOTPAuthentication:
             assert token is None
 
     @pytest.mark.asyncio
-    async def test_otp_invalidates_previous_codes(self, db: Session):
+    @pytest.mark.asyncio
+
+    async def test_otp_invalidates_previous_codes(self, db: AsyncSession):
         """Test that requesting new OTP invalidates previous codes."""
         from app.services.otp_service import OTPService
         from app.core.database import async_session_maker
@@ -806,7 +905,10 @@ class TestOTPAuthentication:
             token_old = await service.verify_otp(phone, first_code)
             assert token_old is None
 
-    def test_otp_token_decode(self):
+    @pytest.mark.asyncio
+
+
+    async def test_otp_token_decode(self):
         """Test decoding OTP JWT tokens."""
         from app.services.otp_service import OTPService
 
@@ -821,7 +923,10 @@ class TestOTPAuthentication:
 
         assert decoded_phone == phone
 
-    def test_otp_token_wrong_type_rejected(self):
+    @pytest.mark.asyncio
+
+
+    async def test_otp_token_wrong_type_rejected(self):
         """Test that non-OTP tokens are rejected."""
         from app.services.otp_service import OTPService
         from app.core.security import create_access_token
@@ -847,8 +952,11 @@ class TestOTPAuthentication:
 class TestEdgeCases:
     """Test edge cases and security scenarios."""
 
-    def test_password_with_special_characters(
-        self, client: TestClient, test_clinic: Clinic, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_password_with_special_characters(
+        self, client: AsyncClient, test_clinic: Clinic, db: AsyncSession
     ):
         """Test passwords with special characters are handled correctly."""
         special_password = "P@ssw0rd!#$%^&*()_+-=[]{}|;:,.<>?"
@@ -865,10 +973,10 @@ class TestEdgeCases:
             is_active=True,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         # Test login with special characters
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": user.email,
@@ -879,8 +987,11 @@ class TestEdgeCases:
         assert response.status_code == 200
         assert "access_token" in response.json()
 
-    def test_very_long_password(
-        self, client: TestClient, test_clinic: Clinic, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_very_long_password(
+        self, client: AsyncClient, test_clinic: Clinic, db: AsyncSession
     ):
         """Test handling of very long passwords (within limits)."""
         # Create a long but valid password (within 100 char limit from schema)
@@ -897,10 +1008,10 @@ class TestEdgeCases:
             is_active=True,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         # Test login with long password
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": user.email,
@@ -910,12 +1021,15 @@ class TestEdgeCases:
 
         assert response.status_code == 200
 
-    def test_concurrent_login_sessions(
-        self, client: TestClient, test_user: User, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_concurrent_login_sessions(
+        self, client: AsyncClient, test_user: User, db: AsyncSession
     ):
         """Test that multiple concurrent sessions can exist."""
         # First login
-        response1 = client.post(
+        response1 = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -925,7 +1039,7 @@ class TestEdgeCases:
         token1 = response1.json()["access_token"]
 
         # Second login (should not invalidate first)
-        response2 = client.post(
+        response2 = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -941,18 +1055,21 @@ class TestEdgeCases:
         headers1 = {"Authorization": f"Bearer {token1}"}
         headers2 = {"Authorization": f"Bearer {token2}"}
 
-        response_with_token1 = client.get("/api/v1/auth/me", headers=headers1)
-        response_with_token2 = client.get("/api/v1/auth/me", headers=headers2)
+        response_with_token1 = await client.get("/api/v1/auth/me", headers=headers1)
+        response_with_token2 = await client.get("/api/v1/auth/me", headers=headers2)
 
         assert response_with_token1.status_code == 200
         assert response_with_token2.status_code == 200
 
-    def test_case_sensitive_email(
-        self, client: TestClient, test_user: User
+    @pytest.mark.asyncio
+
+
+    async def test_case_sensitive_email(
+        self, client: AsyncClient, test_user: User
     ):
         """Test that email is case-insensitive for login."""
         # Try login with uppercase email
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email.upper(),
@@ -965,9 +1082,12 @@ class TestEdgeCases:
         # For now, we just verify it doesn't crash
         assert response.status_code in [200, 401]
 
-    def test_sql_injection_attempt(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_sql_injection_attempt(self, client: AsyncClient):
         """Test that SQL injection attempts are safely handled."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": "admin' OR '1'='1",
@@ -978,8 +1098,11 @@ class TestEdgeCases:
         # Should fail authentication, not execute SQL
         assert response.status_code == 401
 
-    def test_unicode_in_credentials(
-        self, client: TestClient, test_clinic: Clinic, db: Session
+    @pytest.mark.asyncio
+
+
+    async def test_unicode_in_credentials(
+        self, client: AsyncClient, test_clinic: Clinic, db: AsyncSession
     ):
         """Test handling of Unicode characters in passwords."""
         unicode_password = "पासवर्ड123"  # Hindi for password
@@ -995,10 +1118,10 @@ class TestEdgeCases:
             is_active=True,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         # Test login with Unicode password
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": user.email,
@@ -1008,9 +1131,12 @@ class TestEdgeCases:
 
         assert response.status_code == 200
 
-    def test_empty_password_rejected(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_empty_password_rejected(self, client: AsyncClient):
         """Test that empty passwords are rejected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": "any@test.com",
@@ -1020,9 +1146,12 @@ class TestEdgeCases:
 
         assert response.status_code == 422  # Validation error
 
-    def test_whitespace_only_password_rejected(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_whitespace_only_password_rejected(self, client: AsyncClient):
         """Test that whitespace-only passwords are rejected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": "any@test.com",
@@ -1033,9 +1162,12 @@ class TestEdgeCases:
         # Should fail authentication
         assert response.status_code in [401, 422]
 
-    def test_token_expiry_claim(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_token_expiry_claim(self, client: AsyncClient, test_user: User):
         """Test that tokens include proper expiry claims."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,

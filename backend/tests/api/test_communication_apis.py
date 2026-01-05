@@ -17,12 +17,13 @@ from uuid import UUID, uuid4
 
 import pytest
 from fastapi import WebSocket
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.device_token import DevicePlatform, DeviceToken
 from app.models.phone_call import CallStatus, CallTranscriptSegment, PhoneCall
 from app.models.waitlist import Waitlist
+from sqlalchemy import select
 
 
 # ============================================================================
@@ -33,14 +34,16 @@ from app.models.waitlist import Waitlist
 class TestNotificationsAPI:
     """Test push notification endpoints."""
 
-    def test_register_device_token(
+    @pytest.mark.asyncio
+
+    async def test_register_device_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test registering a device token for push notifications."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -58,16 +61,18 @@ class TestNotificationsAPI:
         assert "id" in data
         assert "created_at" in data
 
-    def test_register_device_token_duplicate(
+    @pytest.mark.asyncio
+
+    async def test_register_device_token_duplicate(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test registering same device token updates existing record."""
         # First registration
-        response1 = client.post(
+        response1 = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -78,7 +83,7 @@ class TestNotificationsAPI:
         assert response1.status_code == 201
 
         # Second registration with same token
-        response2 = client.post(
+        response2 = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -93,13 +98,15 @@ class TestNotificationsAPI:
         data = response2.json()
         assert data["device_name"] == "iPhone 15"
 
-    def test_register_device_token_invalid_platform(
+    @pytest.mark.asyncio
+
+    async def test_register_device_token_invalid_platform(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test registering device with invalid platform."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -109,13 +116,15 @@ class TestNotificationsAPI:
         )
         assert response.status_code == 422
 
-    def test_register_device_token_short_token(
+    @pytest.mark.asyncio
+
+    async def test_register_device_token_short_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test validation for token length."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -125,16 +134,18 @@ class TestNotificationsAPI:
         )
         assert response.status_code == 422
 
-    def test_unregister_device_token(
+    @pytest.mark.asyncio
+
+    async def test_unregister_device_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test unregistering a device token."""
         # Register first
-        register_response = client.post(
+        register_response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={
@@ -145,32 +156,36 @@ class TestNotificationsAPI:
         assert register_response.status_code == 201
 
         # Unregister
-        response = client.delete(
+        response = await client.delete(
             "/api/v1/notifications/unregister",
             headers=auth_headers,
             params={"device_token": "token_to_unregister"},
         )
         assert response.status_code == 204
 
-    def test_unregister_nonexistent_token(
+    @pytest.mark.asyncio
+
+    async def test_unregister_nonexistent_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test unregistering non-existent token returns 404."""
-        response = client.delete(
+        response = await client.delete(
             "/api/v1/notifications/unregister",
             headers=auth_headers,
             params={"device_token": "nonexistent_token_123"},
         )
         assert response.status_code == 404
 
-    def test_get_my_devices(
+    @pytest.mark.asyncio
+
+    async def test_get_my_devices(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting all registered devices for current user."""
         # Register multiple devices
@@ -186,7 +201,7 @@ class TestNotificationsAPI:
         )
 
         # Get devices
-        response = client.get(
+        response = await client.get(
             "/api/v1/notifications/devices",
             headers=auth_headers,
         )
@@ -195,16 +210,18 @@ class TestNotificationsAPI:
         assert len(data) >= 2
         assert all(d["is_active"] for d in data)
 
-    def test_get_my_devices_include_inactive(
+    @pytest.mark.asyncio
+
+    async def test_get_my_devices_include_inactive(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting devices including inactive ones."""
         # Register a device
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={"device_token": "device_active", "platform": "android"},
@@ -212,12 +229,13 @@ class TestNotificationsAPI:
         device_id = response.json()["id"]
 
         # Manually mark as inactive
-        token = db.query(DeviceToken).filter(DeviceToken.id == device_id).first()
+        result = await db.execute(select(DeviceToken).where(DeviceToken.id == device_id))
+        token = result.scalar_one_or_none()
         token.is_active = False
-        db.commit()
+        await db.commit()
 
         # Get only active (default)
-        response_active = client.get(
+        response_active = await client.get(
             "/api/v1/notifications/devices",
             headers=auth_headers,
             params={"active_only": True},
@@ -227,7 +245,7 @@ class TestNotificationsAPI:
         assert len(active_devices) == 0
 
         # Get all devices
-        response_all = client.get(
+        response_all = await client.get(
             "/api/v1/notifications/devices",
             headers=auth_headers,
             params={"active_only": False},
@@ -236,16 +254,18 @@ class TestNotificationsAPI:
         all_devices = response_all.json()
         assert len(all_devices) >= 1
 
-    def test_remove_device_by_id(
+    @pytest.mark.asyncio
+
+    async def test_remove_device_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test removing a specific device by ID."""
         # Register device
-        register_response = client.post(
+        register_response = await client.post(
             "/api/v1/notifications/register",
             headers=auth_headers,
             json={"device_token": "device_to_remove", "platform": "android"},
@@ -253,14 +273,14 @@ class TestNotificationsAPI:
         device_id = register_response.json()["id"]
 
         # Remove device
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/notifications/devices/{device_id}",
             headers=auth_headers,
         )
         assert response.status_code == 204
 
         # Verify removed
-        verify_response = client.get(
+        verify_response = await client.get(
             "/api/v1/notifications/devices",
             headers=auth_headers,
             params={"active_only": False},
@@ -269,12 +289,14 @@ class TestNotificationsAPI:
         device_ids = [d["id"] for d in devices]
         assert device_id not in device_ids
 
-    def test_remove_device_not_owned(
+    @pytest.mark.asyncio
+
+    async def test_remove_device_not_owned(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test cannot remove device belonging to another user."""
         # Create another user's device
@@ -286,40 +308,43 @@ class TestNotificationsAPI:
             platform=DevicePlatform.ANDROID,
         )
         db.add(device)
-        db.commit()
+        await db.commit()
 
         # Try to remove other user's device
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/notifications/devices/{device.id}",
             headers=auth_headers,
         )
         assert response.status_code == 403
 
-    def test_remove_nonexistent_device(
+    @pytest.mark.asyncio
+
+    async def test_remove_nonexistent_device(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test removing non-existent device returns 404."""
         fake_device_id = uuid4()
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/notifications/devices/{fake_device_id}",
             headers=auth_headers,
         )
         assert response.status_code == 404
 
     @patch("app.services.push_notifications.PushNotificationService.send_to_user")
-    def test_send_notification_to_self(
+    @pytest.mark.asyncio
+    async def test_send_notification_to_self(
         self,
         mock_send: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
     ):
         """Test sending notification to self."""
         mock_send.return_value = {"success": 1, "failed": 0}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/send",
             headers=auth_headers,
             json={
@@ -334,22 +359,24 @@ class TestNotificationsAPI:
         assert data["failed_count"] == 0
 
     @patch("app.services.push_notifications.PushNotificationService.send_to_user")
-    def test_send_notification_to_other_non_admin(
+    @pytest.mark.asyncio
+    async def test_send_notification_to_other_non_admin(
         self,
         mock_send: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test non-admin cannot send notifications to other users."""
         # Change user role to staff
-        user = db.query(type(test_user)).filter_by(id=test_user.id).first()
+        result = await db.execute(select(type(test_user)).filter_by(id=test_user.id))
+        user = result.scalar_one_or_none()
         user.role = "staff"
-        db.commit()
+        await db.commit()
 
         other_user_id = uuid4()
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/send",
             headers=auth_headers,
             json={
@@ -360,16 +387,17 @@ class TestNotificationsAPI:
         assert response.status_code == 403
 
     @patch("app.services.push_notifications.PushNotificationService.subscribe_to_topic")
-    def test_subscribe_to_topic(
+    @pytest.mark.asyncio
+    async def test_subscribe_to_topic(
         self,
         mock_subscribe: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test subscribing to notification topic."""
         mock_subscribe.return_value = {"success": 1, "failed": 0}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/topics/subscribe",
             headers=auth_headers,
             json={"topic": "clinic_12345"},
@@ -380,16 +408,17 @@ class TestNotificationsAPI:
         assert data["success_count"] == 1
 
     @patch("app.services.push_notifications.PushNotificationService.unsubscribe_from_topic")
-    def test_unsubscribe_from_topic(
+    @pytest.mark.asyncio
+    async def test_unsubscribe_from_topic(
         self,
         mock_unsubscribe: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test unsubscribing from notification topic."""
         mock_unsubscribe.return_value = {"success": 1, "failed": 0}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/notifications/topics/unsubscribe",
             headers=auth_headers,
             json={"topic": "clinic_12345"},
@@ -398,13 +427,15 @@ class TestNotificationsAPI:
         data = response.json()
         assert "Unsubscribed from topic" in data["message"]
 
-    def test_test_notification_system(
+    @pytest.mark.asyncio
+
+    async def test_test_notification_system(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test checking Firebase configuration status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/notifications/test",
             headers=auth_headers,
         )
@@ -423,15 +454,16 @@ class TestWhatsAppAPI:
     """Test WhatsApp bot endpoints."""
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.verify_webhook")
-    def test_verify_webhook(
+    @pytest.mark.asyncio
+    async def test_verify_webhook(
         self,
         mock_verify: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test WhatsApp webhook verification."""
         mock_verify.return_value = "1234567890"
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/whatsapp/webhook",
             params={
                 "hub.mode": "subscribe",
@@ -443,15 +475,16 @@ class TestWhatsAppAPI:
         assert response.json() == 1234567890
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.verify_webhook")
-    def test_verify_webhook_invalid_token(
+    @pytest.mark.asyncio
+    async def test_verify_webhook_invalid_token(
         self,
         mock_verify: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test webhook verification with invalid token."""
         mock_verify.return_value = None
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/whatsapp/webhook",
             params={
                 "hub.mode": "subscribe",
@@ -464,14 +497,15 @@ class TestWhatsAppAPI:
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.parse_webhook")
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.handle_message")
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_message")
-    def test_receive_webhook_message(
+    @pytest.mark.asyncio
+    async def test_receive_webhook_message(
         self,
         mock_send: AsyncMock,
         mock_handle: AsyncMock,
         mock_parse: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         test_patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test receiving incoming WhatsApp message."""
         # Mock parsed message
@@ -483,7 +517,7 @@ class TestWhatsAppAPI:
         mock_handle.return_value = "Sure! I can help you book an appointment."
         mock_send.return_value = True
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/webhook",
             json={
                 "object": "whatsapp_business_account",
@@ -509,12 +543,14 @@ class TestWhatsAppAPI:
         data = response.json()
         assert data["status"] == "processed"
 
-    def test_receive_webhook_non_whatsapp(
+    @pytest.mark.asyncio
+
+    async def test_receive_webhook_non_whatsapp(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test webhook ignores non-WhatsApp messages."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/webhook",
             json={
                 "object": "instagram",
@@ -526,16 +562,17 @@ class TestWhatsAppAPI:
         assert data["status"] == "ignored"
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_message")
-    def test_send_message(
+    @pytest.mark.asyncio
+    async def test_send_message(
         self,
         mock_send: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test sending WhatsApp message manually."""
         mock_send.return_value = True
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send",
             headers=auth_headers,
             params={
@@ -547,20 +584,23 @@ class TestWhatsAppAPI:
         data = response.json()
         assert data["success"] is True
 
-    def test_send_message_unauthorized(
+    @pytest.mark.asyncio
+
+    async def test_send_message_unauthorized(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test only staff/admin can send messages."""
         # Change user role to patient
-        user = db.query(type(test_user)).filter_by(id=test_user.id).first()
+        result = await db.execute(select(type(test_user)).filter_by(id=test_user.id))
+        user = result.scalar_one_or_none()
         user.role = "patient"
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send",
             headers=auth_headers,
             params={
@@ -571,16 +611,17 @@ class TestWhatsAppAPI:
         assert response.status_code == 403
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_interactive_buttons")
-    def test_send_buttons(
+    @pytest.mark.asyncio
+    async def test_send_buttons(
         self,
         mock_send_buttons: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test sending interactive buttons."""
         mock_send_buttons.return_value = True
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-buttons",
             headers=auth_headers,
             params={
@@ -598,13 +639,15 @@ class TestWhatsAppAPI:
         data = response.json()
         assert data["success"] is True
 
-    def test_send_buttons_too_many(
+    @pytest.mark.asyncio
+
+    async def test_send_buttons_too_many(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test sending more than 3 buttons returns error."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-buttons",
             headers=auth_headers,
             params={
@@ -623,10 +666,11 @@ class TestWhatsAppAPI:
         assert response.status_code == 400
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_message")
-    def test_send_appointment_reminder(
+    @pytest.mark.asyncio
+    async def test_send_appointment_reminder(
         self,
         mock_send: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment,
         test_patient,
@@ -634,7 +678,7 @@ class TestWhatsAppAPI:
         """Test sending appointment reminder via WhatsApp."""
         mock_send.return_value = True
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-appointment-reminder",
             headers=auth_headers,
             params={"appointment_id": str(test_appointment.id)},
@@ -642,38 +686,43 @@ class TestWhatsAppAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
-        assert data["patient"] == test_patient.name
+        assert data["patient"] == test_patient.full_name
         assert data["phone"] == test_patient.phone
 
-    def test_send_appointment_reminder_not_found(
+    @pytest.mark.asyncio
+
+    async def test_send_appointment_reminder_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test sending reminder for non-existent appointment."""
         fake_id = uuid4()
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-appointment-reminder",
             headers=auth_headers,
             params={"appointment_id": str(fake_id)},
         )
         assert response.status_code == 404
 
-    def test_send_appointment_reminder_no_phone(
+    @pytest.mark.asyncio
+
+    async def test_send_appointment_reminder_no_phone(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment,
         test_patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test sending reminder when patient has no phone."""
         # Remove patient phone
-        patient = db.query(type(test_patient)).filter_by(id=test_patient.id).first()
+        result = await db.execute(select(type(test_patient)).filter_by(id=test_patient.id))
+        patient = result.scalar_one_or_none()
         patient.phone = None
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-appointment-reminder",
             headers=auth_headers,
             params={"appointment_id": str(test_appointment.id)},
@@ -681,14 +730,15 @@ class TestWhatsAppAPI:
         assert response.status_code == 400
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_message")
-    def test_send_waitlist_notification(
+    @pytest.mark.asyncio
+    async def test_send_waitlist_notification(
         self,
         mock_send: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
         test_doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test sending waitlist slot notification."""
         mock_send.return_value = True
@@ -705,9 +755,9 @@ class TestWhatsAppAPI:
             status="waiting",
         )
         db.add(waitlist)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/send-waitlist-notification",
             headers=auth_headers,
             params={
@@ -730,10 +780,11 @@ class TestVoiceAPI:
     """Test voice agent endpoints."""
 
     @patch("app.voice.agent.VoiceAgent.process_audio")
-    def test_process_audio(
+    @pytest.mark.asyncio
+    async def test_process_audio(
         self,
         mock_process: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -753,7 +804,7 @@ class TestVoiceAPI:
         audio_data = b"fake_audio_content"
         files = {"audio_file": ("test.wav", BytesIO(audio_data), "audio/wav")}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/process-audio",
             headers=auth_headers,
             files=files,
@@ -768,10 +819,11 @@ class TestVoiceAPI:
         assert "session_id" in data
 
     @patch("app.voice.agent.VoiceAgent.process_text")
-    def test_process_text(
+    @pytest.mark.asyncio
+    async def test_process_text(
         self,
         mock_process: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -786,7 +838,7 @@ class TestVoiceAPI:
         mock_response.metadata = {}
         mock_process.return_value = mock_response
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/process-text",
             headers=auth_headers,
             json={
@@ -801,10 +853,11 @@ class TestVoiceAPI:
         assert data["audio_base64"] is None
 
     @patch("app.voice.agent.VoiceAgent.get_session")
-    def test_get_session_status(
+    @pytest.mark.asyncio
+    async def test_get_session_status(
         self,
         mock_get_session: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting voice booking session status."""
@@ -821,7 +874,7 @@ class TestVoiceAPI:
         mock_get_session.return_value = mock_session
 
         session_id = "test_session_123"
-        response = client.get(
+        response = await client.get(
             f"/api/v1/voice/session/{session_id}",
             headers=auth_headers,
         )
@@ -834,16 +887,17 @@ class TestVoiceAPI:
         assert data["conversation_turns"] == 2
 
     @patch("app.voice.agent.VoiceAgent.get_session")
-    def test_get_session_not_found(
+    @pytest.mark.asyncio
+    async def test_get_session_not_found(
         self,
         mock_get_session: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting non-existent session returns 404."""
         mock_get_session.return_value = None
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/voice/session/nonexistent_session",
             headers=auth_headers,
         )
@@ -851,11 +905,12 @@ class TestVoiceAPI:
 
     @patch("app.voice.agent.VoiceAgent.get_session")
     @patch("app.voice.agent.VoiceAgent._cleanup_session")
-    def test_cancel_session(
+    @pytest.mark.asyncio
+    async def test_cancel_session(
         self,
         mock_cleanup: MagicMock,
         mock_get_session: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test cancelling a voice booking session."""
@@ -863,7 +918,7 @@ class TestVoiceAPI:
         mock_get_session.return_value = mock_session
 
         session_id = "session_to_cancel"
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/voice/session/{session_id}",
             headers=auth_headers,
         )
@@ -874,17 +929,18 @@ class TestVoiceAPI:
         mock_cleanup.assert_called_once_with(session_id)
 
     @patch("app.voice.tts.TextToSpeechAsync.synthesize")
-    def test_synthesize_speech(
+    @pytest.mark.asyncio
+    async def test_synthesize_speech(
         self,
         mock_synthesize: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test text-to-speech synthesis."""
         mock_audio = b"synthesized_audio_data"
         mock_synthesize.return_value = mock_audio
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/synthesize",
             headers=auth_headers,
             params={
@@ -903,10 +959,11 @@ class TestVoiceAPI:
         assert data["format"] == "wav"
 
     @patch("app.voice.tts.ChatterboxTTS.clone_voice_from_bytes")
-    def test_clone_voice(
+    @pytest.mark.asyncio
+    async def test_clone_voice(
         self,
         mock_clone: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test uploading voice sample for cloning."""
@@ -915,7 +972,7 @@ class TestVoiceAPI:
         audio_data = b"fake_voice_sample_data" * 100
         files = {"voice_sample": ("sample.wav", BytesIO(audio_data), "audio/wav")}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/clone-voice",
             headers=auth_headers,
             files=files,
@@ -926,15 +983,17 @@ class TestVoiceAPI:
         assert "voice_path" in data
         assert data["file_size_bytes"] > 0
 
-    def test_clone_voice_invalid_format(
+    @pytest.mark.asyncio
+
+    async def test_clone_voice_invalid_format(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test voice cloning rejects invalid file format."""
         files = {"voice_sample": ("sample.txt", BytesIO(b"text"), "text/plain")}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/clone-voice",
             headers=auth_headers,
             files=files,
@@ -942,9 +1001,11 @@ class TestVoiceAPI:
         assert response.status_code == 400
         assert "must be WAV, MP3, M4A, or OGG" in response.json()["detail"]
 
-    def test_clone_voice_file_too_large(
+    @pytest.mark.asyncio
+
+    async def test_clone_voice_file_too_large(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test voice cloning rejects files over 10MB."""
@@ -952,7 +1013,7 @@ class TestVoiceAPI:
         large_data = b"x" * (11 * 1024 * 1024)
         files = {"voice_sample": ("large.wav", BytesIO(large_data), "audio/wav")}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/clone-voice",
             headers=auth_headers,
             files=files,
@@ -961,10 +1022,11 @@ class TestVoiceAPI:
         assert "too large" in response.json()["detail"]
 
     @patch("app.voice.tts.TextToSpeechAsync.synthesize")
-    def test_synthesize_with_cloned_voice(
+    @pytest.mark.asyncio
+    async def test_synthesize_with_cloned_voice(
         self,
         mock_synthesize: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test synthesizing speech with cloned voice."""
@@ -976,7 +1038,7 @@ class TestVoiceAPI:
             "voice_sample": ("sample.wav", BytesIO(voice_data), "audio/wav"),
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/synthesize-with-voice",
             headers=auth_headers,
             files=files,
@@ -993,10 +1055,11 @@ class TestVoiceAPI:
         assert "audio_base64" in data
 
     @patch("app.voice.stt.SpeechToTextAsync.transcribe")
-    def test_transcribe_audio(
+    @pytest.mark.asyncio
+    async def test_transcribe_audio(
         self,
         mock_transcribe: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test speech-to-text transcription."""
@@ -1013,7 +1076,7 @@ class TestVoiceAPI:
         audio_data = b"audio_to_transcribe"
         files = {"audio_file": ("speech.wav", BytesIO(audio_data), "audio/wav")}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/transcribe",
             headers=auth_headers,
             files=files,
@@ -1035,12 +1098,13 @@ class TestVoiceBotAPI:
     """Test Twilio voice bot endpoints."""
 
     @patch("app.services.voice_bot.TelephonyService.generate_twiml_connect")
-    def test_incoming_call_webhook(
+    @pytest.mark.asyncio
+    async def test_incoming_call_webhook(
         self,
         mock_twiml: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test Twilio incoming call webhook."""
         mock_twiml.return_value = '<?xml version="1.0"?><Response><Connect><Stream url="wss://..." /></Connect></Response>'
@@ -1052,7 +1116,7 @@ class TestVoiceBotAPI:
             "CallStatus": "ringing",
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice_bot/incoming",
             data=form_data,
         )
@@ -1061,15 +1125,18 @@ class TestVoiceBotAPI:
         assert "Connect" in response.text or "Say" in response.text
 
         # Verify call record created
-        call = db.query(PhoneCall).filter(PhoneCall.call_sid == "CA1234567890").first()
+        result = await db.execute(select(PhoneCall).where(PhoneCall.call_sid == "CA1234567890"))
+        call = result.scalar_one_or_none()
         assert call is not None
         assert call.from_number == "+919876543210"
         assert call.direction == "inbound"
 
-    def test_incoming_call_no_clinic(
+    @pytest.mark.asyncio
+
+    async def test_incoming_call_no_clinic(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
     ):
         """Test incoming call to unconfigured number."""
         # Use a number that doesn't map to any clinic
@@ -1079,18 +1146,20 @@ class TestVoiceBotAPI:
             "To": "+919999999999",
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice_bot/incoming",
             data=form_data,
         )
         assert response.status_code == 200
         assert "not configured" in response.text.lower()
 
-    def test_call_status_callback(
+    @pytest.mark.asyncio
+
+    async def test_call_status_callback(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test Twilio call status callback."""
         # Create initial call record
@@ -1104,7 +1173,7 @@ class TestVoiceBotAPI:
             clinic_id=test_clinic.id,
         )
         db.add(call)
-        db.commit()
+        await db.commit()
 
         # Status callback
         form_data = {
@@ -1113,22 +1182,24 @@ class TestVoiceBotAPI:
             "CallDuration": "120",
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice_bot/status",
             data=form_data,
         )
         assert response.status_code == 200
 
         # Verify status updated
-        updated_call = db.query(PhoneCall).filter(PhoneCall.call_sid == "CA_STATUS_TEST").first()
+        result = await db.execute(select(PhoneCall).where(PhoneCall.call_sid == "CA_STATUS_TEST"))
+        updated_call = result.scalar_one_or_none()
         assert updated_call.status == "completed"
         assert updated_call.duration_seconds == 120
 
     @patch("app.services.voice_bot.TelephonyService.initiate_outbound_call")
-    def test_initiate_outbound_call(
+    @pytest.mark.asyncio
+    async def test_initiate_outbound_call(
         self,
         mock_initiate: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
         test_appointment,
@@ -1141,7 +1212,7 @@ class TestVoiceBotAPI:
             "status": "queued",
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice_bot/outbound",
             headers=auth_headers,
             json={
@@ -1157,12 +1228,14 @@ class TestVoiceBotAPI:
         assert data["status"] == "queued"
         assert "call_id" in data
 
-    def test_list_calls(
+    @pytest.mark.asyncio
+
+    async def test_list_calls(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test listing phone calls."""
         # Create test calls
@@ -1177,9 +1250,9 @@ class TestVoiceBotAPI:
                 clinic_id=test_clinic.id,
             )
             db.add(call)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/voice_bot/calls",
             headers=auth_headers,
             params={"clinic_id": str(test_clinic.id)},
@@ -1188,12 +1261,14 @@ class TestVoiceBotAPI:
         data = response.json()
         assert len(data) >= 3
 
-    def test_get_call_details(
+    @pytest.mark.asyncio
+
+    async def test_get_call_details(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting call details including transcript."""
         call = PhoneCall(
@@ -1207,9 +1282,9 @@ class TestVoiceBotAPI:
             transcript="Full conversation transcript",
         )
         db.add(call)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/voice_bot/calls/{call.id}",
             headers=auth_headers,
         )
@@ -1218,25 +1293,29 @@ class TestVoiceBotAPI:
         assert data["call_sid"] == "CA_DETAILS_TEST"
         assert data["transcript"] == "Full conversation transcript"
 
-    def test_get_call_details_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_call_details_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting non-existent call returns 404."""
         fake_id = uuid4()
-        response = client.get(
+        response = await client.get(
             f"/api/v1/voice_bot/calls/{fake_id}",
             headers=auth_headers,
         )
         assert response.status_code == 404
 
-    def test_get_call_transcript(
+    @pytest.mark.asyncio
+
+    async def test_get_call_transcript(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting full call transcript segments."""
         call = PhoneCall(
@@ -1249,7 +1328,7 @@ class TestVoiceBotAPI:
             clinic_id=test_clinic.id,
         )
         db.add(call)
-        db.commit()
+        await db.commit()
 
         # Add transcript segments
         segments = [
@@ -1272,9 +1351,9 @@ class TestVoiceBotAPI:
         ]
         for seg in segments:
             db.add(seg)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/voice_bot/calls/{call.id}/transcript",
             headers=auth_headers,
         )
@@ -1284,12 +1363,14 @@ class TestVoiceBotAPI:
         assert data[0]["speaker"] == "bot"
         assert data[1]["speaker"] == "caller"
 
-    def test_get_call_stats(
+    @pytest.mark.asyncio
+
+    async def test_get_call_stats(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting call statistics."""
         # Create various calls
@@ -1314,9 +1395,9 @@ class TestVoiceBotAPI:
                 language_detected="en",
             )
             db.add(call)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/voice_bot/stats",
             headers=auth_headers,
             params={"clinic_id": str(test_clinic.id)},
@@ -1346,9 +1427,9 @@ class TestVoiceBotWebSocket:
     async def test_voice_bot_websocket_connection(
         self,
         mock_bot_class: MagicMock,
-        client: TestClient,
+        client: AsyncClient,
         test_clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test WebSocket connection for voice bot."""
         # Create call record
@@ -1362,7 +1443,7 @@ class TestVoiceBotWebSocket:
             clinic_id=test_clinic.id,
         )
         db.add(call)
-        db.commit()
+        await db.commit()
 
         # Mock bot instance
         mock_bot = AsyncMock()
@@ -1384,7 +1465,8 @@ class TestVoiceBotWebSocket:
             websocket.send_json({"event": "stop"})
 
         # Verify call updated
-        updated_call = db.query(PhoneCall).filter(PhoneCall.call_sid == "CA_WS_TEST").first()
+        result = await db.execute(select(PhoneCall).where(PhoneCall.call_sid == "CA_WS_TEST"))
+        updated_call = result.scalar_one_or_none()
         assert updated_call.status == CallStatus.COMPLETED
 
 
@@ -1396,7 +1478,9 @@ class TestVoiceBotWebSocket:
 class TestCommunicationAPIErrorHandling:
     """Test error handling and edge cases."""
 
-    def test_unauthorized_access(self, client: TestClient):
+    @pytest.mark.asyncio
+
+    async def test_unauthorized_access(self, client: AsyncClient):
         """Test endpoints require authentication."""
         endpoints = [
             ("/api/v1/notifications/register", "post"),
@@ -1407,16 +1491,17 @@ class TestCommunicationAPIErrorHandling:
 
         for endpoint, method in endpoints:
             if method == "post":
-                response = client.post(endpoint, json={})
+                response = await client.post(endpoint, json={})
             else:
-                response = client.get(endpoint)
+                response = await client.get(endpoint)
             assert response.status_code == 401
 
     @patch("app.integrations.whatsapp_bot.WhatsAppBot.send_message")
-    def test_whatsapp_rate_limiting(
+    @pytest.mark.asyncio
+    async def test_whatsapp_rate_limiting(
         self,
         mock_send: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test WhatsApp message rate limiting (if implemented)."""
@@ -1424,7 +1509,7 @@ class TestCommunicationAPIErrorHandling:
 
         # Send multiple messages rapidly
         for i in range(5):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/whatsapp/send",
                 headers=auth_headers,
                 params={
@@ -1436,30 +1521,33 @@ class TestCommunicationAPIErrorHandling:
             # If rate limiting exists, some requests might return 429
             assert response.status_code in [200, 429]
 
-    def test_invalid_uuid_parameters(
+    @pytest.mark.asyncio
+
+    async def test_invalid_uuid_parameters(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test endpoints handle invalid UUID parameters gracefully."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/voice_bot/calls/not-a-valid-uuid",
             headers=auth_headers,
         )
         assert response.status_code == 422
 
     @patch("app.voice.agent.VoiceAgent.process_text")
-    def test_voice_agent_error_handling(
+    @pytest.mark.asyncio
+    async def test_voice_agent_error_handling(
         self,
         mock_process: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
         """Test voice agent handles processing errors."""
         mock_process.side_effect = Exception("Processing failed")
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/voice/process-text",
             headers=auth_headers,
             json={
@@ -1470,12 +1558,14 @@ class TestCommunicationAPIErrorHandling:
         # Should handle error gracefully
         assert response.status_code in [500, 400]
 
-    def test_whatsapp_webhook_malformed_payload(
+    @pytest.mark.asyncio
+
+    async def test_whatsapp_webhook_malformed_payload(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test WhatsApp webhook handles malformed payload."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/whatsapp/webhook",
             json={"invalid": "payload"},
         )
@@ -1483,3 +1573,4 @@ class TestCommunicationAPIErrorHandling:
         # Should not crash, returns error status
         data = response.json()
         assert "status" in data
+

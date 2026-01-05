@@ -617,8 +617,8 @@ class TestActionExecutorBookAppointment:
         result = await executor.execute_action(
             action_type=ActionType.BOOK_APPOINTMENT,
             params={
-                "patient_id": patient.id,
-                "doctor_id": doctor.id,
+                "patient_id": str(patient.id),
+                "doctor_id": str(doctor.id),
                 "date": past_date,
                 "time": time(15, 0),
             },
@@ -657,8 +657,8 @@ class TestActionExecutorBookAppointment:
         result = await executor.execute_action(
             action_type=ActionType.BOOK_APPOINTMENT,
             params={
-                "patient_id": patient.id,
-                "doctor_id": doctor.id,
+                "patient_id": str(patient.id),
+                "doctor_id": str(doctor.id),
                 "date": date.today() + timedelta(days=1),
                 "time": time(15, 0),
             },
@@ -694,8 +694,8 @@ class TestActionExecutorBookAppointment:
         result = await executor.execute_action(
             action_type=ActionType.BOOK_APPOINTMENT,
             params={
-                "patient_id": patient.id,
-                "doctor_id": doctor.id,
+                "patient_id": str(patient.id),
+                "doctor_id": str(doctor.id),
                 "date": date.today() + timedelta(days=1),
                 "time": time(15, 0),
                 "reason": "Follow-up",
@@ -791,7 +791,7 @@ class TestActionExecutorReschedule:
         result = await executor.execute_action(
             action_type=ActionType.RESCHEDULE_APPOINTMENT,
             params={
-                "appointment_id": appointment.id,
+                "appointment_id": str(appointment.id),
                 "new_date": date.today() + timedelta(days=2),
                 "new_time": time(16, 0),
             },
@@ -873,7 +873,7 @@ class TestActionExecutorCancel:
 
         result = await executor.execute_action(
             action_type=ActionType.CANCEL_APPOINTMENT,
-            params={"appointment_id": appointment.id, "reason": "Patient unavailable"},
+            params={"appointment_id": str(appointment.id), "reason": "Patient unavailable"},
             user_id=uuid4(),
             clinic_id=clinic_id,
         )
@@ -927,7 +927,7 @@ class TestActionExecutorOthers:
 
         result = await executor.execute_action(
             action_type=ActionType.ADD_TO_WAITLIST,
-            params={"patient_id": patient.id, "urgency": "high"},
+            params={"patient_id": str(patient.id), "urgency": "high"},
             user_id=uuid4(),
             clinic_id=clinic_id,
         )

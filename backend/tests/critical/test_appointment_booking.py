@@ -14,8 +14,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType, BookingSource
 from app.models.clinic import Clinic
@@ -27,9 +27,12 @@ from app.models.user import User
 class TestAppointmentBookingHappyPath:
     """Test successful appointment booking scenarios."""
 
-    def test_book_new_appointment_with_valid_data(
+    @pytest.mark.asyncio
+
+
+    async def test_book_new_appointment_with_valid_data(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -39,7 +42,7 @@ class TestAppointmentBookingHappyPath:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -66,9 +69,12 @@ class TestAppointmentBookingHappyPath:
         assert data["notes"] == "Patient requested morning slot"
         assert data["id"] is not None
 
-    def test_book_appointment_minimal_data(
+    @pytest.mark.asyncio
+
+
+    async def test_book_appointment_minimal_data(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -77,7 +83,7 @@ class TestAppointmentBookingHappyPath:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=14, minute=30, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -95,20 +101,23 @@ class TestAppointmentBookingHappyPath:
         assert data["appointment_type"] == AppointmentType.NEW_CONSULTATION.value  # Default
         assert data["booking_source"] == BookingSource.WALK_IN.value  # Default
 
-    def test_reschedule_existing_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_reschedule_existing_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test rescheduling an existing appointment to a new time."""
         # Create initial appointment
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         original_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -123,7 +132,7 @@ class TestAppointmentBookingHappyPath:
 
         # Reschedule to 2 hours later
         new_start = original_start + timedelta(hours=2)
-        update_response = client.patch(
+        update_response = await client.patch(
             f"/api/v1/appointments/{appointment_id}",
             headers=auth_headers,
             json={
@@ -138,9 +147,12 @@ class TestAppointmentBookingHappyPath:
         returned_start = datetime.fromisoformat(data["scheduled_start"].replace("Z", "+00:00"))
         assert returned_start.replace(tzinfo=None) == new_start.replace(tzinfo=None)
 
-    def test_cancel_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_cancel_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -150,7 +162,7 @@ class TestAppointmentBookingHappyPath:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=11, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -164,7 +176,7 @@ class TestAppointmentBookingHappyPath:
         appointment_id = create_response.json()["id"]
 
         # Cancel it
-        cancel_response = client.post(
+        cancel_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/cancel",
             headers=auth_headers,
             params={"reason": "Patient requested cancellation"},
@@ -176,9 +188,12 @@ class TestAppointmentBookingHappyPath:
         assert data["cancellation_reason"] == "Patient requested cancellation"
         assert data["cancelled_by"] is not None
 
-    def test_get_appointment_by_id(
+    @pytest.mark.asyncio
+
+
+    async def test_get_appointment_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -188,7 +203,7 @@ class TestAppointmentBookingHappyPath:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=9, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -203,7 +218,7 @@ class TestAppointmentBookingHappyPath:
         appointment_id = create_response.json()["id"]
 
         # Get it by ID
-        get_response = client.get(
+        get_response = await client.get(
             f"/api/v1/appointments/{appointment_id}",
             headers=auth_headers,
         )
@@ -215,9 +230,12 @@ class TestAppointmentBookingHappyPath:
         assert data["doctor_id"] == str(test_doctor.id)
         assert data["chief_complaint"] == "Follow-up visit"
 
-    def test_list_appointments_by_doctor(
+    @pytest.mark.asyncio
+
+
+    async def test_list_appointments_by_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -228,7 +246,7 @@ class TestAppointmentBookingHappyPath:
 
         for hour in [9, 10, 11]:
             scheduled_start = tomorrow.replace(hour=hour, minute=0, second=0, microsecond=0)
-            response = client.post(
+            response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -241,7 +259,7 @@ class TestAppointmentBookingHappyPath:
             assert response.status_code == 201
 
         # List appointments for this doctor
-        list_response = client.get(
+        list_response = await client.get(
             "/api/v1/appointments/",
             headers=auth_headers,
             params={"doctor_id": str(test_doctor.id)},
@@ -255,9 +273,12 @@ class TestAppointmentBookingHappyPath:
         for appt in data:
             assert appt["doctor_id"] == str(test_doctor.id)
 
-    def test_list_appointments_by_patient(
+    @pytest.mark.asyncio
+
+
+    async def test_list_appointments_by_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -279,7 +300,7 @@ class TestAppointmentBookingHappyPath:
         )
 
         # List appointments for this patient
-        list_response = client.get(
+        list_response = await client.get(
             "/api/v1/appointments/",
             headers=auth_headers,
             params={"patient_id": str(test_patient.id)},
@@ -292,9 +313,12 @@ class TestAppointmentBookingHappyPath:
         for appt in data:
             assert appt["patient_id"] == str(test_patient.id)
 
-    def test_list_appointments_by_date_range(
+    @pytest.mark.asyncio
+
+
+    async def test_list_appointments_by_date_range(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -315,7 +339,7 @@ class TestAppointmentBookingHappyPath:
         )
 
         # List appointments within date range
-        list_response = client.get(
+        list_response = await client.get(
             "/api/v1/appointments/",
             headers=auth_headers,
             params={
@@ -329,9 +353,12 @@ class TestAppointmentBookingHappyPath:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_appointments_by_status(
+    @pytest.mark.asyncio
+
+
+    async def test_list_appointments_by_status(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -341,7 +368,7 @@ class TestAppointmentBookingHappyPath:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -359,7 +386,7 @@ class TestAppointmentBookingHappyPath:
         )
 
         # List cancelled appointments
-        list_response = client.get(
+        list_response = await client.get(
             "/api/v1/appointments/",
             headers=auth_headers,
             params={"status_filter": "cancelled"},
@@ -375,20 +402,23 @@ class TestAppointmentBookingHappyPath:
 class TestAppointmentBookingEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_prevent_double_booking_same_slot(
+    @pytest.mark.asyncio
+
+
+    async def test_prevent_double_booking_same_slot(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test that double booking the same slot for a doctor is prevented."""
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         # Create first appointment
-        first_response = client.post(
+        first_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -411,10 +441,10 @@ class TestAppointmentBookingEdgeCases:
             date_of_birth=datetime(1985, 5, 20).date(),
         )
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Try to book same slot with different patient (should fail)
-        second_response = client.post(
+        second_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -428,20 +458,23 @@ class TestAppointmentBookingEdgeCases:
         assert second_response.status_code == 409
         assert "already booked" in second_response.json()["detail"].lower()
 
-    def test_prevent_overlapping_appointments(
+    @pytest.mark.asyncio
+
+
+    async def test_prevent_overlapping_appointments(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test that overlapping appointments are prevented."""
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         first_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         # Create first appointment (10:00 - 10:30, 30 min)
-        first_response = client.post(
+        first_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -464,11 +497,11 @@ class TestAppointmentBookingEdgeCases:
             date_of_birth=datetime(1992, 3, 10).date(),
         )
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Try to book overlapping slot (10:15 - 10:30, overlaps with first)
         overlapping_start = first_start + timedelta(minutes=15)
-        second_response = client.post(
+        second_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -481,9 +514,12 @@ class TestAppointmentBookingEdgeCases:
 
         assert second_response.status_code == 409
 
-    def test_booking_in_past_should_work_for_walkins(
+    @pytest.mark.asyncio
+
+
+    async def test_booking_in_past_should_work_for_walkins(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -493,7 +529,7 @@ class TestAppointmentBookingEdgeCases:
         past_time = datetime.now(timezone.utc) - timedelta(minutes=10)
         scheduled_start = past_time.replace(second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -508,9 +544,12 @@ class TestAppointmentBookingEdgeCases:
         # Should succeed for walk-ins (schema validator allows flexibility)
         assert response.status_code == 201
 
-    def test_booking_outside_clinic_hours(
+    @pytest.mark.asyncio
+
+
+    async def test_booking_outside_clinic_hours(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -522,7 +561,7 @@ class TestAppointmentBookingEdgeCases:
         # 8 PM - typically outside working hours
         scheduled_start = tomorrow.replace(hour=20, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -536,9 +575,12 @@ class TestAppointmentBookingEdgeCases:
         # Currently succeeds - business logic for hours is in slot availability
         assert response.status_code == 201
 
-    def test_booking_with_nonexistent_patient(
+    @pytest.mark.asyncio
+
+
+    async def test_booking_with_nonexistent_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -547,7 +589,7 @@ class TestAppointmentBookingEdgeCases:
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         fake_patient_id = uuid4()
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -561,9 +603,12 @@ class TestAppointmentBookingEdgeCases:
         assert response.status_code == 404
         assert "patient not found" in response.json()["detail"].lower()
 
-    def test_booking_with_nonexistent_doctor(
+    @pytest.mark.asyncio
+
+
+    async def test_booking_with_nonexistent_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
@@ -572,7 +617,7 @@ class TestAppointmentBookingEdgeCases:
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         fake_doctor_id = uuid4()
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -586,13 +631,16 @@ class TestAppointmentBookingEdgeCases:
         assert response.status_code == 404
         assert "doctor not found" in response.json()["detail"].lower()
 
-    def test_booking_patient_and_doctor_different_clinics(
+    @pytest.mark.asyncio
+
+
+    async def test_booking_patient_and_doctor_different_clinics(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test that patient and doctor must belong to same clinic."""
         # Create a different clinic
@@ -609,7 +657,7 @@ class TestAppointmentBookingEdgeCases:
             subscription_tier="basic",
         )
         db.add(other_clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient in different clinic
         other_patient = Patient(
@@ -622,12 +670,12 @@ class TestAppointmentBookingEdgeCases:
             date_of_birth=datetime(1988, 7, 25).date(),
         )
         db.add(other_patient)
-        db.commit()
+        await db.commit()
 
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -641,9 +689,12 @@ class TestAppointmentBookingEdgeCases:
         assert response.status_code == 400
         assert "same clinic" in response.json()["detail"].lower()
 
-    def test_appointment_status_transitions(
+    @pytest.mark.asyncio
+
+
+    async def test_appointment_status_transitions(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -653,7 +704,7 @@ class TestAppointmentBookingEdgeCases:
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         # Create appointment (scheduled)
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -668,7 +719,7 @@ class TestAppointmentBookingEdgeCases:
         assert create_response.json()["status"] == AppointmentStatus.SCHEDULED.value
 
         # Check in patient (scheduled → checked_in)
-        checkin_response = client.post(
+        checkin_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/check-in",
             headers=auth_headers,
         )
@@ -678,7 +729,7 @@ class TestAppointmentBookingEdgeCases:
         assert checkin_response.json()["token_number"] is not None
 
         # Start consultation (checked_in → in_progress)
-        start_response = client.post(
+        start_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/start",
             headers=auth_headers,
         )
@@ -687,7 +738,7 @@ class TestAppointmentBookingEdgeCases:
         assert start_response.json()["start_time"] is not None
 
         # Complete consultation (in_progress → completed)
-        complete_response = client.post(
+        complete_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/complete",
             headers=auth_headers,
             json={
@@ -702,9 +753,12 @@ class TestAppointmentBookingEdgeCases:
         assert data["notes"] == "Consultation completed successfully"
         assert data["emr_visit_id"] == "EMR-123"
 
-    def test_invalid_status_transition_start_without_checkin(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_status_transition_start_without_checkin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -713,7 +767,7 @@ class TestAppointmentBookingEdgeCases:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -726,7 +780,7 @@ class TestAppointmentBookingEdgeCases:
         appointment_id = create_response.json()["id"]
 
         # Try to start without checking in
-        start_response = client.post(
+        start_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/start",
             headers=auth_headers,
         )
@@ -734,9 +788,12 @@ class TestAppointmentBookingEdgeCases:
         assert start_response.status_code == 400
         assert "checked in" in start_response.json()["detail"].lower()
 
-    def test_invalid_status_transition_complete_without_start(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_status_transition_complete_without_start(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -745,7 +802,7 @@ class TestAppointmentBookingEdgeCases:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -758,7 +815,7 @@ class TestAppointmentBookingEdgeCases:
         appointment_id = create_response.json()["id"]
 
         # Try to complete without starting
-        complete_response = client.post(
+        complete_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/complete",
             headers=auth_headers,
         )
@@ -766,9 +823,12 @@ class TestAppointmentBookingEdgeCases:
         assert complete_response.status_code == 400
         assert "in progress" in complete_response.json()["detail"].lower()
 
-    def test_cannot_cancel_completed_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_cannot_cancel_completed_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -778,7 +838,7 @@ class TestAppointmentBookingEdgeCases:
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         # Create and complete appointment
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -796,7 +856,7 @@ class TestAppointmentBookingEdgeCases:
         client.post(f"/api/v1/appointments/{appointment_id}/complete", headers=auth_headers)
 
         # Try to cancel completed appointment
-        cancel_response = client.post(
+        cancel_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/cancel",
             headers=auth_headers,
         )
@@ -804,9 +864,12 @@ class TestAppointmentBookingEdgeCases:
         assert cancel_response.status_code == 400
         assert "cannot cancel" in cancel_response.json()["detail"].lower()
 
-    def test_cannot_cancel_already_cancelled_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_cannot_cancel_already_cancelled_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -815,7 +878,7 @@ class TestAppointmentBookingEdgeCases:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -831,16 +894,19 @@ class TestAppointmentBookingEdgeCases:
         client.post(f"/api/v1/appointments/{appointment_id}/cancel", headers=auth_headers)
 
         # Try to cancel again
-        cancel_again_response = client.post(
+        cancel_again_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/cancel",
             headers=auth_headers,
         )
 
         assert cancel_again_response.status_code == 400
 
-    def test_mark_no_show(
+    @pytest.mark.asyncio
+
+
+    async def test_mark_no_show(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -849,7 +915,7 @@ class TestAppointmentBookingEdgeCases:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -862,7 +928,7 @@ class TestAppointmentBookingEdgeCases:
         appointment_id = create_response.json()["id"]
 
         # Mark as no-show
-        noshow_response = client.post(
+        noshow_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/no-show",
             headers=auth_headers,
         )
@@ -874,9 +940,12 @@ class TestAppointmentBookingEdgeCases:
 class TestAppointmentBookingValidation:
     """Test validation and error handling."""
 
-    def test_missing_required_patient_id(
+    @pytest.mark.asyncio
+
+
+    async def test_missing_required_patient_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -884,7 +953,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -897,9 +966,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422  # Validation error
 
-    def test_missing_required_doctor_id(
+    @pytest.mark.asyncio
+
+
+    async def test_missing_required_doctor_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
@@ -907,7 +979,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -920,15 +992,18 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_missing_required_scheduled_start(
+    @pytest.mark.asyncio
+
+
+    async def test_missing_required_scheduled_start(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
         """Test that scheduled_start is required."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -941,9 +1016,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_invalid_uuid_format_patient_id(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_uuid_format_patient_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -951,7 +1029,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -964,9 +1042,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_invalid_uuid_format_doctor_id(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_uuid_format_doctor_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
@@ -974,7 +1055,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -987,15 +1068,18 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_invalid_datetime_format(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_datetime_format(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
         """Test that invalid datetime format is rejected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1008,9 +1092,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_duration_too_short(
+    @pytest.mark.asyncio
+
+
+    async def test_duration_too_short(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1019,7 +1106,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1032,9 +1119,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_duration_too_long(
+    @pytest.mark.asyncio
+
+
+    async def test_duration_too_long(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1043,7 +1133,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1056,9 +1146,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_chief_complaint_max_length(
+    @pytest.mark.asyncio
+
+
+    async def test_chief_complaint_max_length(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1070,7 +1163,7 @@ class TestAppointmentBookingValidation:
         # Create a 501 character string
         long_complaint = "A" * 501
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1084,9 +1177,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_chief_complaint_at_max_length_allowed(
+    @pytest.mark.asyncio
+
+
+    async def test_chief_complaint_at_max_length_allowed(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1098,7 +1194,7 @@ class TestAppointmentBookingValidation:
         # Create exactly 500 character string
         max_complaint = "A" * 500
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1113,9 +1209,12 @@ class TestAppointmentBookingValidation:
         assert response.status_code == 201
         assert len(response.json()["chief_complaint"]) == 500
 
-    def test_invalid_appointment_type(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_appointment_type(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1124,7 +1223,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1138,9 +1237,12 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_invalid_booking_source(
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_booking_source(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1149,7 +1251,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1163,14 +1265,17 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 422
 
-    def test_get_nonexistent_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_get_nonexistent_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting an appointment that doesn't exist."""
         fake_id = uuid4()
-        response = client.get(
+        response = await client.get(
             f"/api/v1/appointments/{fake_id}",
             headers=auth_headers,
         )
@@ -1178,9 +1283,12 @@ class TestAppointmentBookingValidation:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
 
-    def test_update_nonexistent_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_update_nonexistent_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test updating an appointment that doesn't exist."""
@@ -1188,7 +1296,7 @@ class TestAppointmentBookingValidation:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=11, minute=0, second=0, microsecond=0)
 
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/appointments/{fake_id}",
             headers=auth_headers,
             json={
@@ -1198,14 +1306,17 @@ class TestAppointmentBookingValidation:
 
         assert response.status_code == 404
 
-    def test_cancel_nonexistent_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_cancel_nonexistent_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test cancelling an appointment that doesn't exist."""
         fake_id = uuid4()
-        response = client.post(
+        response = await client.post(
             f"/api/v1/appointments/{fake_id}/cancel",
             headers=auth_headers,
         )
@@ -1216,16 +1327,19 @@ class TestAppointmentBookingValidation:
 class TestAppointmentSlotAvailability:
     """Test slot availability checking."""
 
-    def test_get_available_slots_for_doctor(
+    @pytest.mark.asyncio
+
+
+    async def test_get_available_slots_for_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
         """Test getting available slots for a doctor on a specific date."""
         tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).date()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/slots/availability",
             headers=auth_headers,
             json={
@@ -1242,9 +1356,12 @@ class TestAppointmentSlotAvailability:
         assert "slots" in data
         assert isinstance(data["slots"], list)
 
-    def test_available_slots_exclude_booked_times(
+    @pytest.mark.asyncio
+
+
+    async def test_available_slots_exclude_booked_times(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1266,7 +1383,7 @@ class TestAppointmentSlotAvailability:
         )
 
         # Check availability
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/slots/availability",
             headers=auth_headers,
             json={
@@ -1288,16 +1405,19 @@ class TestAppointmentSlotAvailability:
         if booked_slot:
             assert booked_slot["is_available"] is False
 
-    def test_available_slots_for_nonexistent_doctor(
+    @pytest.mark.asyncio
+
+
+    async def test_available_slots_for_nonexistent_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test slot availability for non-existent doctor."""
         fake_doctor_id = uuid4()
         tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).date()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/slots/availability",
             headers=auth_headers,
             json={
@@ -1313,9 +1433,12 @@ class TestAppointmentSlotAvailability:
 class TestAppointmentDoctorSchedule:
     """Test doctor's daily schedule."""
 
-    def test_get_doctor_schedule_today(
+    @pytest.mark.asyncio
+
+
+    async def test_get_doctor_schedule_today(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1338,7 +1461,7 @@ class TestAppointmentDoctorSchedule:
             },
         )
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/appointments/doctor/{test_doctor.id}/schedule",
             headers=auth_headers,
         )
@@ -1352,9 +1475,12 @@ class TestAppointmentDoctorSchedule:
         assert "pending" in data
         assert "cancelled" in data
 
-    def test_get_doctor_schedule_specific_date(
+    @pytest.mark.asyncio
+
+
+    async def test_get_doctor_schedule_specific_date(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1374,7 +1500,7 @@ class TestAppointmentDoctorSchedule:
             },
         )
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/appointments/doctor/{test_doctor.id}/schedule",
             headers=auth_headers,
             params={"schedule_date": tomorrow.date().isoformat()},
@@ -1385,9 +1511,12 @@ class TestAppointmentDoctorSchedule:
         assert data["date"] == tomorrow.date().isoformat()
         assert data["total_appointments"] >= 1
 
-    def test_get_doctor_schedule_counts_by_status(
+    @pytest.mark.asyncio
+
+
+    async def test_get_doctor_schedule_counts_by_status(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1399,7 +1528,7 @@ class TestAppointmentDoctorSchedule:
         appointment_ids = []
         for hour in [10, 11, 12]:
             scheduled_start = tomorrow.replace(hour=hour, minute=0, second=0, microsecond=0)
-            response = client.post(
+            response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -1420,7 +1549,7 @@ class TestAppointmentDoctorSchedule:
         client.post(f"/api/v1/appointments/{appointment_ids[1]}/complete", headers=auth_headers)
 
         # Get schedule
-        response = client.get(
+        response = await client.get(
             f"/api/v1/appointments/doctor/{test_doctor.id}/schedule",
             headers=auth_headers,
             params={"schedule_date": tomorrow.date().isoformat()},
@@ -1437,13 +1566,16 @@ class TestAppointmentDoctorSchedule:
 class TestAppointmentConcurrency:
     """Test concurrent booking scenarios."""
 
-    def test_concurrent_booking_same_slot(
+    @pytest.mark.asyncio
+
+
+    async def test_concurrent_booking_same_slot(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test that concurrent requests for the same slot are handled correctly."""
         # Create second patient
@@ -1457,13 +1589,13 @@ class TestAppointmentConcurrency:
             date_of_birth=datetime(1991, 6, 15).date(),
         )
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
         # Make first request
-        response1 = client.post(
+        response1 = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1475,7 +1607,7 @@ class TestAppointmentConcurrency:
         )
 
         # Make second concurrent request (simulated)
-        response2 = client.post(
+        response2 = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1496,10 +1628,12 @@ class TestAppointmentIntegrations:
     """Test external integrations (mocked)."""
 
     @patch('app.services.calendar_sync.CalendarSyncService.sync_appointment')
-    def test_appointment_creation_syncs_to_calendar(
+    @pytest.mark.asyncio
+
+    async def test_appointment_creation_syncs_to_calendar(
         self,
         mock_sync: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1510,7 +1644,7 @@ class TestAppointmentIntegrations:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1525,10 +1659,12 @@ class TestAppointmentIntegrations:
         # Calendar sync is called but doesn't block on errors
 
     @patch('app.services.calendar_sync.CalendarSyncService.sync_appointment')
-    def test_appointment_creation_succeeds_even_if_calendar_sync_fails(
+    @pytest.mark.asyncio
+
+    async def test_appointment_creation_succeeds_even_if_calendar_sync_fails(
         self,
         mock_sync: AsyncMock,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1539,7 +1675,7 @@ class TestAppointmentIntegrations:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1557,9 +1693,12 @@ class TestAppointmentIntegrations:
 class TestAppointmentTokenGeneration:
     """Test token number generation for appointments."""
 
-    def test_token_number_auto_generated_on_checkin(
+    @pytest.mark.asyncio
+
+
+    async def test_token_number_auto_generated_on_checkin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1568,7 +1707,7 @@ class TestAppointmentTokenGeneration:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1580,7 +1719,7 @@ class TestAppointmentTokenGeneration:
         )
         appointment_id = create_response.json()["id"]
 
-        checkin_response = client.post(
+        checkin_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/check-in",
             headers=auth_headers,
         )
@@ -1589,9 +1728,12 @@ class TestAppointmentTokenGeneration:
         assert checkin_response.json()["token_number"] is not None
         assert checkin_response.json()["token_number"] >= 1
 
-    def test_token_numbers_increment_per_doctor_per_day(
+    @pytest.mark.asyncio
+
+
+    async def test_token_numbers_increment_per_doctor_per_day(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1603,7 +1745,7 @@ class TestAppointmentTokenGeneration:
         for hour in [10, 11, 12]:
             scheduled_start = tomorrow.replace(hour=hour, minute=0, second=0, microsecond=0)
 
-            create_response = client.post(
+            create_response = await client.post(
                 "/api/v1/appointments/",
                 headers=auth_headers,
                 json={
@@ -1615,7 +1757,7 @@ class TestAppointmentTokenGeneration:
             )
             appointment_id = create_response.json()["id"]
 
-            checkin_response = client.post(
+            checkin_response = await client.post(
                 f"/api/v1/appointments/{appointment_id}/check-in",
                 headers=auth_headers,
             )
@@ -1624,9 +1766,12 @@ class TestAppointmentTokenGeneration:
         # Tokens should be sequential
         assert tokens[0] < tokens[1] < tokens[2]
 
-    def test_custom_token_number_on_checkin(
+    @pytest.mark.asyncio
+
+
+    async def test_custom_token_number_on_checkin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -1635,7 +1780,7 @@ class TestAppointmentTokenGeneration:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         scheduled_start = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        create_response = client.post(
+        create_response = await client.post(
             "/api/v1/appointments/",
             headers=auth_headers,
             json={
@@ -1647,7 +1792,7 @@ class TestAppointmentTokenGeneration:
         )
         appointment_id = create_response.json()["id"]
 
-        checkin_response = client.post(
+        checkin_response = await client.post(
             f"/api/v1/appointments/{appointment_id}/check-in",
             headers=auth_headers,
             json={"token_number": 99},

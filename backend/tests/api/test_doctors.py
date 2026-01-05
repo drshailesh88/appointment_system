@@ -4,20 +4,22 @@ Tests for doctor endpoints.
 from uuid import uuid4
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 
 
 class TestDoctors:
     """Doctor endpoint tests."""
 
-    def test_get_doctors(
+    @pytest.mark.asyncio
+
+    async def test_get_doctors(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test getting list of doctors."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/doctors",
             headers=auth_headers,
         )
@@ -26,14 +28,16 @@ class TestDoctors:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_get_doctors_by_specialization(
+    @pytest.mark.asyncio
+
+    async def test_get_doctors_by_specialization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test filtering doctors by specialization."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/doctors?specialization={test_doctor.specialization}",
             headers=auth_headers,
         )
@@ -42,14 +46,16 @@ class TestDoctors:
         assert isinstance(data, list)
         assert all(d["specialization"] == test_doctor.specialization for d in data)
 
-    def test_get_doctors_active_only(
+    @pytest.mark.asyncio
+
+    async def test_get_doctors_active_only(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test filtering only active doctors."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/doctors?active_only=true",
             headers=auth_headers,
         )
@@ -57,14 +63,16 @@ class TestDoctors:
         data = response.json()
         assert all(d.get("is_active", True) for d in data)
 
-    def test_get_doctor_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test getting doctor by ID."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/doctors/{test_doctor.id}",
             headers=auth_headers,
         )
@@ -73,26 +81,30 @@ class TestDoctors:
         assert data["id"] == test_doctor.id
         assert data["name"] == test_doctor.name
 
-    def test_get_doctor_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test getting non-existent doctor."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/doctors/{uuid4()}",
             headers=auth_headers,
         )
         assert response.status_code == 404
 
-    def test_update_doctor(
+    @pytest.mark.asyncio
+
+    async def test_update_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test updating doctor details."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/doctors/{test_doctor.id}",
             headers=auth_headers,
             json={
@@ -105,9 +117,11 @@ class TestDoctors:
         assert data["consultation_fee"] == 600.0
         assert data["accepting_new_patients"] == False
 
-    def test_update_doctor_working_hours(
+    @pytest.mark.asyncio
+
+    async def test_update_doctor_working_hours(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
@@ -120,7 +134,7 @@ class TestDoctors:
             "friday": {"start": "10:00", "end": "18:00"},
             "saturday": {"start": "10:00", "end": "14:00"},
         }
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/doctors/{test_doctor.id}",
             headers=auth_headers,
             json={"working_hours": new_hours},
@@ -129,16 +143,18 @@ class TestDoctors:
         data = response.json()
         assert data["working_hours"]["saturday"]["start"] == "10:00"
 
-    def test_get_doctor_appointments(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_appointments(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
         test_appointment,
     ):
         """Test getting doctor's appointments."""
-        response = client.get(
-            f"/api/v1/appointments?doctor_id={test_doctor.id}",
+        response = await client.get(
+            f"/api/v1/appointments?doctor_id={str(test_doctor.id)}",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -149,14 +165,16 @@ class TestDoctors:
 class TestDoctorAvailability:
     """Tests for doctor availability."""
 
-    def test_get_doctor_availability(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_availability(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test getting doctor availability info."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/doctors/{test_doctor.id}",
             headers=auth_headers,
         )
@@ -166,14 +184,16 @@ class TestDoctorAvailability:
         assert "slot_duration" in data
         assert "accepting_new_patients" in data
 
-    def test_doctor_deactivation(
+    @pytest.mark.asyncio
+
+    async def test_doctor_deactivation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_doctor,
     ):
         """Test deactivating a doctor."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/doctors/{test_doctor.id}",
             headers=auth_headers,
             json={"is_active": False},
@@ -183,9 +203,10 @@ class TestDoctorAvailability:
         assert data["is_active"] == False
 
         # Verify doctor doesn't appear in active list
-        response = client.get(
+        response = await client.get(
             "/api/v1/doctors?active_only=true",
             headers=auth_headers,
         )
         data = response.json()
         assert not any(d["id"] == test_doctor.id for d in data)
+

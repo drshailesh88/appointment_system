@@ -96,7 +96,10 @@ async def appointment(db_session, doctor_with_calendar, patient):
 class TestGoogleCalendarIntegration:
     """Test Google Calendar integration."""
 
-    def test_encryption(self):
+    @pytest.mark.asyncio
+
+
+    async def test_encryption(self):
         """Test token encryption and decryption."""
         integration = GoogleCalendarIntegration(
             client_id="test_id",
@@ -111,7 +114,10 @@ class TestGoogleCalendarIntegration:
         assert encrypted != token
         assert decrypted == token
 
-    def test_is_configured(self):
+    @pytest.mark.asyncio
+
+
+    async def test_is_configured(self):
         """Test configuration check."""
         # Not configured
         integration = GoogleCalendarIntegration()
@@ -128,6 +134,9 @@ class TestGoogleCalendarIntegration:
 class TestCalendarSyncService:
     """Test Calendar Sync Service."""
 
+    @pytest.mark.asyncio
+
+
     async def test_get_doctor_calendar_settings(
         self, db_session, doctor_with_calendar
     ):
@@ -139,12 +148,18 @@ class TestCalendarSyncService:
         assert settings.doctor_id == doctor_with_calendar.id
         assert settings.sync_enabled is True
 
+    @pytest.mark.asyncio
+
+
     async def test_get_settings_when_not_configured(self, db_session, doctor):
         """Test retrieving settings when doctor has no calendar configured."""
         service = CalendarSyncService(db_session)
         settings = await service.get_doctor_calendar_settings(doctor.id)
 
         assert settings is None
+
+    @pytest.mark.asyncio
+
 
     async def test_sync_appointment_creates_event(
         self, db_session, appointment, mock_google_calendar
@@ -163,6 +178,9 @@ class TestCalendarSyncService:
         # Verify create_event was called
         mock_google_calendar.create_event.assert_called_once()
 
+    @pytest.mark.asyncio
+
+
     async def test_sync_appointment_updates_event(
         self, db_session, appointment, mock_google_calendar
     ):
@@ -180,6 +198,9 @@ class TestCalendarSyncService:
 
         # Verify update_event was called
         mock_google_calendar.update_event.assert_called_once()
+
+    @pytest.mark.asyncio
+
 
     async def test_sync_cancelled_appointment_deletes_event(
         self, db_session, appointment, mock_google_calendar
@@ -200,6 +221,9 @@ class TestCalendarSyncService:
 
         # Verify delete_event was called
         mock_google_calendar.delete_event.assert_called_once()
+
+    @pytest.mark.asyncio
+
 
     async def test_sync_appointment_when_sync_disabled(
         self, db_session, appointment
@@ -222,6 +246,9 @@ class TestCalendarSyncService:
 
         assert success is False
         assert appointment.calendar_sync_status == "skipped"
+
+    @pytest.mark.asyncio
+
 
     async def test_check_conflicts(
         self, db_session, doctor_with_calendar, mock_google_calendar
@@ -250,6 +277,9 @@ class TestCalendarSyncService:
 
         assert len(conflicts) == 1
         assert conflicts[0]["event_id"] == "conflict_1"
+
+    @pytest.mark.asyncio
+
 
     async def test_sync_multiple_appointments(
         self, db_session, doctor_with_calendar, patient, mock_google_calendar
@@ -284,6 +314,9 @@ class TestCalendarSyncService:
         assert stats["synced"] == 3
         assert stats["failed"] == 0
 
+    @pytest.mark.asyncio
+
+
     async def test_disconnect_calendar(
         self, db_session, doctor_with_calendar, appointment, mock_google_calendar
     ):
@@ -312,6 +345,9 @@ class TestCalendarSyncService:
         await db_session.refresh(appointment)
         assert appointment.google_calendar_event_id is None
 
+    @pytest.mark.asyncio
+
+
     async def test_event_description_formatting(
         self, db_session, appointment
     ):
@@ -330,6 +366,9 @@ class TestCalendarSyncService:
 class TestCalendarAPIEndpoints:
     """Test Calendar API endpoints."""
 
+    @pytest.mark.asyncio
+
+
     async def test_get_auth_url(self, client, authenticated_user, doctor):
         """Test getting OAuth authorization URL."""
         with patch("app.integrations.google_calendar.get_google_calendar_integration") as mock:
@@ -339,7 +378,7 @@ class TestCalendarAPIEndpoints:
             mock.return_value = integration
 
             response = await client.get(
-                f"/api/v1/calendar/auth-url?doctor_id={doctor.id}",
+                f"/api/v1/calendar/auth-url?doctor_id={str(doctor.id)}",
                 headers=authenticated_user,
             )
 
@@ -347,6 +386,9 @@ class TestCalendarAPIEndpoints:
             data = response.json()
             assert "auth_url" in data
             assert "state" in data
+
+    @pytest.mark.asyncio
+
 
     async def test_oauth_callback(self, client, db_session, doctor):
         """Test OAuth callback handling."""
@@ -381,12 +423,15 @@ class TestCalendarAPIEndpoints:
             data = response.json()
             assert data["success"] is True
 
+    @pytest.mark.asyncio
+
+
     async def test_get_sync_status(
         self, client, authenticated_user, doctor_with_calendar
     ):
         """Test getting sync status."""
         response = await client.get(
-            f"/api/v1/calendar/status?doctor_id={doctor_with_calendar.id}",
+            f"/api/v1/calendar/status?doctor_id={str(doctor_with_calendar.id)}",
             headers=authenticated_user,
         )
 
@@ -394,6 +439,9 @@ class TestCalendarAPIEndpoints:
         data = response.json()
         assert data["connected"] is True
         assert data["sync_enabled"] is True
+
+    @pytest.mark.asyncio
+
 
     async def test_trigger_sync(
         self, client, authenticated_user, doctor_with_calendar, mock_google_calendar

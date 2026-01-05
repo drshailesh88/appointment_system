@@ -27,6 +27,8 @@ def sample_image_bytes():
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_upload_document(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -59,6 +61,8 @@ async def test_upload_document(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_upload_document_invalid_patient(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -84,6 +88,8 @@ async def test_upload_document_invalid_patient(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_upload_document_invalid_file_type(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -109,6 +115,8 @@ async def test_upload_document_invalid_file_type(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_list_documents(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -128,6 +136,8 @@ async def test_list_documents(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_list_documents_with_filters(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -150,6 +160,8 @@ async def test_list_documents_with_filters(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_document(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -184,6 +196,8 @@ async def test_get_document(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_document_not_found(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -198,6 +212,8 @@ async def test_get_document_not_found(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_patient_documents(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -214,6 +230,8 @@ async def test_get_patient_documents(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_patient_documents_invalid_patient(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -228,6 +246,8 @@ async def test_get_patient_documents_invalid_patient(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_update_document(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -270,6 +290,8 @@ async def test_update_document(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_delete_document(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -306,6 +328,8 @@ async def test_delete_document(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_document_types(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -324,6 +348,8 @@ async def test_get_document_types(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_document_stats(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -344,6 +370,8 @@ async def test_get_document_stats(
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_get_patient_document_summary(
     async_client: AsyncClient,
     auth_headers: dict,
@@ -368,6 +396,8 @@ async def test_get_patient_document_summary(
     reason="OCR processing test skipped (slow)",
 )
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+
 async def test_process_ocr(
     async_client: AsyncClient,
     auth_headers: dict,

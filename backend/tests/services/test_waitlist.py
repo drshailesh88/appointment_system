@@ -49,7 +49,9 @@ class TestWaitlistService:
         # Mock patient query
         mock_patient = MagicMock()
         mock_patient.id = patient_id
-        mock_patient.name = "Test Patient"
+        mock_patient.first_name = "Test"
+        mock_patient.last_name = "Patient"
+        mock_patient.full_name = "Test Patient"
         mock_patient.phone = "+919876543210"
         mock_db.get.return_value = mock_patient
 
@@ -131,7 +133,9 @@ class TestWaitlistService:
 
         # Mock patient for notification
         mock_patient = MagicMock()
-        mock_patient.name = "Test Patient"
+        mock_patient.first_name = "Test"
+        mock_patient.last_name = "Patient"
+        mock_patient.full_name = "Test Patient"
         mock_patient.phone = "+919876543210"
         mock_db.get.return_value = mock_patient
 

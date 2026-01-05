@@ -13,7 +13,10 @@ from app.services.billing import BillingService, GSTType
 class TestGSTCalculation:
     """Test GST calculation logic."""
 
-    def test_intra_state_gst(self):
+    @pytest.mark.asyncio
+
+
+    async def test_intra_state_gst(self):
         """Test CGST+SGST for intra-state transaction."""
         result = BillingService.calculate_gst(
             amount=Decimal("10000.00"),
@@ -28,7 +31,10 @@ class TestGSTCalculation:
         assert result["igst"] == Decimal("0.00")
         assert result["total_tax"] == Decimal("1800.00")  # 18% total
 
-    def test_inter_state_gst(self):
+    @pytest.mark.asyncio
+
+
+    async def test_inter_state_gst(self):
         """Test IGST for inter-state transaction."""
         result = BillingService.calculate_gst(
             amount=Decimal("10000.00"),
@@ -43,7 +49,10 @@ class TestGSTCalculation:
         assert result["igst"] == Decimal("1800.00")  # 18%
         assert result["total_tax"] == Decimal("1800.00")
 
-    def test_exempt_service(self):
+    @pytest.mark.asyncio
+
+
+    async def test_exempt_service(self):
         """Test GST exempt service."""
         result = BillingService.calculate_gst(
             amount=Decimal("10000.00"),
@@ -58,7 +67,10 @@ class TestGSTCalculation:
         assert result["igst"] == Decimal("0.00")
         assert result["total_tax"] == Decimal("0.00")
 
-    def test_custom_gst_rate(self):
+    @pytest.mark.asyncio
+
+
+    async def test_custom_gst_rate(self):
         """Test custom GST rate."""
         result = BillingService.calculate_gst(
             amount=Decimal("10000.00"),
@@ -71,7 +83,10 @@ class TestGSTCalculation:
         assert result["sgst"] == Decimal("600.00")  # 6%
         assert result["total_tax"] == Decimal("1200.00")
 
-    def test_case_insensitive_state_codes(self):
+    @pytest.mark.asyncio
+
+
+    async def test_case_insensitive_state_codes(self):
         """Test that state codes are case-insensitive."""
         result1 = BillingService.calculate_gst(
             amount=Decimal("1000.00"),
@@ -91,7 +106,10 @@ class TestGSTCalculation:
 class TestInvoiceTotalsCalculation:
     """Test invoice totals calculation."""
 
-    def test_invoice_totals_without_discount(self):
+    @pytest.mark.asyncio
+
+
+    async def test_invoice_totals_without_discount(self):
         """Test invoice calculation without discount."""
         items = [
             InvoiceItem(
@@ -126,7 +144,10 @@ class TestInvoiceTotalsCalculation:
         assert result["tax_amount"] == Decimal("270.00")  # 18% of 1500
         assert result["total_amount"] == Decimal("1770.00")
 
-    def test_invoice_totals_with_discount(self):
+    @pytest.mark.asyncio
+
+
+    async def test_invoice_totals_with_discount(self):
         """Test invoice calculation with discount."""
         items = [
             InvoiceItem(
@@ -153,7 +174,10 @@ class TestInvoiceTotalsCalculation:
         assert result["tax_amount"] == Decimal("144.00")  # 18% of 800
         assert result["total_amount"] == Decimal("944.00")
 
-    def test_invoice_totals_inter_state(self):
+    @pytest.mark.asyncio
+
+
+    async def test_invoice_totals_inter_state(self):
         """Test invoice calculation for inter-state."""
         items = [
             InvoiceItem(
@@ -182,7 +206,10 @@ class TestInvoiceTotalsCalculation:
 class TestInsuranceSplit:
     """Test insurance vs patient portion calculations."""
 
-    def test_no_copay_no_deductible(self):
+    @pytest.mark.asyncio
+
+
+    async def test_no_copay_no_deductible(self):
         """Test split with no copay or deductible."""
         result = BillingService.calculate_insurance_split(
             total_amount=Decimal("10000.00"),
@@ -193,7 +220,10 @@ class TestInsuranceSplit:
         assert result["patient_deductible"] == Decimal("0.00")
         assert result["patient_copay"] == Decimal("0.00")
 
-    def test_with_copay(self):
+    @pytest.mark.asyncio
+
+
+    async def test_with_copay(self):
         """Test split with 10% copay."""
         result = BillingService.calculate_insurance_split(
             total_amount=Decimal("10000.00"),
@@ -205,7 +235,10 @@ class TestInsuranceSplit:
         assert result["patient_deductible"] == Decimal("0.00")
         assert result["patient_copay"] == Decimal("1000.00")
 
-    def test_with_deductible(self):
+    @pytest.mark.asyncio
+
+
+    async def test_with_deductible(self):
         """Test split with deductible."""
         result = BillingService.calculate_insurance_split(
             total_amount=Decimal("10000.00"),
@@ -217,7 +250,10 @@ class TestInsuranceSplit:
         assert result["insurance_portion"] == Decimal("8000.00")
         assert result["patient_portion"] == Decimal("2000.00")
 
-    def test_with_copay_and_deductible(self):
+    @pytest.mark.asyncio
+
+
+    async def test_with_copay_and_deductible(self):
         """Test split with both copay and deductible."""
         result = BillingService.calculate_insurance_split(
             total_amount=Decimal("10000.00"),
@@ -236,7 +272,10 @@ class TestInsuranceSplit:
         assert result["insurance_portion"] == Decimal("8100.00")
         assert result["patient_portion"] == Decimal("1900.00")
 
-    def test_with_partial_insurance_approval(self):
+    @pytest.mark.asyncio
+
+
+    async def test_with_partial_insurance_approval(self):
         """Test when insurance approves less than claimed."""
         result = BillingService.calculate_insurance_split(
             total_amount=Decimal("10000.00"),
@@ -259,22 +298,34 @@ class TestInsuranceSplit:
 class TestHSNCodes:
     """Test HSN code retrieval."""
 
-    def test_consultation_hsn(self):
+    @pytest.mark.asyncio
+
+
+    async def test_consultation_hsn(self):
         """Test HSN code for consultation."""
         code = BillingService.get_hsn_code("consultation")
         assert code == "9993"
 
-    def test_diagnostic_hsn(self):
+    @pytest.mark.asyncio
+
+
+    async def test_diagnostic_hsn(self):
         """Test HSN code for diagnostic."""
         code = BillingService.get_hsn_code("diagnostic")
         assert code == "9993"
 
-    def test_ambulance_hsn(self):
+    @pytest.mark.asyncio
+
+
+    async def test_ambulance_hsn(self):
         """Test HSN code for ambulance."""
         code = BillingService.get_hsn_code("ambulance")
         assert code == "9994"
 
-    def test_unknown_service_default_hsn(self):
+    @pytest.mark.asyncio
+
+
+    async def test_unknown_service_default_hsn(self):
         """Test default HSN code for unknown service."""
         code = BillingService.get_hsn_code("unknown_service")
         assert code == "9993"
@@ -283,26 +334,41 @@ class TestHSNCodes:
 class TestGSTINValidation:
     """Test GSTIN validation."""
 
-    def test_valid_gstin(self):
+    @pytest.mark.asyncio
+
+
+    async def test_valid_gstin(self):
         """Test valid GSTIN format."""
         assert BillingService.validate_gstin("27AABCT1234F1Z5") is True
         assert BillingService.validate_gstin("29AABCT1234F1Z5") is True
 
-    def test_invalid_gstin_length(self):
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_gstin_length(self):
         """Test GSTIN with wrong length."""
         assert BillingService.validate_gstin("27AABCT1234F1Z") is False  # Too short
         assert BillingService.validate_gstin("27AABCT1234F1Z55") is False  # Too long
 
-    def test_invalid_gstin_format(self):
+    @pytest.mark.asyncio
+
+
+    async def test_invalid_gstin_format(self):
         """Test GSTIN with invalid format."""
         assert BillingService.validate_gstin("XXAABCT1234F1Z5") is False  # Should start with digits
         assert BillingService.validate_gstin("27AABCT1234F1X5") is False  # Should have Z at position 13
 
-    def test_none_gstin(self):
+    @pytest.mark.asyncio
+
+
+    async def test_none_gstin(self):
         """Test None GSTIN."""
         assert BillingService.validate_gstin(None) is False
 
-    def test_empty_gstin(self):
+    @pytest.mark.asyncio
+
+
+    async def test_empty_gstin(self):
         """Test empty GSTIN."""
         assert BillingService.validate_gstin("") is False
 
@@ -310,22 +376,37 @@ class TestGSTINValidation:
 class TestServiceExemptions:
     """Test GST exemption checks."""
 
-    def test_hospital_room_below_threshold(self):
+    @pytest.mark.asyncio
+
+
+    async def test_hospital_room_below_threshold(self):
         """Test hospital room charges below Rs 5000 are exempt."""
         assert BillingService.is_service_exempt("hospital_room_charges", Decimal("4000.00")) is True
 
-    def test_hospital_room_above_threshold(self):
+    @pytest.mark.asyncio
+
+
+    async def test_hospital_room_above_threshold(self):
         """Test hospital room charges above Rs 5000 are not exempt."""
         assert BillingService.is_service_exempt("hospital_room_charges", Decimal("6000.00")) is False
 
-    def test_diagnostic_tests_exempt(self):
+    @pytest.mark.asyncio
+
+
+    async def test_diagnostic_tests_exempt(self):
         """Test diagnostic tests are exempt."""
         assert BillingService.is_service_exempt("diagnostic_tests_prescribed") is True
 
-    def test_ambulance_exempt(self):
+    @pytest.mark.asyncio
+
+
+    async def test_ambulance_exempt(self):
         """Test ambulance services are exempt."""
         assert BillingService.is_service_exempt("transportation_patient") is True
 
-    def test_non_exempt_service(self):
+    @pytest.mark.asyncio
+
+
+    async def test_non_exempt_service(self):
         """Test non-exempt service."""
         assert BillingService.is_service_exempt("consultation") is False

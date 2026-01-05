@@ -25,6 +25,9 @@ from app.services.insurance_claims import InsuranceClaimsService
 class TestInsuranceClaimsService:
     """Test insurance claims service."""
 
+    @pytest.mark.asyncio
+
+
     async def test_generate_claim_number(self, async_session):
         """Test claim number generation."""
         # Create test insurance company
@@ -44,6 +47,9 @@ class TestInsuranceClaimsService:
         expected_prefix = f"CLM-{today.strftime('%Y%m%d')}-TEST"
         assert claim_number.startswith(expected_prefix)
         assert claim_number.endswith("-0001")
+
+    @pytest.mark.asyncio
+
 
     async def test_create_claim_success(self, async_session, test_patient, test_invoice):
         """Test creating a valid insurance claim."""
@@ -85,6 +91,9 @@ class TestInsuranceClaimsService:
         assert claim.status == ClaimStatus.DRAFT.value
         assert claim.internal_claim_number is not None
 
+    @pytest.mark.asyncio
+
+
     async def test_create_claim_invalid_insurance(self, async_session, test_patient, test_invoice):
         """Test creating claim with invalid insurance ID."""
         service = InsuranceClaimsService(async_session)
@@ -96,6 +105,9 @@ class TestInsuranceClaimsService:
                 patient_insurance_id=uuid4(),  # Non-existent
                 claimed_amount=Decimal("10000.00"),
             )
+
+    @pytest.mark.asyncio
+
 
     async def test_create_claim_expired_insurance(self, async_session, test_patient, test_invoice):
         """Test creating claim with expired insurance."""
@@ -130,6 +142,9 @@ class TestInsuranceClaimsService:
                 patient_insurance_id=patient_insurance.id,
                 claimed_amount=Decimal("10000.00"),
             )
+
+    @pytest.mark.asyncio
+
 
     async def test_submit_claim(self, async_session, test_patient, test_invoice):
         """Test submitting a claim."""
@@ -168,6 +183,9 @@ class TestInsuranceClaimsService:
         assert submitted_claim.status == ClaimStatus.SUBMITTED.value
         assert submitted_claim.submitted_at is not None
         assert submitted_claim.submitted_by == "Dr. Test"
+
+    @pytest.mark.asyncio
+
 
     async def test_update_claim_status(self, async_session, test_patient, test_invoice):
         """Test updating claim status."""
@@ -210,6 +228,9 @@ class TestInsuranceClaimsService:
         assert updated_claim.claim_number == "INS-12345"
         assert updated_claim.approved_at is not None
         assert updated_claim.patient_liability == Decimal("1000.00")  # 10000 - 9000
+
+    @pytest.mark.asyncio
+
 
     async def test_appeal_rejected_claim(self, async_session, test_patient, test_invoice):
         """Test appealing a rejected claim."""
@@ -256,6 +277,9 @@ class TestInsuranceClaimsService:
         assert appealed_claim.appeal_submitted_at is not None
         assert appealed_claim.appeal_notes == "Additional documents attached"
 
+    @pytest.mark.asyncio
+
+
     async def test_generate_preauth_number(self, async_session):
         """Test pre-auth number generation."""
         company = InsuranceCompany(
@@ -273,6 +297,9 @@ class TestInsuranceClaimsService:
         expected_prefix = f"PA-{today.strftime('%Y%m%d')}-TEST"
         assert preauth_number.startswith(expected_prefix)
         assert preauth_number.endswith("-0001")
+
+    @pytest.mark.asyncio
+
 
     async def test_create_preauthorization(self, async_session, test_patient):
         """Test creating pre-authorization."""
@@ -318,6 +345,9 @@ class TestInsuranceClaimsService:
         assert preauth.status == PreAuthStatus.PENDING.value
         assert preauth.internal_ref_number is not None
 
+    @pytest.mark.asyncio
+
+
     async def test_preauth_below_threshold_fails(self, async_session, test_patient):
         """Test pre-auth below threshold is rejected."""
         company = InsuranceCompany(
@@ -353,6 +383,9 @@ class TestInsuranceClaimsService:
                 requested_amount=Decimal("30000.00"),  # Below threshold
                 requested_date=date.today(),
             )
+
+    @pytest.mark.asyncio
+
 
     async def test_submit_preauthorization(self, async_session, test_patient):
         """Test submitting pre-authorization."""
@@ -396,6 +429,9 @@ class TestInsuranceClaimsService:
 
         assert submitted_preauth.status == PreAuthStatus.REQUESTED.value
         assert submitted_preauth.submitted_at is not None
+
+    @pytest.mark.asyncio
+
 
     async def test_check_preauth_validity(self, async_session, test_patient):
         """Test checking pre-auth validity."""
@@ -445,6 +481,9 @@ class TestInsuranceClaimsService:
         assert validity["is_valid"] is True
         assert validity["auth_number"] == "AUTH-12345"
         assert validity["approved_amount"] == 90000.0
+
+    @pytest.mark.asyncio
+
 
     async def test_get_claim_summary(self, async_session, test_patient, test_invoice):
         """Test getting claim summary."""

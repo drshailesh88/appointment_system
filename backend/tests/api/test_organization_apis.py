@@ -7,13 +7,14 @@ Tests cover:
 - EMR API (/api/v1/emr)
 - Public API (/api/v1/public)
 """
+import json
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.clinic import Clinic
 from app.models.doctor import Doctor
@@ -28,7 +29,8 @@ from app.core.security import get_password_hash, create_access_token
 
 
 @pytest.fixture
-def test_organization(db: Session, test_user: User) -> Organization:
+@pytest.mark.asyncio
+async def test_organization(db: AsyncSession, test_user: User) -> Organization:
     """Create a test organization."""
     org = Organization(
         id=uuid4(),
@@ -46,13 +48,14 @@ def test_organization(db: Session, test_user: User) -> Organization:
         is_active=True,
     )
     db.add(org)
-    db.commit()
-    db.refresh(org)
+    await db.commit()
+    await db.refresh(org)
     return org
 
 
 @pytest.fixture
-def test_staff_role(db: Session, test_organization: Organization) -> StaffRole:
+@pytest.mark.asyncio
+async def test_staff_role(db: AsyncSession, test_organization: Organization) -> StaffRole:
     """Create a test staff role."""
     role = StaffRole(
         id=uuid4(),
@@ -64,13 +67,14 @@ def test_staff_role(db: Session, test_organization: Organization) -> StaffRole:
         is_active=True,
     )
     db.add(role)
-    db.commit()
-    db.refresh(role)
+    await db.commit()
+    await db.refresh(role)
     return role
 
 
 @pytest.fixture
-def test_staff_user(db: Session, test_clinic: Clinic) -> User:
+@pytest.mark.asyncio
+async def test_staff_user(db: AsyncSession, test_clinic: Clinic) -> User:
     """Create a test staff user."""
     user = User(
         id=uuid4(),
@@ -83,14 +87,15 @@ def test_staff_user(db: Session, test_clinic: Clinic) -> User:
         is_active=True,
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
     return user
 
 
 @pytest.fixture
-def test_staff_assignment(
-    db: Session,
+@pytest.mark.asyncio
+async def test_staff_assignment(
+    db: AsyncSession,
     test_staff_user: User,
     test_clinic: Clinic,
     test_staff_role: StaffRole,
@@ -106,8 +111,8 @@ def test_staff_assignment(
         is_active=True,
     )
     db.add(assignment)
-    db.commit()
-    db.refresh(assignment)
+    await db.commit()
+    await db.refresh(assignment)
     return assignment
 
 
@@ -124,14 +129,16 @@ def staff_auth_headers(test_staff_user: User) -> dict:
 class TestOrganizationsAPI:
     """Tests for /api/v1/organizations endpoints."""
 
-    def test_create_organization(
+    @pytest.mark.asyncio
+
+    async def test_create_organization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
         """Test creating a new organization."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/organizations/",
             headers=auth_headers,
             json={
@@ -156,14 +163,16 @@ class TestOrganizationsAPI:
         assert data["is_active"] is True
         assert "id" in data
 
-    def test_create_organization_auto_slug(
+    @pytest.mark.asyncio
+
+    async def test_create_organization_auto_slug(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
         """Test creating organization with auto-generated slug."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/organizations/",
             headers=auth_headers,
             json={
@@ -178,14 +187,16 @@ class TestOrganizationsAPI:
         assert data["name"] == "Apollo Hospitals"
         assert data["slug"] == "apollo-hospitals"
 
-    def test_create_organization_requires_admin(
+    @pytest.mark.asyncio
+
+    async def test_create_organization_requires_admin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         staff_auth_headers: dict,
         test_user: User,
     ):
         """Test that creating organization requires admin role."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/organizations/",
             headers=staff_auth_headers,
             json={
@@ -197,14 +208,16 @@ class TestOrganizationsAPI:
 
         assert response.status_code == 403
 
-    def test_list_organizations(
+    @pytest.mark.asyncio
+
+    async def test_list_organizations(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test listing all organizations."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/organizations/",
             headers=auth_headers,
         )
@@ -215,14 +228,16 @@ class TestOrganizationsAPI:
         assert len(data) >= 1
         assert data[0]["name"] == test_organization.name
 
-    def test_list_organizations_with_pagination(
+    @pytest.mark.asyncio
+
+    async def test_list_organizations_with_pagination(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test listing organizations with pagination."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/organizations/?skip=0&limit=10",
             headers=auth_headers,
         )
@@ -232,14 +247,16 @@ class TestOrganizationsAPI:
         assert isinstance(data, list)
         assert len(data) <= 10
 
-    def test_list_organizations_filter_active(
+    @pytest.mark.asyncio
+
+    async def test_list_organizations_filter_active(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test filtering organizations by active status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/organizations/?is_active=true",
             headers=auth_headers,
         )
@@ -248,14 +265,16 @@ class TestOrganizationsAPI:
         data = response.json()
         assert all(org["is_active"] for org in data)
 
-    def test_get_organization_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_organization_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test getting organization by ID."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/organizations/{test_organization.id}",
             headers=auth_headers,
         )
@@ -266,14 +285,16 @@ class TestOrganizationsAPI:
         assert data["name"] == test_organization.name
         assert data["clinic_count"] >= 0
 
-    def test_get_organization_by_slug(
+    @pytest.mark.asyncio
+
+    async def test_get_organization_by_slug(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test getting organization by slug."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/organizations/slug/{test_organization.slug}",
             headers=auth_headers,
         )
@@ -283,27 +304,31 @@ class TestOrganizationsAPI:
         assert data["slug"] == test_organization.slug
         assert data["name"] == test_organization.name
 
-    def test_get_organization_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_organization_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting non-existent organization."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/organizations/{uuid4()}",
             headers=auth_headers,
         )
 
         assert response.status_code == 404
 
-    def test_update_organization(
+    @pytest.mark.asyncio
+
+    async def test_update_organization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test updating organization details."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/organizations/{test_organization.id}",
             headers=auth_headers,
             json={
@@ -319,15 +344,17 @@ class TestOrganizationsAPI:
         assert data["description"] == "Updated description"
         assert data["max_clinics"] == 20
 
-    def test_add_clinic_to_organization(
+    @pytest.mark.asyncio
+
+    async def test_add_clinic_to_organization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
         test_clinic: Clinic,
     ):
         """Test adding a clinic to an organization."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/organizations/{test_organization.id}/clinics",
             headers=auth_headers,
             json={"clinic_id": str(test_clinic.id)},
@@ -338,20 +365,22 @@ class TestOrganizationsAPI:
         assert data["message"] == "Clinic added successfully"
         assert data["clinic_id"] == str(test_clinic.id)
 
-    def test_remove_clinic_from_organization(
+    @pytest.mark.asyncio
+
+    async def test_remove_clinic_from_organization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
         test_clinic: Clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test removing a clinic from an organization."""
         # First add the clinic
         test_clinic.organization_id = test_organization.id
-        db.commit()
+        await db.commit()
 
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/organizations/{test_organization.id}/clinics/{test_clinic.id}",
             headers=auth_headers,
         )
@@ -360,20 +389,22 @@ class TestOrganizationsAPI:
         data = response.json()
         assert data["message"] == "Clinic removed successfully"
 
-    def test_get_organization_clinics(
+    @pytest.mark.asyncio
+
+    async def test_get_organization_clinics(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
         test_clinic: Clinic,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting all clinics in an organization."""
         # Add clinic to organization
         test_clinic.organization_id = test_organization.id
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/organizations/{test_organization.id}/clinics",
             headers=auth_headers,
         )
@@ -382,14 +413,16 @@ class TestOrganizationsAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_organization_analytics(
+    @pytest.mark.asyncio
+
+    async def test_get_organization_analytics(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test getting organization-level analytics."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/organizations/{test_organization.id}/analytics",
             headers=auth_headers,
         )
@@ -410,14 +443,16 @@ class TestStaffAPI:
 
     # Staff Roles Tests
 
-    def test_create_staff_role(
+    @pytest.mark.asyncio
+
+    async def test_create_staff_role(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test creating a staff role."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/roles",
             headers=auth_headers,
             json={
@@ -434,14 +469,16 @@ class TestStaffAPI:
         assert "patients.view" in data["permissions"]
         assert data["is_active"] is True
 
-    def test_create_staff_role_invalid_permissions(
+    @pytest.mark.asyncio
+
+    async def test_create_staff_role_invalid_permissions(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test creating staff role with invalid permission format."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/roles",
             headers=auth_headers,
             json={
@@ -453,14 +490,16 @@ class TestStaffAPI:
 
         assert response.status_code == 422  # Validation error
 
-    def test_list_staff_roles(
+    @pytest.mark.asyncio
+
+    async def test_list_staff_roles(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_role: StaffRole,
     ):
         """Test listing staff roles."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/staff/roles",
             headers=auth_headers,
         )
@@ -470,16 +509,18 @@ class TestStaffAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_staff_roles_by_organization(
+    @pytest.mark.asyncio
+
+    async def test_list_staff_roles_by_organization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_role: StaffRole,
         test_organization: Organization,
     ):
         """Test listing staff roles filtered by organization."""
-        response = client.get(
-            f"/api/v1/staff/roles?organization_id={test_organization.id}",
+        response = await client.get(
+            f"/api/v1/staff/roles?organization_id={str(test_organization.id)}",
             headers=auth_headers,
         )
 
@@ -487,14 +528,16 @@ class TestStaffAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_staff_role(
+    @pytest.mark.asyncio
+
+    async def test_get_staff_role(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_role: StaffRole,
     ):
         """Test getting a specific staff role."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/staff/roles/{test_staff_role.id}",
             headers=auth_headers,
         )
@@ -504,14 +547,16 @@ class TestStaffAPI:
         assert data["id"] == str(test_staff_role.id)
         assert data["name"] == test_staff_role.name
 
-    def test_update_staff_role(
+    @pytest.mark.asyncio
+
+    async def test_update_staff_role(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_role: StaffRole,
     ):
         """Test updating a staff role."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/staff/roles/{test_staff_role.id}",
             headers=auth_headers,
             json={
@@ -525,11 +570,13 @@ class TestStaffAPI:
         assert data["description"] == "Updated description"
         assert "appointments.*" in data["permissions"]
 
-    def test_delete_staff_role(
+    @pytest.mark.asyncio
+
+    async def test_delete_staff_role(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_organization: Organization,
     ):
         """Test deleting a staff role."""
@@ -542,9 +589,9 @@ class TestStaffAPI:
             is_active=True,
         )
         db.add(role)
-        db.commit()
+        await db.commit()
 
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/staff/roles/{role.id}",
             headers=auth_headers,
         )
@@ -552,15 +599,17 @@ class TestStaffAPI:
         assert response.status_code == 200
         assert "deleted successfully" in response.json()["message"]
 
-    def test_seed_default_roles(
+    @pytest.mark.asyncio
+
+    async def test_seed_default_roles(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_organization: Organization,
     ):
         """Test seeding default staff roles."""
-        response = client.post(
-            f"/api/v1/staff/roles/seed?organization_id={test_organization.id}",
+        response = await client.post(
+            f"/api/v1/staff/roles/seed?organization_id={str(test_organization.id)}",
             headers=auth_headers,
         )
 
@@ -571,16 +620,18 @@ class TestStaffAPI:
 
     # Staff Assignments Tests
 
-    def test_create_staff_assignment(
+    @pytest.mark.asyncio
+
+    async def test_create_staff_assignment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_user: User,
         test_clinic: Clinic,
         test_staff_role: StaffRole,
     ):
         """Test assigning staff to a clinic."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/assignments",
             headers=auth_headers,
             json={
@@ -598,14 +649,16 @@ class TestStaffAPI:
         assert data["clinic_id"] == str(test_clinic.id)
         assert data["is_primary_location"] is True
 
-    def test_get_staff_assignment(
+    @pytest.mark.asyncio
+
+    async def test_get_staff_assignment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_assignment: StaffAssignment,
     ):
         """Test getting a specific staff assignment."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/staff/assignments/{test_staff_assignment.id}",
             headers=auth_headers,
         )
@@ -614,14 +667,16 @@ class TestStaffAPI:
         data = response.json()
         assert data["id"] == str(test_staff_assignment.id)
 
-    def test_update_staff_assignment(
+    @pytest.mark.asyncio
+
+    async def test_update_staff_assignment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_assignment: StaffAssignment,
     ):
         """Test updating a staff assignment."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/staff/assignments/{test_staff_assignment.id}",
             headers=auth_headers,
             json={
@@ -635,14 +690,16 @@ class TestStaffAPI:
         assert data["is_primary_location"] is False
         assert data["notes"] == "Updated notes"
 
-    def test_end_staff_assignment(
+    @pytest.mark.asyncio
+
+    async def test_end_staff_assignment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_assignment: StaffAssignment,
     ):
         """Test ending a staff assignment."""
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/staff/assignments/{test_staff_assignment.id}",
             headers=auth_headers,
         )
@@ -650,15 +707,17 @@ class TestStaffAPI:
         assert response.status_code == 200
         assert "ended successfully" in response.json()["message"]
 
-    def test_get_user_assignments(
+    @pytest.mark.asyncio
+
+    async def test_get_user_assignments(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_user: User,
         test_staff_assignment: StaffAssignment,
     ):
         """Test getting all assignments for a user."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/staff/users/{test_staff_user.id}/assignments",
             headers=auth_headers,
         )
@@ -668,29 +727,33 @@ class TestStaffAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_get_user_assignments_access_control(
+    @pytest.mark.asyncio
+
+    async def test_get_user_assignments_access_control(
         self,
-        client: TestClient,
+        client: AsyncClient,
         staff_auth_headers: dict,
         test_user: User,
     ):
         """Test that staff can only view their own assignments."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/staff/users/{test_user.id}/assignments",
             headers=staff_auth_headers,
         )
 
         assert response.status_code == 403
 
-    def test_get_clinic_staff(
+    @pytest.mark.asyncio
+
+    async def test_get_clinic_staff(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_clinic: Clinic,
         test_staff_assignment: StaffAssignment,
     ):
         """Test getting all staff at a clinic."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/staff/clinics/{test_clinic.id}/staff",
             headers=auth_headers,
         )
@@ -699,14 +762,16 @@ class TestStaffAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_transfer_staff(
+    @pytest.mark.asyncio
+
+    async def test_transfer_staff(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_user: User,
         test_clinic: Clinic,
         test_staff_role: StaffRole,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test transferring staff between clinics."""
         # Create second clinic
@@ -721,9 +786,9 @@ class TestStaffAPI:
             phone="+919876543220",
         )
         db.add(clinic2)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/transfer",
             headers=auth_headers,
             json={
@@ -741,16 +806,18 @@ class TestStaffAPI:
 
     # Permission Tests
 
-    def test_check_permission(
+    @pytest.mark.asyncio
+
+    async def test_check_permission(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_staff_user: User,
         test_clinic: Clinic,
         test_staff_assignment: StaffAssignment,
     ):
         """Test checking user permissions."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/permissions/check",
             headers=auth_headers,
             json={
@@ -765,15 +832,17 @@ class TestStaffAPI:
         assert "has_permission" in data
         assert isinstance(data["has_permission"], bool)
 
-    def test_check_permission_access_control(
+    @pytest.mark.asyncio
+
+    async def test_check_permission_access_control(
         self,
-        client: TestClient,
+        client: AsyncClient,
         staff_auth_headers: dict,
         test_user: User,
         test_clinic: Clinic,
     ):
         """Test that users can only check their own permissions."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/staff/permissions/check",
             headers=staff_auth_headers,
             json={
@@ -792,9 +861,11 @@ class TestStaffAPI:
 class TestEMRAPI:
     """Tests for /api/v1/emr endpoints."""
 
-    def test_get_emr_sync_status(self, client: TestClient, auth_headers: dict):
+    @pytest.mark.asyncio
+
+    async def test_get_emr_sync_status(self, client: AsyncClient, auth_headers: dict):
         """Test getting EMR sync status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/emr/status",
             headers=auth_headers,
         )
@@ -805,10 +876,11 @@ class TestEMRAPI:
         assert "last_sync" in data or data.get("is_available") is False
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_trigger_manual_sync(
+    @pytest.mark.asyncio
+    async def test_trigger_manual_sync(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test triggering manual EMR sync."""
@@ -821,7 +893,7 @@ class TestEMRAPI:
         })
         mock_service.return_value = mock_instance
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/emr/sync",
             headers=auth_headers,
         )
@@ -831,10 +903,11 @@ class TestEMRAPI:
         assert "message" in data
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_trigger_manual_sync_unavailable(
+    @pytest.mark.asyncio
+    async def test_trigger_manual_sync_unavailable(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test manual sync when EMR is unavailable."""
@@ -843,7 +916,7 @@ class TestEMRAPI:
         mock_instance.is_available.return_value = False
         mock_service.return_value = mock_instance
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/emr/sync",
             headers=auth_headers,
         )
@@ -853,10 +926,11 @@ class TestEMRAPI:
         assert "error" in data
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_get_emr_patient(
+    @pytest.mark.asyncio
+    async def test_get_emr_patient(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting patient from EMR."""
@@ -880,7 +954,7 @@ class TestEMRAPI:
         mock_instance.emr_async.get_patient = AsyncMock(return_value=mock_patient)
         mock_service.return_value = mock_instance
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/emr/patients/EMR123",
             headers=auth_headers,
         )
@@ -891,18 +965,19 @@ class TestEMRAPI:
         assert data["first_name"] == "John"
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_get_patient_visits(
+    @pytest.mark.asyncio
+    async def test_get_patient_visits(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting patient visit history from EMR."""
         # Set EMR ID on patient
         test_patient.emr_patient_id = "EMR123"
-        db.commit()
+        await db.commit()
 
         # Mock EMR visit data
         mock_visit = MagicMock()
@@ -922,7 +997,7 @@ class TestEMRAPI:
         mock_instance.emr_async.get_patient_visits = AsyncMock(return_value=[mock_visit])
         mock_service.return_value = mock_instance
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/visits",
             headers=auth_headers,
         )
@@ -933,18 +1008,19 @@ class TestEMRAPI:
         assert len(data) >= 1
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_get_patient_prescriptions(
+    @pytest.mark.asyncio
+    async def test_get_patient_prescriptions(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting patient prescription history."""
         # Set EMR ID on patient
         test_patient.emr_patient_id = "EMR123"
-        db.commit()
+        await db.commit()
 
         # Mock EMR visit data with prescriptions
         mock_visit = MagicMock()
@@ -964,7 +1040,7 @@ class TestEMRAPI:
         mock_instance.emr_async.get_patient_visits = AsyncMock(return_value=[mock_visit])
         mock_service.return_value = mock_instance
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/prescriptions",
             headers=auth_headers,
         )
@@ -974,19 +1050,20 @@ class TestEMRAPI:
         assert isinstance(data, list)
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_get_patient_timeline(
+    @pytest.mark.asyncio
+    async def test_get_patient_timeline(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_appointment,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting unified patient timeline."""
         # Set EMR ID on patient
         test_patient.emr_patient_id = "EMR123"
-        db.commit()
+        await db.commit()
 
         # Mock EMR service
         mock_instance = MagicMock()
@@ -994,7 +1071,7 @@ class TestEMRAPI:
         mock_instance.emr_async.get_patient_visits = AsyncMock(return_value=[])
         mock_service.return_value = mock_instance
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             headers=auth_headers,
         )
@@ -1006,10 +1083,11 @@ class TestEMRAPI:
         assert data["patient_id"] == str(test_patient.id)
 
     @patch("app.services.emr_sync_service.get_emr_sync_service")
-    def test_link_appointment_to_visit(
+    @pytest.mark.asyncio
+    async def test_link_appointment_to_visit(
         self,
         mock_service,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment,
     ):
@@ -1019,7 +1097,7 @@ class TestEMRAPI:
         mock_instance.link_appointment_to_visit = AsyncMock(return_value=True)
         mock_service.return_value = mock_instance
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/emr/appointments/{test_appointment.id}/link-visit/VISIT123",
             headers=auth_headers,
         )
@@ -1039,11 +1117,12 @@ class TestPublicAPI:
     # OTP Tests
 
     @patch("app.services.otp_service.OTPService.send_otp")
-    def test_send_otp(self, mock_send, client: TestClient):
+    @pytest.mark.asyncio
+    async def test_send_otp(self, mock_send, client: AsyncClient):
         """Test sending OTP to phone number."""
         mock_send.return_value = "123456"
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/otp/send",
             json={"phone": "+919876543210"},
         )
@@ -1054,11 +1133,12 @@ class TestPublicAPI:
         assert "expires_in_seconds" in data
 
     @patch("app.services.otp_service.OTPService.verify_otp")
-    def test_verify_otp(self, mock_verify, client: TestClient):
+    @pytest.mark.asyncio
+    async def test_verify_otp(self, mock_verify, client: AsyncClient):
         """Test verifying OTP."""
         mock_verify.return_value = "mock-token-12345"
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/otp/verify",
             json={
                 "phone": "+919876543210",
@@ -1072,11 +1152,12 @@ class TestPublicAPI:
         assert data["token_type"] == "bearer"
 
     @patch("app.services.otp_service.OTPService.verify_otp")
-    def test_verify_otp_invalid(self, mock_verify, client: TestClient):
+    @pytest.mark.asyncio
+    async def test_verify_otp_invalid(self, mock_verify, client: AsyncClient):
         """Test verifying invalid OTP."""
         mock_verify.return_value = None
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/otp/verify",
             json={
                 "phone": "+919876543210",
@@ -1088,34 +1169,38 @@ class TestPublicAPI:
 
     # Doctor Discovery Tests
 
-    def test_list_doctors_public(
+    @pytest.mark.asyncio
+
+    async def test_list_doctors_public(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test listing doctors without authentication."""
         # Ensure doctor is accepting patients
         test_doctor.accepting_new_patients = True
-        db.commit()
+        await db.commit()
 
-        response = client.get("/api/v1/public/doctors")
+        response = await client.get("/api/v1/public/doctors")
 
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
-    def test_list_doctors_filter_specialization(
+    @pytest.mark.asyncio
+
+    async def test_list_doctors_filter_specialization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test filtering doctors by specialization."""
         test_doctor.accepting_new_patients = True
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/public/doctors?specialization=General"
         )
 
@@ -1123,29 +1208,33 @@ class TestPublicAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_list_doctors_filter_city(
+    @pytest.mark.asyncio
+
+    async def test_list_doctors_filter_city(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test filtering doctors by city."""
         test_doctor.accepting_new_patients = True
-        db.commit()
+        await db.commit()
 
-        response = client.get("/api/v1/public/doctors?city=Mumbai")
+        response = await client.get("/api/v1/public/doctors?city=Mumbai")
 
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_doctor_public(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_public(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
     ):
         """Test getting doctor details without authentication."""
-        response = client.get(f"/api/v1/public/doctors/{test_doctor.id}")
+        response = await client.get(f"/api/v1/public/doctors/{test_doctor.id}")
 
         assert response.status_code == 200
         data = response.json()
@@ -1153,19 +1242,23 @@ class TestPublicAPI:
         assert data["name"] == test_doctor.name
         assert "bio" in data
 
-    def test_get_doctor_public_not_found(self, client: TestClient):
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_public_not_found(self, client: AsyncClient):
         """Test getting non-existent doctor."""
-        response = client.get(f"/api/v1/public/doctors/{uuid4()}")
+        response = await client.get(f"/api/v1/public/doctors/{uuid4()}")
 
         assert response.status_code == 404
 
     # Slot Availability Tests
 
-    def test_get_doctor_slots(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_slots(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting available slots for a doctor."""
         # Set working hours
@@ -1176,11 +1269,11 @@ class TestPublicAPI:
             "thursday": [{"start": "09:00", "end": "17:00"}],
             "friday": [{"start": "09:00", "end": "17:00"}],
         }
-        db.commit()
+        await db.commit()
 
         tomorrow = (datetime.now() + timedelta(days=1)).date()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/public/doctors/{test_doctor.id}/slots?date_param={tomorrow}"
         )
 
@@ -1192,10 +1285,11 @@ class TestPublicAPI:
     # Appointment Booking Tests (require OTP token)
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_book_appointment_public(
+    @pytest.mark.asyncio
+    async def test_book_appointment_public(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
     ):
         """Test booking appointment with OTP token."""
@@ -1204,7 +1298,7 @@ class TestPublicAPI:
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         start_time = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/appointments",
             headers={"Authorization": "Bearer mock-token"},
             json={
@@ -1223,16 +1317,18 @@ class TestPublicAPI:
         assert data["doctor_id"] == str(test_doctor.id)
         assert "id" in data
 
-    def test_book_appointment_without_token(
+    @pytest.mark.asyncio
+
+    async def test_book_appointment_without_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
     ):
         """Test that booking requires authentication."""
         tomorrow = datetime.now(timezone.utc) + timedelta(days=1)
         start_time = tomorrow.replace(hour=10, minute=0, second=0, microsecond=0)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/appointments",
             json={
                 "doctor_id": str(test_doctor.id),
@@ -1246,10 +1342,11 @@ class TestPublicAPI:
         assert response.status_code == 401
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_book_appointment_conflict(
+    @pytest.mark.asyncio
+    async def test_book_appointment_conflict(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_doctor: Doctor,
         test_appointment,
     ):
@@ -1257,7 +1354,7 @@ class TestPublicAPI:
         mock_decode.return_value = "+919876543210"
 
         # Try to book at same time as existing appointment
-        response = client.post(
+        response = await client.post(
             "/api/v1/public/appointments",
             headers={"Authorization": "Bearer mock-token"},
             json={
@@ -1272,17 +1369,18 @@ class TestPublicAPI:
         assert response.status_code == 409
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_get_patient_appointments(
+    @pytest.mark.asyncio
+    async def test_get_patient_appointments(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_patient: Patient,
         test_appointment,
     ):
         """Test getting patient's appointments."""
         mock_decode.return_value = test_patient.phone
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/public/appointments",
             headers={"Authorization": "Bearer mock-token"},
         )
@@ -1292,17 +1390,18 @@ class TestPublicAPI:
         assert isinstance(data, list)
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_get_appointment_detail(
+    @pytest.mark.asyncio
+    async def test_get_appointment_detail(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_patient: Patient,
         test_appointment,
     ):
         """Test getting appointment details."""
         mock_decode.return_value = test_patient.phone
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/public/appointments/{test_appointment.id}",
             headers={"Authorization": "Bearer mock-token"},
         )
@@ -1312,20 +1411,24 @@ class TestPublicAPI:
         assert data["id"] == str(test_appointment.id)
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_cancel_appointment_public(
+    @pytest.mark.asyncio
+    async def test_cancel_appointment_public(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_patient: Patient,
         test_appointment,
     ):
         """Test cancelling appointment via public API."""
         mock_decode.return_value = test_patient.phone
 
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/public/appointments/{test_appointment.id}",
-            headers={"Authorization": "Bearer mock-token"},
-            json={"reason": "Changed my mind"},
+            headers={
+                "Authorization": "Bearer mock-token",
+                "Content-Type": "application/json",
+            },
+            content=json.dumps({"reason": "Changed my mind"}),
         )
 
         assert response.status_code == 200
@@ -1333,19 +1436,24 @@ class TestPublicAPI:
         assert "cancelled successfully" in data["message"]
 
     @patch("app.services.otp_service.OTPService.decode_token")
-    def test_cancel_appointment_not_owned(
+    @pytest.mark.asyncio
+    async def test_cancel_appointment_not_owned(
         self,
         mock_decode,
-        client: TestClient,
+        client: AsyncClient,
         test_appointment,
     ):
         """Test that patients can only cancel their own appointments."""
         mock_decode.return_value = "+919999999999"  # Different phone
 
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/public/appointments/{test_appointment.id}",
-            headers={"Authorization": "Bearer mock-token"},
-            json={"reason": "Test"},
+            headers={
+                "Authorization": "Bearer mock-token",
+                "Content-Type": "application/json",
+            },
+            content=json.dumps({"reason": "Test"}),
         )
 
         assert response.status_code == 404
+

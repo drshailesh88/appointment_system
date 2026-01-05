@@ -37,7 +37,9 @@ async def async_db_session(db) -> AsyncSession:
 
 
 @pytest.fixture
-def test_clinic_data() -> dict:
+@pytest.mark.asyncio
+
+async def test_clinic_data() -> dict:
     """Test clinic data."""
     return {
         "id": uuid4(),
@@ -54,7 +56,9 @@ def test_clinic_data() -> dict:
 
 
 @pytest.fixture
-def test_patient_data(test_clinic_data: dict) -> dict:
+@pytest.mark.asyncio
+
+async def test_patient_data(test_clinic_data: dict) -> dict:
     """Valid test patient data."""
     return {
         "first_name": "Rajesh",
@@ -84,18 +88,21 @@ def test_patient_data(test_clinic_data: dict) -> dict:
 class TestPatientCRUDOperations:
     """Test Create, Read, Update, Delete operations for patients."""
 
+    @pytest.mark.asyncio
+
+
     async def test_create_patient_with_all_fields(self, db, test_clinic_data, test_patient_data):
         """Test creating a patient with all required and optional fields."""
         # Create clinic first
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         # Assertions
         assert patient.id is not None
@@ -109,11 +116,14 @@ class TestPatientCRUDOperations:
         assert patient.is_active is True
         assert patient.clinic_id == test_clinic_data["id"]
 
+    @pytest.mark.asyncio
+
+
     async def test_create_patient_with_minimal_fields(self, db, test_clinic_data):
         """Test creating a patient with only required fields."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="Amit",
@@ -121,8 +131,8 @@ class TestPatientCRUDOperations:
             clinic_id=test_clinic_data["id"],
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.id is not None
         assert patient.first_name == "Amit"
@@ -130,37 +140,43 @@ class TestPatientCRUDOperations:
         assert patient.phone == "+919876543299"
         assert patient.is_active is True
 
+    @pytest.mark.asyncio
+
+
     async def test_get_patient_by_id(self, db, test_clinic_data, test_patient_data):
         """Test retrieving a patient by ID."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Retrieve patient
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         retrieved = result.scalar_one_or_none()
 
         assert retrieved is not None
         assert retrieved.id == patient_id
         assert retrieved.first_name == "Rajesh"
 
+    @pytest.mark.asyncio
+
+
     async def test_get_patient_by_phone(self, db, test_clinic_data, test_patient_data):
         """Test retrieving a patient by phone number."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Retrieve by phone
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(
                 Patient.phone == "+919876543210",
                 Patient.clinic_id == test_clinic_data["id"],
@@ -172,18 +188,21 @@ class TestPatientCRUDOperations:
         assert retrieved.phone == "+919876543210"
         assert retrieved.first_name == "Rajesh"
 
+    @pytest.mark.asyncio
+
+
     async def test_get_patient_by_email(self, db, test_clinic_data, test_patient_data):
         """Test retrieving a patient by email."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Retrieve by email
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.email == "rajesh.kumar@example.com")
         )
         retrieved = result.scalar_one_or_none()
@@ -191,11 +210,14 @@ class TestPatientCRUDOperations:
         assert retrieved is not None
         assert retrieved.email == "rajesh.kumar@example.com"
 
+    @pytest.mark.asyncio
+
+
     async def test_search_patients_by_name_partial_match(self, db, test_clinic_data):
         """Test searching patients by partial name match."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create multiple patients
         patients_data = [
@@ -207,10 +229,10 @@ class TestPatientCRUDOperations:
         for data in patients_data:
             patient = Patient(clinic_id=clinic.id, **data)
             db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Search for "Raj" - should match Rajesh
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.first_name.ilike("%Raj%"))
         )
         matches = result.scalars().all()
@@ -218,11 +240,14 @@ class TestPatientCRUDOperations:
         assert len(matches) == 1
         assert matches[0].first_name == "Rajesh"
 
+    @pytest.mark.asyncio
+
+
     async def test_search_patients_by_name_case_insensitive(self, db, test_clinic_data):
         """Test case-insensitive name search."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="Rajesh",
@@ -231,10 +256,10 @@ class TestPatientCRUDOperations:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Search with different case
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.first_name.ilike("%rajesh%"))
         )
         matches = result.scalars().all()
@@ -242,25 +267,28 @@ class TestPatientCRUDOperations:
         assert len(matches) == 1
         assert matches[0].first_name == "Rajesh"
 
+    @pytest.mark.asyncio
+
+
     async def test_update_patient_information(self, db, test_clinic_data, test_patient_data):
         """Test updating patient information."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Update patient
         patient.address = "456 New Address"
         patient.blood_group = "A+"
         patient.allergies = "Penicillin, Aspirin"
-        db.commit()
+        await db.commit()
 
         # Retrieve and verify
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         updated = result.scalar_one()
 
         assert updated.address == "456 New Address"
@@ -268,34 +296,40 @@ class TestPatientCRUDOperations:
         assert updated.allergies == "Penicillin, Aspirin"
         assert updated.first_name == "Rajesh"  # Unchanged fields remain
 
+    @pytest.mark.asyncio
+
+
     async def test_soft_delete_patient(self, db, test_clinic_data, test_patient_data):
         """Test soft deleting a patient (setting is_active to False)."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(**test_patient_data)
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Soft delete
         patient.is_active = False
-        db.commit()
+        await db.commit()
 
         # Verify patient still exists but is inactive
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         deleted = result.scalar_one()
 
         assert deleted is not None
         assert deleted.is_active is False
         assert deleted.first_name == "Rajesh"  # Data still intact
 
+    @pytest.mark.asyncio
+
+
     async def test_list_active_patients_only(self, db, test_clinic_data):
         """Test listing only active patients."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create active and inactive patients
         active_patient = Patient(
@@ -312,10 +346,10 @@ class TestPatientCRUDOperations:
         )
         db.add(active_patient)
         db.add(inactive_patient)
-        db.commit()
+        await db.commit()
 
         # Query only active
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(
                 Patient.clinic_id == clinic.id,
                 Patient.is_active == True,
@@ -335,11 +369,14 @@ class TestPatientCRUDOperations:
 class TestPatientDataValidation:
     """Test data validation rules for patient records."""
 
+    @pytest.mark.asyncio
+
+
     async def test_phone_number_indian_format(self, db, test_clinic_data):
         """Test valid Indian phone number format."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Valid Indian numbers
         valid_numbers = [
@@ -356,18 +393,21 @@ class TestPatientDataValidation:
             )
             db.add(patient)
 
-        db.commit()
+        await db.commit()
 
         # All should be saved
-        result = db.execute(select(Patient).where(Patient.clinic_id == clinic.id))
+        result = await db.execute(select(Patient).where(Patient.clinic_id == clinic.id))
         patients = result.scalars().all()
         assert len(patients) >= len(valid_numbers)
+
+    @pytest.mark.asyncio
+
 
     async def test_phone_number_length_validation(self, db, test_clinic_data):
         """Test phone number length constraints."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Phone too short - should be rejected by database constraints
         with pytest.raises(Exception):  # Database integrity error
@@ -377,15 +417,18 @@ class TestPatientDataValidation:
                 clinic_id=clinic.id,
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
         db.rollback()
+
+    @pytest.mark.asyncio
+
 
     async def test_email_format_validation(self, db, test_clinic_data):
         """Test email format validation."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Valid emails should work
         valid_patient = Patient(
@@ -395,17 +438,20 @@ class TestPatientDataValidation:
             clinic_id=clinic.id,
         )
         db.add(valid_patient)
-        db.commit()
+        await db.commit()
 
         assert valid_patient.email == "valid@example.com"
 
         # Note: Email validation is done at Pydantic schema level, not database
 
+    @pytest.mark.asyncio
+
+
     async def test_date_of_birth_not_in_future(self, db, test_clinic_data):
         """Test that date of birth cannot be in the future."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Past date - should work
         past_dob = Patient(
@@ -415,7 +461,7 @@ class TestPatientDataValidation:
             clinic_id=clinic.id,
         )
         db.add(past_dob)
-        db.commit()
+        await db.commit()
 
         assert past_dob.date_of_birth == date(1990, 1, 1)
 
@@ -428,16 +474,19 @@ class TestPatientDataValidation:
             clinic_id=clinic.id,
         )
         db.add(future_dob)
-        db.commit()
+        await db.commit()
 
         # Database allows it, validation should happen in API/schema layer
         assert future_dob.date_of_birth == future_date
+
+    @pytest.mark.asyncio
+
 
     async def test_required_fields_enforcement(self, db, test_clinic_data):
         """Test that required fields are enforced."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Missing first_name
         with pytest.raises(Exception):
@@ -446,7 +495,7 @@ class TestPatientDataValidation:
                 clinic_id=clinic.id,
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
         db.rollback()
 
@@ -457,7 +506,7 @@ class TestPatientDataValidation:
                 clinic_id=clinic.id,
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
         db.rollback()
 
@@ -468,15 +517,18 @@ class TestPatientDataValidation:
                 phone="+919876543210",
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
         db.rollback()
+
+    @pytest.mark.asyncio
+
 
     async def test_duplicate_phone_prevention_same_clinic(self, db, test_clinic_data):
         """Test prevention of duplicate phone numbers within same clinic."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create first patient
         patient1 = Patient(
@@ -485,7 +537,7 @@ class TestPatientDataValidation:
             clinic_id=clinic.id,
         )
         db.add(patient1)
-        db.commit()
+        await db.commit()
 
         # Try to create second patient with same phone in same clinic
         patient2 = Patient(
@@ -497,10 +549,10 @@ class TestPatientDataValidation:
 
         # This should be allowed at database level (no unique constraint)
         # But should be prevented at API level
-        db.commit()  # Database allows it
+        await db.commit()  # Database allows it
 
         # Check both exist
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(
                 Patient.phone == "+919876543210",
                 Patient.clinic_id == clinic.id,
@@ -508,6 +560,9 @@ class TestPatientDataValidation:
         )
         duplicates = result.scalars().all()
         assert len(duplicates) == 2  # Database allows, API should prevent
+
+    @pytest.mark.asyncio
+
 
     async def test_duplicate_phone_allowed_different_clinics(self, db, test_clinic_data):
         """Test that same phone is allowed in different clinics."""
@@ -521,7 +576,7 @@ class TestPatientDataValidation:
         clinic2_data["slug"] = "second-clinic"
         clinic2 = Clinic(**clinic2_data)
         db.add(clinic2)
-        db.commit()
+        await db.commit()
 
         # Same phone in different clinics
         patient1 = Patient(
@@ -536,16 +591,19 @@ class TestPatientDataValidation:
         )
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         assert patient1.phone == patient2.phone
         assert patient1.clinic_id != patient2.clinic_id
+
+    @pytest.mark.asyncio
+
 
     async def test_gender_values_validation(self, db, test_clinic_data):
         """Test gender field accepts M, F, O values."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         valid_genders = ["M", "F", "O"]
         for i, gender in enumerate(valid_genders):
@@ -557,10 +615,10 @@ class TestPatientDataValidation:
             )
             db.add(patient)
 
-        db.commit()
+        await db.commit()
 
         # Verify all saved correctly
-        result = db.execute(select(Patient).where(Patient.clinic_id == clinic.id))
+        result = await db.execute(select(Patient).where(Patient.clinic_id == clinic.id))
         patients = result.scalars().all()
         assert len(patients) >= 3
 
@@ -572,7 +630,7 @@ class TestPatientDataValidation:
             clinic_id=clinic.id,
         )
         db.add(invalid_patient)
-        db.commit()  # Database allows it
+        await db.commit()  # Database allows it
 
 
 # ============================================================================
@@ -584,13 +642,15 @@ class TestPatientEMRSync:
     """Test EMR synchronization for patient data."""
 
     @patch("app.services.emr_sync_service.EMRIntegrationAsync")
+    @pytest.mark.asyncio
+
     async def test_sync_patient_from_emr_new_patient(
         self, mock_emr_async, db, test_clinic_data
     ):
         """Test syncing a new patient from EMR."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Mock EMR patient data
         mock_emr_patient = MagicMock()
@@ -631,10 +691,10 @@ class TestPatientEMRSync:
             emr_synced_at=datetime.now(timezone.utc),
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Verify patient created from EMR
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.emr_patient_id == "EMR123")
         )
         synced_patient = result.scalar_one_or_none()
@@ -644,11 +704,14 @@ class TestPatientEMRSync:
         assert synced_patient.emr_patient_id == "EMR123"
         assert synced_patient.emr_synced_at is not None
 
+    @pytest.mark.asyncio
+
+
     async def test_sync_patient_from_emr_update_existing(self, db, test_clinic_data):
         """Test updating existing patient with EMR data."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create existing patient
         patient = Patient(
@@ -659,7 +722,7 @@ class TestPatientEMRSync:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Simulate EMR update
@@ -667,10 +730,10 @@ class TestPatientEMRSync:
         patient.last_name = "Updated Last"
         patient.email = "updated@example.com"
         patient.emr_synced_at = datetime.now(timezone.utc)
-        db.commit()
+        await db.commit()
 
         # Verify update
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         updated = result.scalar_one()
 
         assert updated.first_name == "Updated Name"
@@ -678,11 +741,14 @@ class TestPatientEMRSync:
         assert updated.email == "updated@example.com"
         assert updated.emr_synced_at is not None
 
+    @pytest.mark.asyncio
+
+
     async def test_emr_conflict_resolution_emr_wins(self, db, test_clinic_data):
         """Test that EMR data takes precedence in conflicts."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient with local data
         patient = Patient(
@@ -693,22 +759,25 @@ class TestPatientEMRSync:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Simulate EMR sync overwriting local data
         patient.first_name = "EMR Name"
         patient.email = "emr@example.com"
         patient.emr_synced_at = datetime.now(timezone.utc)
-        db.commit()
+        await db.commit()
 
         # Verify EMR data won
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.emr_patient_id == "EMR789")
         )
         resolved = result.scalar_one()
 
         assert resolved.first_name == "EMR Name"
         assert resolved.email == "emr@example.com"
+
+    @pytest.mark.asyncio
+
 
     async def test_handle_missing_emr_database_gracefully(self, db, test_clinic_data):
         """Test graceful handling when EMR database is not available."""
@@ -721,11 +790,14 @@ class TestPatientEMRSync:
 
             assert status["enabled"] is False or status["available"] is False
 
+    @pytest.mark.asyncio
+
+
     async def test_emr_sync_timestamp_tracking(self, db, test_clinic_data):
         """Test that EMR sync timestamps are properly tracked."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient without EMR sync
         patient = Patient(
@@ -734,7 +806,7 @@ class TestPatientEMRSync:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         assert patient.emr_synced_at is None
 
@@ -742,10 +814,10 @@ class TestPatientEMRSync:
         sync_time = datetime.now(timezone.utc)
         patient.emr_patient_id = "EMR999"
         patient.emr_synced_at = sync_time
-        db.commit()
+        await db.commit()
 
         # Verify timestamp
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         synced = result.scalar_one()
 
         assert synced.emr_synced_at is not None
@@ -760,6 +832,9 @@ class TestPatientEMRSync:
 class TestPatientPrivacySecurity:
     """Test privacy and security measures for patient data."""
 
+    @pytest.mark.asyncio
+
+
     async def test_patient_data_isolation_between_clinics(self, db, test_clinic_data):
         """Test that patients are isolated between clinics."""
         # Create two clinics
@@ -772,7 +847,7 @@ class TestPatientPrivacySecurity:
         clinic2_data["slug"] = "clinic-2"
         clinic2 = Clinic(**clinic2_data)
         db.add(clinic2)
-        db.commit()
+        await db.commit()
 
         # Create patients in each clinic
         patient1 = Patient(
@@ -787,10 +862,10 @@ class TestPatientPrivacySecurity:
         )
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Query clinic 1 patients only
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.clinic_id == clinic1.id)
         )
         clinic1_patients = result.scalars().all()
@@ -799,7 +874,7 @@ class TestPatientPrivacySecurity:
         assert clinic1_patients[0].first_name == "Clinic1Patient"
 
         # Query clinic 2 patients only
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(Patient.clinic_id == clinic2.id)
         )
         clinic2_patients = result.scalars().all()
@@ -807,11 +882,14 @@ class TestPatientPrivacySecurity:
         assert len(clinic2_patients) == 1
         assert clinic2_patients[0].first_name == "Clinic2Patient"
 
+    @pytest.mark.asyncio
+
+
     async def test_sensitive_fields_properly_stored(self, db, test_clinic_data):
         """Test that sensitive fields are properly handled."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient with sensitive data
         patient = Patient(
@@ -822,20 +900,23 @@ class TestPatientPrivacySecurity:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Verify data is stored (encryption would be at column level)
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         retrieved = result.scalar_one()
 
         assert retrieved.aadhaar_last_four == "1234"
         assert retrieved.allergies == "HIV medications"
 
+    @pytest.mark.asyncio
+
+
     async def test_audit_trail_via_timestamps(self, db, test_clinic_data):
         """Test that created_at and updated_at provide audit trail."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create patient
         patient = Patient(
@@ -844,7 +925,7 @@ class TestPatientPrivacySecurity:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         created_at = patient.created_at
         assert created_at is not None
@@ -853,17 +934,20 @@ class TestPatientPrivacySecurity:
         import time
         time.sleep(0.1)  # Ensure time difference
         patient.address = "New Address"
-        db.commit()
+        await db.commit()
 
         updated_at = patient.updated_at
         assert updated_at is not None
         # Note: updated_at may not be automatically set in test DB
 
+    @pytest.mark.asyncio
+
+
     async def test_soft_delete_preserves_data_for_audit(self, db, test_clinic_data):
         """Test that soft delete preserves data for audit purposes."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="ToDelete",
@@ -872,15 +956,15 @@ class TestPatientPrivacySecurity:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Soft delete
         patient.is_active = False
-        db.commit()
+        await db.commit()
 
         # Verify data still exists
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         deleted = result.scalar_one()
 
         assert deleted is not None
@@ -897,11 +981,14 @@ class TestPatientPrivacySecurity:
 class TestPatientEdgeCases:
     """Test edge cases and special scenarios."""
 
+    @pytest.mark.asyncio
+
+
     async def test_unicode_hindi_name(self, db, test_clinic_data):
         """Test patient name in Hindi (Devanagari script)."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="राजेश",
@@ -910,20 +997,23 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         retrieved = result.scalar_one()
 
         assert retrieved.first_name == "राजेश"
         assert retrieved.last_name == "कुमार"
         assert retrieved.full_name == "राजेश कुमार"
 
+    @pytest.mark.asyncio
+
+
     async def test_unicode_tamil_name(self, db, test_clinic_data):
         """Test patient name in Tamil script."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="முருகன்",
@@ -932,19 +1022,22 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         retrieved = result.scalar_one()
 
         assert retrieved.first_name == "முருகன்"
         assert retrieved.last_name == "செல்வம்"
 
+    @pytest.mark.asyncio
+
+
     async def test_very_long_name(self, db, test_clinic_data):
         """Test handling of very long names."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Name at the limit (100 characters)
         long_name = "A" * 100
@@ -954,15 +1047,18 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         assert len(patient.first_name) == 100
+
+    @pytest.mark.asyncio
+
 
     async def test_special_characters_in_address(self, db, test_clinic_data):
         """Test special characters in address field."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         special_address = "Flat #23, 2nd Floor, \"Star\" Building, S.V. Road, @Mumbai-400001"
         patient = Patient(
@@ -972,18 +1068,21 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         retrieved = result.scalar_one()
 
         assert retrieved.address == special_address
+
+    @pytest.mark.asyncio
+
 
     async def test_multiple_patients_same_name(self, db, test_clinic_data):
         """Test handling multiple patients with identical names."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Create 3 patients with same name
         for i in range(3):
@@ -994,10 +1093,10 @@ class TestPatientEdgeCases:
                 clinic_id=clinic.id,
             )
             db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Query all Rajesh Kumars
-        result = db.execute(
+        result = await db.execute(
             select(Patient).where(
                 Patient.first_name == "Rajesh",
                 Patient.last_name == "Kumar",
@@ -1011,11 +1110,14 @@ class TestPatientEdgeCases:
         phones = [p.phone for p in same_name_patients]
         assert len(set(phones)) == 3  # All unique
 
+    @pytest.mark.asyncio
+
+
     async def test_patient_age_calculation(self, db, test_clinic_data):
         """Test accurate age calculation from date of birth."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # Patient born 30 years ago
         dob = date.today() - timedelta(days=30 * 365)
@@ -1026,16 +1128,19 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         assert patient.age is not None
         assert 29 <= patient.age <= 30  # Account for leap years
+
+    @pytest.mark.asyncio
+
 
     async def test_patient_age_with_no_dob(self, db, test_clinic_data):
         """Test age property when date of birth is not set."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="NoDOB",
@@ -1043,15 +1148,18 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         assert patient.age is None
+
+    @pytest.mark.asyncio
+
 
     async def test_empty_string_vs_null_handling(self, db, test_clinic_data):
         """Test handling of empty strings vs NULL values."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="EmptyTest",
@@ -1061,20 +1169,23 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         retrieved = result.scalar_one()
 
         # Empty string is stored as-is (database allows it)
         assert retrieved.email == ""
         assert retrieved.last_name is None
 
+    @pytest.mark.asyncio
+
+
     async def test_patient_full_name_property(self, db, test_clinic_data):
         """Test full_name property with various name combinations."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         # With both names
         patient1 = Patient(
@@ -1092,16 +1203,19 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         assert patient1.full_name == "Rajesh Kumar"
         assert patient2.full_name == "Madonna"
+
+    @pytest.mark.asyncio
+
 
     async def test_concurrent_patient_updates(self, db, test_clinic_data):
         """Test handling of concurrent updates to same patient."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="Concurrent",
@@ -1109,29 +1223,32 @@ class TestPatientEdgeCases:
             clinic_id=clinic.id,
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
         patient_id = patient.id
 
         # Simulate concurrent updates
         patient.address = "Address 1"
-        db.commit()
+        await db.commit()
 
         # Reload and update again
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         patient_reload = result.scalar_one()
         patient_reload.address = "Address 2"
-        db.commit()
+        await db.commit()
 
         # Verify final state
-        result = db.execute(select(Patient).where(Patient.id == patient_id))
+        result = await db.execute(select(Patient).where(Patient.id == patient_id))
         final = result.scalar_one()
         assert final.address == "Address 2"
+
+    @pytest.mark.asyncio
+
 
     async def test_patient_with_all_optional_fields_null(self, db, test_clinic_data):
         """Test patient with only required fields, all optional NULL."""
         clinic = Clinic(**test_clinic_data)
         db.add(clinic)
-        db.commit()
+        await db.commit()
 
         patient = Patient(
             first_name="MinimalPatient",
@@ -1140,9 +1257,9 @@ class TestPatientEdgeCases:
             # All other fields implicitly NULL
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
-        result = db.execute(select(Patient).where(Patient.id == patient.id))
+        result = await db.execute(select(Patient).where(Patient.id == patient.id))
         minimal = result.scalar_one()
 
         assert minimal.last_name is None

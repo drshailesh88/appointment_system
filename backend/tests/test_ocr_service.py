@@ -50,47 +50,75 @@ def sample_image():
         pass
 
 
-def test_ocr_service_initialization(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_ocr_service_initialization(ocr_service):
     """Test OCR service can be initialized."""
     assert ocr_service is not None
     assert ocr_service._initialized is False
 
 
-def test_get_ocr_service_singleton():
+@pytest.mark.asyncio
+
+
+
+async def test_get_ocr_service_singleton():
     """Test that get_ocr_service returns singleton instance."""
     service1 = get_ocr_service()
     service2 = get_ocr_service()
     assert service1 is service2
 
 
-def test_detect_language_english(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_detect_language_english(ocr_service):
     """Test language detection for English text."""
     text = "This is a test in English"
     language = ocr_service._detect_language(text)
     assert "en" in language
 
 
-def test_detect_language_hindi(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_detect_language_hindi(ocr_service):
     """Test language detection for Hindi text."""
     text = "यह हिंदी में एक परीक्षण है"
     language = ocr_service._detect_language(text)
     assert "hi" in language
 
 
-def test_detect_language_mixed(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_detect_language_mixed(ocr_service):
     """Test language detection for mixed Hindi + English text."""
     text = "Patient Name: जॉन डो"
     language = ocr_service._detect_language(text)
     assert "hi" in language and "en" in language
 
 
-def test_detect_language_empty(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_detect_language_empty(ocr_service):
     """Test language detection for empty text."""
     language = ocr_service._detect_language("")
     assert language == "unknown"
 
 
-def test_extract_structured_data_patient_name(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_patient_name(ocr_service):
     """Test extraction of patient name."""
     text = "Patient Name: John Doe\nAge: 45\nGender: M"
     data = ocr_service.extract_structured_data(text)
@@ -99,7 +127,11 @@ def test_extract_structured_data_patient_name(ocr_service):
     assert "John Doe" in data["patient_name"]
 
 
-def test_extract_structured_data_age(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_age(ocr_service):
     """Test extraction of age."""
     text = "Patient: John Doe\nAge: 45"
     data = ocr_service.extract_structured_data(text)
@@ -108,7 +140,11 @@ def test_extract_structured_data_age(ocr_service):
     assert data["age"] == 45
 
 
-def test_extract_structured_data_gender(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_gender(ocr_service):
     """Test extraction of gender."""
     text = "Gender: Male"
     data = ocr_service.extract_structured_data(text)
@@ -117,7 +153,11 @@ def test_extract_structured_data_gender(ocr_service):
     assert data["gender"] == "M"
 
 
-def test_extract_structured_data_date(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_date(ocr_service):
     """Test extraction of date."""
     text = "Date: 02/01/2026\nPatient: John"
     data = ocr_service.extract_structured_data(text)
@@ -126,7 +166,11 @@ def test_extract_structured_data_date(ocr_service):
     assert "2026" in data["date"]
 
 
-def test_extract_structured_data_phone(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_phone(ocr_service):
     """Test extraction of Indian phone number."""
     text = "Contact: 9876543210"
     data = ocr_service.extract_structured_data(text)
@@ -135,7 +179,11 @@ def test_extract_structured_data_phone(ocr_service):
     assert data["phone"] == "9876543210"
 
 
-def test_extract_structured_data_lab_tests(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_lab_tests(ocr_service):
     """Test extraction of lab test values."""
     text = """
     Lab Report
@@ -153,7 +201,11 @@ def test_extract_structured_data_lab_tests(ocr_service):
     assert any("hemoglobin" in name for name in test_names)
 
 
-def test_extract_structured_data_doctor(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_doctor(ocr_service):
     """Test extraction of doctor name."""
     text = "Dr. Sharma\nPatient: John Doe"
     data = ocr_service.extract_structured_data(text)
@@ -162,13 +214,21 @@ def test_extract_structured_data_doctor(ocr_service):
     assert "Sharma" in data["doctor_name"]
 
 
-def test_extract_structured_data_empty(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_empty(ocr_service):
     """Test extraction from empty text."""
     data = ocr_service.extract_structured_data("")
     assert data == {}
 
 
-def test_extract_structured_data_hindi(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_structured_data_hindi(ocr_service):
     """Test extraction from Hindi text."""
     text = "नाम: जॉन डो\nडॉ. शर्मा"
     data = ocr_service.extract_structured_data(text)
@@ -181,7 +241,9 @@ def test_extract_structured_data_hindi(ocr_service):
     os.getenv("SKIP_OCR_TESTS") == "1",
     reason="OCR tests skipped (EasyOCR not installed or too slow)",
 )
-def test_extract_text_from_image(ocr_service, sample_image):
+@pytest.mark.asyncio
+
+async def test_extract_text_from_image(ocr_service, sample_image):
     """Test OCR text extraction from an image."""
     result = ocr_service.extract_text(sample_image)
 
@@ -201,7 +263,9 @@ def test_extract_text_from_image(ocr_service, sample_image):
     os.getenv("SKIP_OCR_TESTS") == "1",
     reason="OCR tests skipped (EasyOCR not installed or too slow)",
 )
-def test_process_document(ocr_service, sample_image):
+@pytest.mark.asyncio
+
+async def test_process_document(ocr_service, sample_image):
     """Test complete document processing."""
     result = ocr_service.process_document(
         sample_image,
@@ -216,13 +280,21 @@ def test_process_document(ocr_service, sample_image):
     assert "processing_time" in result
 
 
-def test_extract_text_invalid_file(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_text_invalid_file(ocr_service):
     """Test OCR with invalid file path."""
     with pytest.raises(FileNotFoundError):
         ocr_service.extract_text("/nonexistent/file.jpg")
 
 
-def test_extract_text_invalid_image(ocr_service):
+@pytest.mark.asyncio
+
+
+
+async def test_extract_text_invalid_image(ocr_service):
     """Test OCR with invalid image file."""
     # Create a text file pretending to be an image
     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:

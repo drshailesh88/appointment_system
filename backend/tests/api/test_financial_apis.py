@@ -7,8 +7,8 @@ from uuid import uuid4
 from unittest.mock import Mock, patch
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.insurance import (
     InsuranceCompany,
@@ -27,8 +27,9 @@ from app.models.service import Service
 # ============= Fixtures =============
 
 @pytest.fixture
-def test_invoice(
-    db: Session,
+@pytest.mark.asyncio
+async def test_invoice(
+    db: AsyncSession,
     test_clinic,
     test_doctor,
     test_patient,
@@ -67,14 +68,15 @@ def test_invoice(
         total=Decimal("1180.00"),
     )
     db.add(item)
-    db.commit()
-    db.refresh(invoice)
+    await db.commit()
+    await db.refresh(invoice)
     return invoice
 
 
 @pytest.fixture
-def test_paid_invoice(
-    db: Session,
+@pytest.mark.asyncio
+async def test_paid_invoice(
+    db: AsyncSession,
     test_clinic,
     test_doctor,
     test_patient,
@@ -96,14 +98,15 @@ def test_paid_invoice(
         status=InvoiceStatus.PAID.value,
     )
     db.add(invoice)
-    db.commit()
-    db.refresh(invoice)
+    await db.commit()
+    await db.refresh(invoice)
     return invoice
 
 
 @pytest.fixture
-def test_payment(
-    db: Session,
+@pytest.mark.asyncio
+async def test_payment(
+    db: AsyncSession,
     test_invoice,
 ) -> Payment:
     """Create a test payment."""
@@ -118,13 +121,14 @@ def test_payment(
         collected_by="Test Cashier",
     )
     db.add(payment)
-    db.commit()
-    db.refresh(payment)
+    await db.commit()
+    await db.refresh(payment)
     return payment
 
 
 @pytest.fixture
-def test_insurance_company(db: Session) -> InsuranceCompany:
+@pytest.mark.asyncio
+async def test_insurance_company(db: AsyncSession) -> InsuranceCompany:
     """Create a test insurance company."""
     company = InsuranceCompany(
         id=str(uuid4()),
@@ -139,14 +143,15 @@ def test_insurance_company(db: Session) -> InsuranceCompany:
         is_active=True,
     )
     db.add(company)
-    db.commit()
-    db.refresh(company)
+    await db.commit()
+    await db.refresh(company)
     return company
 
 
 @pytest.fixture
-def test_patient_insurance(
-    db: Session,
+@pytest.mark.asyncio
+async def test_patient_insurance(
+    db: AsyncSession,
     test_patient,
     test_insurance_company,
 ) -> PatientInsurance:
@@ -161,18 +166,19 @@ def test_patient_insurance(
         sum_insured=Decimal("500000.00"),
         valid_from=today - timedelta(days=30),
         valid_to=today + timedelta(days=335),
-        policy_holder_name=test_patient.name,
+        policy_holder_name=test_patient.full_name,
         is_active=True,
     )
     db.add(insurance)
-    db.commit()
-    db.refresh(insurance)
+    await db.commit()
+    await db.refresh(insurance)
     return insurance
 
 
 @pytest.fixture
-def test_insurance_claim(
-    db: Session,
+@pytest.mark.asyncio
+async def test_insurance_claim(
+    db: AsyncSession,
     test_patient,
     test_invoice,
     test_insurance_company,
@@ -192,14 +198,15 @@ def test_insurance_claim(
         status=ClaimStatus.DRAFT.value,
     )
     db.add(claim)
-    db.commit()
-    db.refresh(claim)
+    await db.commit()
+    await db.refresh(claim)
     return claim
 
 
 @pytest.fixture
-def test_preauthorization(
-    db: Session,
+@pytest.mark.asyncio
+async def test_preauthorization(
+    db: AsyncSession,
     test_patient,
     test_insurance_company,
     test_patient_insurance,
@@ -221,8 +228,8 @@ def test_preauthorization(
         requested_by="Dr. Test",
     )
     db.add(preauth)
-    db.commit()
-    db.refresh(preauth)
+    await db.commit()
+    await db.refresh(preauth)
     return preauth
 
 
@@ -231,18 +238,20 @@ def test_preauthorization(
 class TestPaymentsAPI:
     """Tests for Payment endpoints."""
 
-    def test_create_cash_payment(
+    @pytest.mark.asyncio
+
+    async def test_create_cash_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test recording a cash payment."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
-                "invoice_id": test_invoice.id,
+                "invoice_id": str(test_invoice.id),
                 "amount": 500.00,
                 "payment_method": "cash",
                 "payment_date": datetime.now().isoformat(),
@@ -258,18 +267,20 @@ class TestPaymentsAPI:
         assert data["status"] == "completed"
         assert data["receipt_number"] == "REC-TEST-001"
 
-    def test_create_upi_payment(
+    @pytest.mark.asyncio
+
+    async def test_create_upi_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test recording a UPI payment."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
-                "invoice_id": test_invoice.id,
+                "invoice_id": str(test_invoice.id),
                 "amount": 1180.00,
                 "payment_method": "upi",
                 "payment_date": datetime.now().isoformat(),
@@ -283,13 +294,15 @@ class TestPaymentsAPI:
         assert data["payment_method"] == "upi"
         assert data["upi_transaction_id"] == "UPI123456789"
 
-    def test_create_payment_invalid_invoice(
+    @pytest.mark.asyncio
+
+    async def test_create_payment_invalid_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test creating payment with non-existent invoice."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
@@ -302,18 +315,20 @@ class TestPaymentsAPI:
         assert response.status_code == 404
         assert "Invoice not found" in response.json()["detail"]
 
-    def test_create_payment_exceeds_balance(
+    @pytest.mark.asyncio
+
+    async def test_create_payment_exceeds_balance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test payment amount exceeding invoice balance."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
-                "invoice_id": test_invoice.id,
+                "invoice_id": str(test_invoice.id),
                 "amount": 2000.00,  # More than invoice total
                 "payment_method": "cash",
                 "payment_date": datetime.now().isoformat(),
@@ -322,23 +337,25 @@ class TestPaymentsAPI:
         assert response.status_code == 400
         assert "exceeds balance due" in response.json()["detail"]
 
-    def test_create_payment_cancelled_invoice(
+    @pytest.mark.asyncio
+
+    async def test_create_payment_cancelled_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test payment on a cancelled invoice."""
         # Cancel the invoice first
         test_invoice.status = InvoiceStatus.CANCELLED.value
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
-                "invoice_id": test_invoice.id,
+                "invoice_id": str(test_invoice.id),
                 "amount": 500.00,
                 "payment_method": "cash",
                 "payment_date": datetime.now().isoformat(),
@@ -347,14 +364,16 @@ class TestPaymentsAPI:
         assert response.status_code == 400
         assert "Cannot pay a cancelled invoice" in response.json()["detail"]
 
-    def test_list_payments(
+    @pytest.mark.asyncio
+
+    async def test_list_payments(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test listing payments."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/payments/",
             headers=auth_headers,
         )
@@ -363,16 +382,18 @@ class TestPaymentsAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_payments_with_filters(
+    @pytest.mark.asyncio
+
+    async def test_list_payments_with_filters(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
         test_invoice,
     ):
         """Test listing payments with filters."""
-        response = client.get(
-            f"/api/v1/payments/?invoice_id={test_invoice.id}&payment_method=cash",
+        response = await client.get(
+            f"/api/v1/payments/?invoice_id={str(test_invoice.id)}&payment_method=cash",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -381,9 +402,11 @@ class TestPaymentsAPI:
         if len(data) > 0:
             assert data[0]["payment_method"] == "cash"
 
-    def test_list_payments_date_range(
+    @pytest.mark.asyncio
+
+    async def test_list_payments_date_range(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
@@ -392,7 +415,7 @@ class TestPaymentsAPI:
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/payments/?date_from={yesterday.isoformat()}&date_to={tomorrow.isoformat()}",
             headers=auth_headers,
         )
@@ -400,14 +423,16 @@ class TestPaymentsAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_payment_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_payment_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test getting a specific payment."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/payments/{test_payment.id}",
             headers=auth_headers,
         )
@@ -416,26 +441,30 @@ class TestPaymentsAPI:
         assert data["id"] == test_payment.id
         assert data["amount"] == "500.00"
 
-    def test_get_payment_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_payment_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test getting non-existent payment."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/payments/{uuid4()}",
             headers=auth_headers,
         )
         assert response.status_code == 404
 
-    def test_refund_payment(
+    @pytest.mark.asyncio
+
+    async def test_refund_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test processing a payment refund."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/payments/{test_payment.id}/refund",
             headers=auth_headers,
             json={
@@ -448,14 +477,16 @@ class TestPaymentsAPI:
         assert data["refund_amount"] == "200.00"
         assert data["status"] == "partially_refunded"
 
-    def test_refund_full_payment(
+    @pytest.mark.asyncio
+
+    async def test_refund_full_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test processing a full refund."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/payments/{test_payment.id}/refund",
             headers=auth_headers,
             json={
@@ -468,14 +499,16 @@ class TestPaymentsAPI:
         assert data["refund_amount"] == "500.00"
         assert data["status"] == "refunded"
 
-    def test_refund_exceeds_payment(
+    @pytest.mark.asyncio
+
+    async def test_refund_exceeds_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test refund amount exceeding payment amount."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/payments/{test_payment.id}/refund",
             headers=auth_headers,
             json={
@@ -486,13 +519,15 @@ class TestPaymentsAPI:
         assert response.status_code == 400
         assert "exceeds available" in response.json()["detail"]
 
-    def test_refund_non_existent_payment(
+    @pytest.mark.asyncio
+
+    async def test_refund_non_existent_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test refunding non-existent payment."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/payments/{uuid4()}/refund",
             headers=auth_headers,
             json={
@@ -502,15 +537,17 @@ class TestPaymentsAPI:
         )
         assert response.status_code == 404
 
-    def test_get_payment_summary(
+    @pytest.mark.asyncio
+
+    async def test_get_payment_summary(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_payment,
     ):
         """Test getting payment summary for a clinic."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/payments/summary/clinic/{test_clinic.id}",
             headers=auth_headers,
         )
@@ -522,13 +559,15 @@ class TestPaymentsAPI:
         assert "pending_amount" in data
         assert "transaction_count" in data
 
-    def test_payment_summary_unauthorized_clinic(
+    @pytest.mark.asyncio
+
+    async def test_payment_summary_unauthorized_clinic(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_auth_headers,
     ):
         """Test accessing payment summary for unauthorized clinic."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/payments/summary/clinic/{uuid4()}",
             headers=doctor_auth_headers,
         )
@@ -540,9 +579,11 @@ class TestPaymentsAPI:
 class TestInvoicesAPI:
     """Tests for Invoice endpoints."""
 
-    def test_create_invoice(
+    @pytest.mark.asyncio
+
+    async def test_create_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_doctor,
@@ -550,13 +591,13 @@ class TestInvoicesAPI:
     ):
         """Test creating an invoice."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             headers=auth_headers,
             json={
-                "clinic_id": test_clinic.id,
-                "patient_id": test_patient.id,
-                "doctor_id": test_doctor.id,
+                "clinic_id": str(test_clinic.id),
+                "patient_id": str(test_patient.id),
+                "doctor_id": str(test_doctor.id),
                 "invoice_date": today.isoformat(),
                 "due_date": (today + timedelta(days=7)).isoformat(),
                 "items": [
@@ -578,9 +619,11 @@ class TestInvoicesAPI:
         assert "subtotal" in data
         assert "total_amount" in data
 
-    def test_create_invoice_with_discount(
+    @pytest.mark.asyncio
+
+    async def test_create_invoice_with_discount(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_doctor,
@@ -588,13 +631,13 @@ class TestInvoicesAPI:
     ):
         """Test creating invoice with discount."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             headers=auth_headers,
             json={
-                "clinic_id": test_clinic.id,
-                "patient_id": test_patient.id,
-                "doctor_id": test_doctor.id,
+                "clinic_id": str(test_clinic.id),
+                "patient_id": str(test_patient.id),
+                "doctor_id": str(test_doctor.id),
                 "invoice_date": today.isoformat(),
                 "due_date": (today + timedelta(days=7)).isoformat(),
                 "items": [
@@ -614,9 +657,11 @@ class TestInvoicesAPI:
         assert data["discount_amount"] == "100.00"
         assert data["discount_reason"] == "Senior citizen discount"
 
-    def test_create_invoice_multiple_items(
+    @pytest.mark.asyncio
+
+    async def test_create_invoice_multiple_items(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_doctor,
@@ -624,13 +669,13 @@ class TestInvoicesAPI:
     ):
         """Test creating invoice with multiple items."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             headers=auth_headers,
             json={
-                "clinic_id": test_clinic.id,
-                "patient_id": test_patient.id,
-                "doctor_id": test_doctor.id,
+                "clinic_id": str(test_clinic.id),
+                "patient_id": str(test_patient.id),
+                "doctor_id": str(test_doctor.id),
                 "invoice_date": today.isoformat(),
                 "due_date": (today + timedelta(days=7)).isoformat(),
                 "items": [
@@ -655,22 +700,24 @@ class TestInvoicesAPI:
         data = response.json()
         assert len(data["items"]) == 2
 
-    def test_create_invoice_invalid_patient(
+    @pytest.mark.asyncio
+
+    async def test_create_invoice_invalid_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_doctor,
     ):
         """Test creating invoice with invalid patient."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             headers=auth_headers,
             json={
-                "clinic_id": test_clinic.id,
+                "clinic_id": str(test_clinic.id),
                 "patient_id": str(uuid4()),  # Non-existent patient
-                "doctor_id": test_doctor.id,
+                "doctor_id": str(test_doctor.id),
                 "invoice_date": today.isoformat(),
                 "due_date": (today + timedelta(days=7)).isoformat(),
                 "items": [
@@ -687,14 +734,16 @@ class TestInvoicesAPI:
         assert response.status_code == 404
         assert "Patient not found" in response.json()["detail"]
 
-    def test_list_invoices(
+    @pytest.mark.asyncio
+
+    async def test_list_invoices(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test listing invoices."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/invoices/",
             headers=auth_headers,
         )
@@ -703,16 +752,18 @@ class TestInvoicesAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_invoices_by_patient(
+    @pytest.mark.asyncio
+
+    async def test_list_invoices_by_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
         test_patient,
     ):
         """Test listing invoices for a specific patient."""
-        response = client.get(
-            f"/api/v1/invoices/?patient_id={test_patient.id}",
+        response = await client.get(
+            f"/api/v1/invoices/?patient_id={str(test_patient.id)}",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -721,14 +772,16 @@ class TestInvoicesAPI:
         if len(data) > 0:
             assert data[0]["patient_id"] == test_patient.id
 
-    def test_list_invoices_by_status(
+    @pytest.mark.asyncio
+
+    async def test_list_invoices_by_status(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test filtering invoices by status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/invoices/?status_filter=pending",
             headers=auth_headers,
         )
@@ -738,9 +791,11 @@ class TestInvoicesAPI:
         if len(data) > 0:
             assert data[0]["status"] == "pending"
 
-    def test_list_invoices_by_date_range(
+    @pytest.mark.asyncio
+
+    async def test_list_invoices_by_date_range(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
@@ -749,7 +804,7 @@ class TestInvoicesAPI:
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/invoices/?date_from={yesterday.isoformat()}&date_to={tomorrow.isoformat()}",
             headers=auth_headers,
         )
@@ -757,14 +812,16 @@ class TestInvoicesAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_invoice_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_invoice_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test getting a specific invoice."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/invoices/{test_invoice.id}",
             headers=auth_headers,
         )
@@ -774,26 +831,30 @@ class TestInvoicesAPI:
         assert "items" in data
         assert "patient" in data
 
-    def test_get_invoice_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_invoice_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test getting non-existent invoice."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/invoices/{uuid4()}",
             headers=auth_headers,
         )
         assert response.status_code == 404
 
-    def test_update_invoice(
+    @pytest.mark.asyncio
+
+    async def test_update_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test updating an invoice."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/invoices/{test_invoice.id}",
             headers=auth_headers,
             json={
@@ -807,14 +868,16 @@ class TestInvoicesAPI:
         assert data["discount_amount"] == "100.00"
         assert data["discount_reason"] == "Loyalty discount"
 
-    def test_update_paid_invoice(
+    @pytest.mark.asyncio
+
+    async def test_update_paid_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_paid_invoice,
     ):
         """Test updating a paid invoice (should fail)."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/invoices/{test_paid_invoice.id}",
             headers=auth_headers,
             json={
@@ -824,14 +887,16 @@ class TestInvoicesAPI:
         assert response.status_code == 400
         assert "Cannot update invoice" in response.json()["detail"]
 
-    def test_cancel_invoice(
+    @pytest.mark.asyncio
+
+    async def test_cancel_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test cancelling an invoice."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/invoices/{test_invoice.id}/cancel",
             headers=auth_headers,
             params={"reason": "Duplicate invoice"},
@@ -841,29 +906,33 @@ class TestInvoicesAPI:
         assert data["status"] == "cancelled"
         assert data["is_cancelled"] is True
 
-    def test_cancel_paid_invoice(
+    @pytest.mark.asyncio
+
+    async def test_cancel_paid_invoice(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_paid_invoice,
     ):
         """Test cancelling a paid invoice (should fail)."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/invoices/{test_paid_invoice.id}/cancel",
             headers=auth_headers,
         )
         assert response.status_code == 400
         assert "Cannot cancel a paid invoice" in response.json()["detail"]
 
-    def test_get_invoice_summary(
+    @pytest.mark.asyncio
+
+    async def test_get_invoice_summary(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_invoice,
     ):
         """Test getting invoice summary for a clinic."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/invoices/summary/clinic/{test_clinic.id}",
             headers=auth_headers,
         )
@@ -883,13 +952,15 @@ class TestInsuranceAPI:
 
     # Insurance Company Tests
 
-    def test_create_insurance_company(
+    @pytest.mark.asyncio
+
+    async def test_create_insurance_company(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
     ):
         """Test creating an insurance company."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/companies",
             headers=auth_headers,
             json={
@@ -909,14 +980,16 @@ class TestInsuranceAPI:
         assert data["code"] == "HDFC"
         assert data["cashless_available"] is True
 
-    def test_create_duplicate_insurance_company(
+    @pytest.mark.asyncio
+
+    async def test_create_duplicate_insurance_company(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_company,
     ):
         """Test creating insurance company with duplicate code."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/companies",
             headers=auth_headers,
             json={
@@ -928,14 +1001,16 @@ class TestInsuranceAPI:
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"]
 
-    def test_list_insurance_companies(
+    @pytest.mark.asyncio
+
+    async def test_list_insurance_companies(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_company,
     ):
         """Test listing insurance companies."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/companies",
             headers=auth_headers,
         )
@@ -944,14 +1019,16 @@ class TestInsuranceAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_get_insurance_company(
+    @pytest.mark.asyncio
+
+    async def test_get_insurance_company(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_company,
     ):
         """Test getting insurance company details."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/insurance/companies/{test_insurance_company.id}",
             headers=auth_headers,
         )
@@ -960,14 +1037,16 @@ class TestInsuranceAPI:
         assert data["id"] == test_insurance_company.id
         assert data["name"] == "Star Health Insurance"
 
-    def test_update_insurance_company(
+    @pytest.mark.asyncio
+
+    async def test_update_insurance_company(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_company,
     ):
         """Test updating insurance company."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/companies/{test_insurance_company.id}",
             headers=auth_headers,
             json={
@@ -981,27 +1060,29 @@ class TestInsuranceAPI:
 
     # Patient Insurance Tests
 
-    def test_create_patient_insurance(
+    @pytest.mark.asyncio
+
+    async def test_create_patient_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient,
         test_insurance_company,
     ):
         """Test creating patient insurance policy."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/patient-insurance",
             headers=auth_headers,
             json={
-                "patient_id": test_patient.id,
-                "insurance_company_id": test_insurance_company.id,
+                "patient_id": str(test_patient.id),
+                "insurance_company_id": str(test_insurance_company.id),
                 "policy_number": "POL987654",
                 "coverage_type": "individual",
                 "sum_insured": 300000.00,
                 "valid_from": today.isoformat(),
                 "valid_to": (today + timedelta(days=365)).isoformat(),
-                "policy_holder_name": test_patient.name,
+                "policy_holder_name": test_patient.full_name,
             },
         )
         assert response.status_code == 201
@@ -1009,20 +1090,22 @@ class TestInsuranceAPI:
         assert data["policy_number"] == "POL987654"
         assert data["sum_insured"] == "300000.00"
 
-    def test_create_patient_insurance_invalid_patient(
+    @pytest.mark.asyncio
+
+    async def test_create_patient_insurance_invalid_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_company,
     ):
         """Test creating insurance with invalid patient."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/patient-insurance",
             headers=auth_headers,
             json={
                 "patient_id": str(uuid4()),
-                "insurance_company_id": test_insurance_company.id,
+                "insurance_company_id": str(test_insurance_company.id),
                 "policy_number": "POL999999",
                 "coverage_type": "individual",
                 "sum_insured": 300000.00,
@@ -1034,16 +1117,18 @@ class TestInsuranceAPI:
         assert response.status_code == 404
         assert "Patient not found" in response.json()["detail"]
 
-    def test_list_patient_insurance(
+    @pytest.mark.asyncio
+
+    async def test_list_patient_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient_insurance,
         test_patient,
     ):
         """Test listing patient insurance policies."""
-        response = client.get(
-            f"/api/v1/insurance/patient-insurance?patient_id={test_patient.id}",
+        response = await client.get(
+            f"/api/v1/insurance/patient-insurance?patient_id={str(test_patient.id)}",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -1051,14 +1136,16 @@ class TestInsuranceAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_valid_patient_insurance(
+    @pytest.mark.asyncio
+
+    async def test_list_valid_patient_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient_insurance,
     ):
         """Test listing only valid (non-expired) insurance policies."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/patient-insurance?valid_only=true",
             headers=auth_headers,
         )
@@ -1066,14 +1153,16 @@ class TestInsuranceAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_patient_insurance(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient_insurance,
     ):
         """Test getting patient insurance details."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/insurance/patient-insurance/{test_patient_insurance.id}",
             headers=auth_headers,
         )
@@ -1083,14 +1172,16 @@ class TestInsuranceAPI:
         assert data["policy_number"] == "POL123456"
         assert "is_valid" in data
 
-    def test_update_patient_insurance(
+    @pytest.mark.asyncio
+
+    async def test_update_patient_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient_insurance,
     ):
         """Test updating patient insurance."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/patient-insurance/{test_patient_insurance.id}",
             headers=auth_headers,
             json={
@@ -1104,22 +1195,24 @@ class TestInsuranceAPI:
 
     # Insurance Claims Tests
 
-    def test_create_insurance_claim(
+    @pytest.mark.asyncio
+
+    async def test_create_insurance_claim(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient,
         test_invoice,
         test_patient_insurance,
     ):
         """Test creating an insurance claim."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/claims",
             headers=auth_headers,
             json={
-                "patient_id": test_patient.id,
-                "invoice_id": test_invoice.id,
-                "patient_insurance_id": test_patient_insurance.id,
+                "patient_id": str(test_patient.id),
+                "invoice_id": str(test_invoice.id),
+                "patient_insurance_id": str(test_patient_insurance.id),
                 "claimed_amount": 1180.00,
                 "documents_submitted": ["prescription.pdf", "lab_report.pdf"],
                 "notes": "Initial claim submission",
@@ -1131,14 +1224,16 @@ class TestInsuranceAPI:
         assert data["status"] == "draft"
         assert "internal_claim_number" in data
 
-    def test_submit_insurance_claim(
+    @pytest.mark.asyncio
+
+    async def test_submit_insurance_claim(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test submitting a claim to insurance."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/insurance/claims/{test_insurance_claim.id}/submit",
             headers=auth_headers,
             json={
@@ -1151,14 +1246,16 @@ class TestInsuranceAPI:
         assert data["status"] == "submitted"
         assert data["submitted_at"] is not None
 
-    def test_update_claim_status_to_approved(
+    @pytest.mark.asyncio
+
+    async def test_update_claim_status_to_approved(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test updating claim status to approved."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/claims/{test_insurance_claim.id}",
             headers=auth_headers,
             json={
@@ -1173,14 +1270,16 @@ class TestInsuranceAPI:
         assert data["status"] == "approved"
         assert data["approved_amount"] == "1000.00"
 
-    def test_update_claim_status_to_rejected(
+    @pytest.mark.asyncio
+
+    async def test_update_claim_status_to_rejected(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test rejecting a claim."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/claims/{test_insurance_claim.id}",
             headers=auth_headers,
             json={
@@ -1194,14 +1293,16 @@ class TestInsuranceAPI:
         assert data["status"] == "rejected"
         assert data["rejection_reason"] == "Pre-existing condition"
 
-    def test_list_insurance_claims(
+    @pytest.mark.asyncio
+
+    async def test_list_insurance_claims(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test listing insurance claims."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/claims",
             headers=auth_headers,
         )
@@ -1210,30 +1311,34 @@ class TestInsuranceAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_claims_by_patient(
+    @pytest.mark.asyncio
+
+    async def test_list_claims_by_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
         test_patient,
     ):
         """Test listing claims for a specific patient."""
-        response = client.get(
-            f"/api/v1/insurance/claims?patient_id={test_patient.id}",
+        response = await client.get(
+            f"/api/v1/insurance/claims?patient_id={str(test_patient.id)}",
             headers=auth_headers,
         )
         assert response.status_code == 200
         data = response.json()
         assert isinstance(data, list)
 
-    def test_list_claims_by_status(
+    @pytest.mark.asyncio
+
+    async def test_list_claims_by_status(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test filtering claims by status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/claims?status_filter=draft",
             headers=auth_headers,
         )
@@ -1241,14 +1346,16 @@ class TestInsuranceAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_claims_summary(
+    @pytest.mark.asyncio
+
+    async def test_get_claims_summary(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_insurance_claim,
     ):
         """Test getting claims summary/statistics."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/claims/summary",
             headers=auth_headers,
         )
@@ -1260,21 +1367,23 @@ class TestInsuranceAPI:
 
     # Pre-Authorization Tests
 
-    def test_create_preauthorization(
+    @pytest.mark.asyncio
+
+    async def test_create_preauthorization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient,
         test_patient_insurance,
     ):
         """Test creating a pre-authorization request."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/preauthorizations",
             headers=auth_headers,
             json={
-                "patient_id": test_patient.id,
-                "patient_insurance_id": test_patient_insurance.id,
+                "patient_id": str(test_patient.id),
+                "patient_insurance_id": str(test_patient_insurance.id),
                 "procedure_name": "Angioplasty",
                 "procedure_code": "ANGIO001",
                 "requested_amount": 75000.00,
@@ -1291,14 +1400,16 @@ class TestInsuranceAPI:
         assert data["requested_amount"] == "75000.00"
         assert data["status"] == "pending"
 
-    def test_submit_preauthorization(
+    @pytest.mark.asyncio
+
+    async def test_submit_preauthorization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
     ):
         """Test submitting pre-authorization to insurance."""
-        response = client.post(
+        response = await client.post(
             f"/api/v1/insurance/preauthorizations/{test_preauthorization.id}/submit",
             headers=auth_headers,
             json={
@@ -1310,15 +1421,17 @@ class TestInsuranceAPI:
         assert data["status"] == "requested"
         assert data["submitted_at"] is not None
 
-    def test_approve_preauthorization(
+    @pytest.mark.asyncio
+
+    async def test_approve_preauthorization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
     ):
         """Test approving a pre-authorization."""
         today = date.today()
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/preauthorizations/{test_preauthorization.id}",
             headers=auth_headers,
             json={
@@ -1336,14 +1449,16 @@ class TestInsuranceAPI:
         assert data["approved_amount"] == "45000.00"
         assert data["auth_number"] == "AUTH-STAR-789012"
 
-    def test_reject_preauthorization(
+    @pytest.mark.asyncio
+
+    async def test_reject_preauthorization(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
     ):
         """Test rejecting a pre-authorization."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/preauthorizations/{test_preauthorization.id}",
             headers=auth_headers,
             json={
@@ -1357,14 +1472,16 @@ class TestInsuranceAPI:
         assert data["status"] == "rejected"
         assert data["rejection_reason"] == "Insufficient coverage"
 
-    def test_list_preauthorizations(
+    @pytest.mark.asyncio
+
+    async def test_list_preauthorizations(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
     ):
         """Test listing pre-authorizations."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/preauthorizations",
             headers=auth_headers,
         )
@@ -1373,12 +1490,14 @@ class TestInsuranceAPI:
         assert isinstance(data, list)
         assert len(data) >= 1
 
-    def test_list_valid_preauthorizations(
+    @pytest.mark.asyncio
+
+    async def test_list_valid_preauthorizations(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test listing only valid (approved & non-expired) pre-authorizations."""
         # First approve it
@@ -1386,9 +1505,9 @@ class TestInsuranceAPI:
         test_preauthorization.status = PreAuthStatus.APPROVED.value
         test_preauthorization.valid_from = today
         test_preauthorization.valid_to = today + timedelta(days=30)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/insurance/preauthorizations?valid_only=true",
             headers=auth_headers,
         )
@@ -1396,12 +1515,14 @@ class TestInsuranceAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_check_preauth_validity(
+    @pytest.mark.asyncio
+
+    async def test_check_preauth_validity(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test checking pre-authorization validity."""
         # Approve the pre-auth first
@@ -1409,9 +1530,9 @@ class TestInsuranceAPI:
         test_preauthorization.status = PreAuthStatus.APPROVED.value
         test_preauthorization.valid_from = today
         test_preauthorization.valid_to = today + timedelta(days=30)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/insurance/preauthorizations/{test_preauthorization.id}/validity",
             headers=auth_headers,
         )
@@ -1419,12 +1540,14 @@ class TestInsuranceAPI:
         data = response.json()
         assert "is_valid" in data
 
-    def test_check_expired_preauth_validity(
+    @pytest.mark.asyncio
+
+    async def test_check_expired_preauth_validity(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_preauthorization,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test validity check for expired pre-authorization."""
         # Set expired dates
@@ -1432,9 +1555,9 @@ class TestInsuranceAPI:
         test_preauthorization.status = PreAuthStatus.APPROVED.value
         test_preauthorization.valid_from = today - timedelta(days=60)
         test_preauthorization.valid_to = today - timedelta(days=30)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/insurance/preauthorizations/{test_preauthorization.id}/validity",
             headers=auth_headers,
         )
@@ -1448,12 +1571,14 @@ class TestInsuranceAPI:
 class TestFinancialAPIsAuthorization:
     """Test authorization and access control."""
 
-    def test_payment_unauthorized(
+    @pytest.mark.asyncio
+
+    async def test_payment_unauthorized(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test creating payment without authentication."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             json={
                 "invoice_id": str(uuid4()),
@@ -1463,12 +1588,14 @@ class TestFinancialAPIsAuthorization:
         )
         assert response.status_code == 401
 
-    def test_invoice_unauthorized(
+    @pytest.mark.asyncio
+
+    async def test_invoice_unauthorized(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test creating invoice without authentication."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             json={
                 "clinic_id": str(uuid4()),
@@ -1477,13 +1604,15 @@ class TestFinancialAPIsAuthorization:
         )
         assert response.status_code == 401
 
-    def test_insurance_company_non_admin(
+    @pytest.mark.asyncio
+
+    async def test_insurance_company_non_admin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_auth_headers,
     ):
         """Test creating insurance company as non-admin (should fail)."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/companies",
             headers=doctor_auth_headers,
             json={
@@ -1494,14 +1623,16 @@ class TestFinancialAPIsAuthorization:
         assert response.status_code == 403
         assert "admin" in response.json()["detail"].lower()
 
-    def test_update_insurance_company_non_admin(
+    @pytest.mark.asyncio
+
+    async def test_update_insurance_company_non_admin(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_auth_headers,
         test_insurance_company,
     ):
         """Test updating insurance company as non-admin (should fail)."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/insurance/companies/{test_insurance_company.id}",
             headers=doctor_auth_headers,
             json={
@@ -1516,18 +1647,20 @@ class TestFinancialAPIsAuthorization:
 class TestFinancialAPIsEdgeCases:
     """Test edge cases and error handling."""
 
-    def test_payment_with_zero_amount(
+    @pytest.mark.asyncio
+
+    async def test_payment_with_zero_amount(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_invoice,
     ):
         """Test creating payment with zero amount (should fail validation)."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/payments/",
             headers=auth_headers,
             json={
-                "invoice_id": test_invoice.id,
+                "invoice_id": str(test_invoice.id),
                 "amount": 0.00,
                 "payment_method": "cash",
                 "payment_date": datetime.now().isoformat(),
@@ -1537,21 +1670,23 @@ class TestFinancialAPIsEdgeCases:
         # Depends on schema validation rules
         assert response.status_code in [400, 422]
 
-    def test_invoice_with_no_items(
+    @pytest.mark.asyncio
+
+    async def test_invoice_with_no_items(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_clinic,
         test_patient,
     ):
         """Test creating invoice with no items (should fail)."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/invoices/",
             headers=auth_headers,
             json={
-                "clinic_id": test_clinic.id,
-                "patient_id": test_patient.id,
+                "clinic_id": str(test_clinic.id),
+                "patient_id": str(test_patient.id),
                 "invoice_date": today.isoformat(),
                 "due_date": (today + timedelta(days=7)).isoformat(),
                 "items": [],  # No items
@@ -1561,14 +1696,16 @@ class TestFinancialAPIsEdgeCases:
         # Should fail validation
         assert response.status_code in [400, 422]
 
-    def test_claim_with_expired_insurance(
+    @pytest.mark.asyncio
+
+    async def test_claim_with_expired_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient,
         test_invoice,
         test_insurance_company,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test creating claim with expired insurance policy."""
         # Create expired insurance
@@ -1582,34 +1719,36 @@ class TestFinancialAPIsEdgeCases:
             sum_insured=Decimal("500000.00"),
             valid_from=today - timedelta(days=400),
             valid_to=today - timedelta(days=35),  # Expired
-            policy_holder_name=test_patient.name,
+            policy_holder_name=test_patient.full_name,
             is_active=True,
         )
         db.add(expired_insurance)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/claims",
             headers=auth_headers,
             json={
-                "patient_id": test_patient.id,
-                "invoice_id": test_invoice.id,
-                "patient_insurance_id": expired_insurance.id,
+                "patient_id": str(test_patient.id),
+                "invoice_id": str(test_invoice.id),
+                "patient_insurance_id": str(expired_insurance.id),
                 "claimed_amount": 1180.00,
             },
         )
         # Service should reject expired insurance
         assert response.status_code == 400
 
-    def test_double_refund_same_payment(
+    @pytest.mark.asyncio
+
+    async def test_double_refund_same_payment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_payment,
     ):
         """Test attempting to refund same payment twice."""
         # First refund
-        response1 = client.post(
+        response1 = await client.post(
             f"/api/v1/payments/{test_payment.id}/refund",
             headers=auth_headers,
             json={
@@ -1620,7 +1759,7 @@ class TestFinancialAPIsEdgeCases:
         assert response1.status_code == 200
 
         # Second refund
-        response2 = client.post(
+        response2 = await client.post(
             f"/api/v1/payments/{test_payment.id}/refund",
             headers=auth_headers,
             json={
@@ -1631,19 +1770,21 @@ class TestFinancialAPIsEdgeCases:
         assert response2.status_code == 400
         assert "exceeds available" in response2.json()["detail"]
 
-    def test_preauth_without_insurance(
+    @pytest.mark.asyncio
+
+    async def test_preauth_without_insurance(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers,
         test_patient,
     ):
         """Test creating pre-auth for patient without insurance."""
         today = date.today()
-        response = client.post(
+        response = await client.post(
             "/api/v1/insurance/preauthorizations",
             headers=auth_headers,
             json={
-                "patient_id": test_patient.id,
+                "patient_id": str(test_patient.id),
                 "patient_insurance_id": str(uuid4()),  # Non-existent
                 "procedure_name": "Surgery",
                 "requested_amount": 50000.00,
@@ -1653,3 +1794,4 @@ class TestFinancialAPIsEdgeCases:
         )
         # Should fail - insurance not found
         assert response.status_code == 400
+

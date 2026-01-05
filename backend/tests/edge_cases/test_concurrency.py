@@ -21,7 +21,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment, AppointmentStatus
 from app.models.clinic import Clinic
@@ -83,9 +83,11 @@ class TestDoubleBookingPrevention:
     """Test concurrent appointment booking scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_same_slot_booking_prevented(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_clinic: Clinic,
     ):
@@ -112,7 +114,7 @@ class TestDoubleBookingPrevention:
         )
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Same time slot for both
         slot_time = datetime.now(timezone.utc).replace(
@@ -151,8 +153,8 @@ class TestDoubleBookingPrevention:
                 # Create appointment
                 appointment = Appointment(**appt_data)
                 db.add(appointment)
-                db.commit()
-                db.refresh(appointment)
+                await db.commit()
+                await db.refresh(appointment)
                 return True, str(appointment.id)
             except IntegrityError:
                 db.rollback()
@@ -186,9 +188,11 @@ class TestDoubleBookingPrevention:
         assert len(appointments) <= 1, f"Found {len(appointments)} appointments for same slot"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_same_user_double_submit_prevented(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -226,7 +230,7 @@ class TestDoubleBookingPrevention:
 
                 appointment = Appointment(**{**appt_data, "id": str(uuid4())})
                 db.add(appointment)
-                db.commit()
+                await db.commit()
                 return True, str(appointment.id)
             except Exception as e:
                 db.rollback()
@@ -255,9 +259,11 @@ class TestDoubleBookingPrevention:
         assert len(appointments) <= 1, "Multiple bookings exist for same patient"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_booking_during_cancellation(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_clinic: Clinic,
     ):
@@ -280,7 +286,7 @@ class TestDoubleBookingPrevention:
             phone="+919876543211",
         )
         db.add_all([patient1, patient2])
-        db.commit()
+        await db.commit()
 
         slot_time = datetime.now(timezone.utc).replace(
             hour=16, minute=0, second=0, microsecond=0
@@ -290,7 +296,7 @@ class TestDoubleBookingPrevention:
             **create_appointment_data(test_doctor.id, patient1.id, slot_time)
         )
         db.add(existing_appt)
-        db.commit()
+        await db.commit()
 
         async def cancel_appointment() -> bool:
             """Cancel existing appointment."""
@@ -298,7 +304,7 @@ class TestDoubleBookingPrevention:
                 await asyncio.sleep(0.01)  # Simulate processing
                 existing_appt.status = AppointmentStatus.CANCELLED.value
                 existing_appt.cancellation_reason = "Patient request"
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
                 db.rollback()
@@ -327,7 +333,7 @@ class TestDoubleBookingPrevention:
                     **create_appointment_data(test_doctor.id, patient2.id, slot_time)
                 )
                 db.add(new_appt)
-                db.commit()
+                await db.commit()
                 return True, str(new_appt.id)
             except Exception as e:
                 db.rollback()
@@ -340,7 +346,7 @@ class TestDoubleBookingPrevention:
         )
 
         # Verify no double booking
-        db.refresh(existing_appt)
+        await db.refresh(existing_appt)
         active_appointments = db.query(Appointment).filter(
             Appointment.doctor_id == test_doctor.id,
             Appointment.scheduled_start == slot_time,
@@ -362,9 +368,11 @@ class TestPaymentRaceConditions:
     """Test concurrent payment scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_double_payment_prevention(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -386,7 +394,7 @@ class TestPaymentRaceConditions:
             status=InvoiceStatus.PENDING.value,
         )
         db.add(invoice)
-        db.commit()
+        await db.commit()
 
         async def make_payment(payment_data: dict) -> tuple[bool, str]:
             """Attempt to make a payment."""
@@ -411,7 +419,7 @@ class TestPaymentRaceConditions:
                 elif inv.paid_amount > 0:
                     inv.status = InvoiceStatus.PARTIALLY_PAID.value
 
-                db.commit()
+                await db.commit()
                 return True, str(payment.id)
             except Exception as e:
                 db.rollback()
@@ -432,7 +440,7 @@ class TestPaymentRaceConditions:
         )
 
         # Verify only appropriate amount was accepted
-        db.refresh(invoice)
+        await db.refresh(invoice)
 
         # Total paid should not exceed invoice amount
         assert invoice.paid_amount <= invoice.total_amount * Decimal("1.01"), \
@@ -446,9 +454,11 @@ class TestPaymentRaceConditions:
             "Double payment recorded!"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_during_void(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -469,7 +479,7 @@ class TestPaymentRaceConditions:
             status=InvoiceStatus.PENDING.value,
         )
         db.add(invoice)
-        db.commit()
+        await db.commit()
 
         async def void_invoice() -> bool:
             """Cancel the invoice."""
@@ -477,7 +487,7 @@ class TestPaymentRaceConditions:
                 await asyncio.sleep(0.01)
                 invoice.status = InvoiceStatus.CANCELLED.value
                 invoice.cancellation_reason = "Billing error"
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
                 db.rollback()
@@ -499,7 +509,7 @@ class TestPaymentRaceConditions:
                 db.add(payment)
                 inv.paid_amount += Decimal("500.00")
                 inv.status = InvoiceStatus.PAID.value
-                db.commit()
+                await db.commit()
                 return True, str(payment.id)
             except Exception as e:
                 db.rollback()
@@ -512,7 +522,7 @@ class TestPaymentRaceConditions:
         )
 
         # Verify consistency
-        db.refresh(invoice)
+        await db.refresh(invoice)
 
         if invoice.status == InvoiceStatus.CANCELLED.value:
             # If cancelled, no payment should exist
@@ -524,9 +534,11 @@ class TestPaymentRaceConditions:
                 "Payment exists on cancelled invoice"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_refund_requests(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -557,7 +569,7 @@ class TestPaymentRaceConditions:
             refund_amount=Decimal("0.00"),
         )
         db.add_all([invoice, payment])
-        db.commit()
+        await db.commit()
 
         async def process_refund(refund_amount: Decimal) -> tuple[bool, str]:
             """Process a refund."""
@@ -589,7 +601,7 @@ class TestPaymentRaceConditions:
                 elif inv.paid_amount < inv.total_amount:
                     inv.status = InvoiceStatus.PARTIALLY_PAID.value
 
-                db.commit()
+                await db.commit()
                 return True, str(pmt.id)
             except Exception as e:
                 db.rollback()
@@ -603,8 +615,8 @@ class TestPaymentRaceConditions:
         )
 
         # Verify refund amount is correct
-        db.refresh(payment)
-        db.refresh(invoice)
+        await db.refresh(payment)
+        await db.refresh(invoice)
 
         assert payment.refund_amount <= payment.amount, \
             f"Over-refunded: {payment.refund_amount} > {payment.amount}"
@@ -624,9 +636,11 @@ class TestDataModificationConflicts:
     """Test concurrent data modification scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_patient_updates(
         self,
-        db: Session,
+        db: AsyncSession,
         test_patient: Patient,
     ):
         """
@@ -634,7 +648,7 @@ class TestDataModificationConflicts:
 
         Scenario: Multiple staff updating patient details simultaneously.
         """
-        original_name = test_patient.name
+        original_name = test_patient.first_name
         original_phone = test_patient.phone
 
         async def update_patient_name(new_name: str) -> bool:
@@ -642,8 +656,8 @@ class TestDataModificationConflicts:
             try:
                 await asyncio.sleep(0.01)
                 patient = db.query(Patient).filter(Patient.id == test_patient.id).first()
-                patient.name = new_name
-                db.commit()
+                patient.first_name = new_name
+                await db.commit()
                 return True
             except Exception:
                 db.rollback()
@@ -655,7 +669,7 @@ class TestDataModificationConflicts:
                 await asyncio.sleep(0.01)
                 patient = db.query(Patient).filter(Patient.id == test_patient.id).first()
                 patient.phone = new_phone
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
                 db.rollback()
@@ -668,18 +682,20 @@ class TestDataModificationConflicts:
         )
 
         # Refresh and verify
-        db.refresh(test_patient)
+        await db.refresh(test_patient)
 
         # Both updates should persist (different fields)
         # This tests last-write-wins behavior
-        assert test_patient.name != original_name or \
+        assert test_patient.first_name != original_name or \
                test_patient.phone != original_phone, \
             "No updates were applied"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_appointment_status_changes(
         self,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """
@@ -702,7 +718,7 @@ class TestDataModificationConflicts:
 
                 appt.status = AppointmentStatus.IN_PROGRESS.value
                 appt.start_time = datetime.now(timezone.utc)
-                db.commit()
+                await db.commit()
                 return True, "in_progress"
             except Exception as e:
                 db.rollback()
@@ -724,7 +740,7 @@ class TestDataModificationConflicts:
 
                 appt.status = AppointmentStatus.CANCELLED.value
                 appt.cancellation_reason = "Patient no-show"
-                db.commit()
+                await db.commit()
                 return True, "cancelled"
             except Exception as e:
                 db.rollback()
@@ -732,7 +748,7 @@ class TestDataModificationConflicts:
 
         # Set appointment to checked_in first
         test_appointment.status = AppointmentStatus.CHECKED_IN.value
-        db.commit()
+        await db.commit()
 
         # Concurrent status changes
         start_result, cancel_result = await asyncio.gather(
@@ -741,7 +757,7 @@ class TestDataModificationConflicts:
         )
 
         # Refresh and verify final state is consistent
-        db.refresh(test_appointment)
+        await db.refresh(test_appointment)
 
         # One operation should have succeeded
         assert start_result[0] or cancel_result[0], "Both operations failed"
@@ -762,9 +778,11 @@ class TestResourceContention:
     """Test concurrent access to shared resources."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_queue_number_generation(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_clinic: Clinic,
     ):
@@ -784,7 +802,7 @@ class TestResourceContention:
             )
             patients.append(patient)
         db.add_all(patients)
-        db.commit()
+        await db.commit()
 
         # Create appointments for all
         appointments = []
@@ -801,7 +819,7 @@ class TestResourceContention:
             )
             appointments.append(appt)
         db.add_all(appointments)
-        db.commit()
+        await db.commit()
 
         async def check_in_patient(appointment_id: str) -> tuple[bool, int | None]:
             """Check in a patient and assign token number."""
@@ -829,7 +847,7 @@ class TestResourceContention:
                 appt.status = AppointmentStatus.CHECKED_IN.value
                 appt.check_in_time = datetime.now(timezone.utc)
 
-                db.commit()
+                await db.commit()
                 return True, token_number
             except Exception as e:
                 db.rollback()
@@ -852,9 +870,11 @@ class TestResourceContention:
         assert all(t > 0 for t in token_numbers), "Invalid token numbers"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_invoice_number_generation(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -896,7 +916,7 @@ class TestResourceContention:
                     status=InvoiceStatus.PENDING.value,
                 )
                 db.add(invoice)
-                db.commit()
+                await db.commit()
                 return True, invoice_number
             except IntegrityError:
                 # Unique constraint violation
@@ -920,9 +940,11 @@ class TestResourceContention:
             f"Duplicate invoice numbers: {invoice_numbers}"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_concurrent_waitlist_position_updates(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_doctor: Doctor,
     ):
@@ -960,7 +982,7 @@ class TestResourceContention:
                     queue_position=position,
                 )
                 db.add(entry)
-                db.commit()
+                await db.commit()
                 return True, position
             except Exception as e:
                 db.rollback()
@@ -991,9 +1013,12 @@ class TestResourceContention:
 class TestDatabaseLocking:
     """Test database locking behavior."""
 
-    def test_row_level_locking_with_select_for_update(
+    @pytest.mark.asyncio
+
+
+    async def test_row_level_locking_with_select_for_update(
         self,
-        db: Session,
+        db: AsyncSession,
         test_patient: Patient,
     ):
         """
@@ -1001,49 +1026,42 @@ class TestDatabaseLocking:
 
         NOTE: This requires proper transaction isolation.
         """
-        def update_patient_with_lock(new_name: str) -> bool:
+        async def update_patient_with_lock(new_name: str) -> bool:
             """Update patient with explicit lock."""
             try:
-                # Fetch with lock
-                patient = db.query(Patient).filter(
-                    Patient.id == test_patient.id
-                ).with_for_update().first()
+                # Fetch with lock using async pattern
+                from sqlalchemy import select
+                result = await db.execute(
+                    select(Patient).where(Patient.id == test_patient.id).with_for_update()
+                )
+                patient = result.scalars().first()
 
                 # Simulate processing
-                import time
-                time.sleep(0.05)
+                import asyncio
+                await asyncio.sleep(0.05)
 
-                patient.name = new_name
-                db.commit()
+                patient.first_name = new_name
+                await db.commit()
                 return True
             except Exception as e:
-                db.rollback()
+                await db.rollback()
                 return False
 
-        # Execute in threads for true parallelism
-        results = []
-        threads = []
-
-        for i in range(3):
-            thread = threading.Thread(
-                target=lambda i=i: results.append(
-                    update_patient_with_lock(f"Name {i}")
-                )
-            )
-            threads.append(thread)
-            thread.start()
-
-        for thread in threads:
-            thread.join()
+        # Execute with asyncio tasks for concurrent testing
+        import asyncio
+        tasks = [update_patient_with_lock(f"Name {i}") for i in range(3)]
+        results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Verify final state is consistent
-        db.refresh(test_patient)
-        assert test_patient.name.startswith("Name"), "Update failed"
+        await db.refresh(test_patient)
+        assert test_patient.first_name.startswith("Name"), "Update failed"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_optimistic_locking_with_version(
         self,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """
@@ -1066,7 +1084,7 @@ class TestDatabaseLocking:
 
                 appt.notes = "Updated with version check"
                 # appt.version += 1
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
                 db.rollback()
@@ -1076,9 +1094,12 @@ class TestDatabaseLocking:
         # in high-contention scenarios
         assert True, "Optimistic locking pattern documented"
 
-    def test_deadlock_prevention(
+    @pytest.mark.asyncio
+
+
+    async def test_deadlock_prevention(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -1109,65 +1130,69 @@ class TestDatabaseLocking:
             status=InvoiceStatus.PENDING.value,
         )
         db.add_all([invoice1, invoice2])
-        db.commit()
+        await db.commit()
 
-        def transaction_1():
+        async def transaction_1():
             """Access invoice1 then invoice2."""
             try:
-                inv1 = db.query(Invoice).filter(
-                    Invoice.id == invoice1.id
-                ).with_for_update().first()
+                from sqlalchemy import select
+                result1 = await db.execute(
+                    select(Invoice).where(Invoice.id == invoice1.id).with_for_update()
+                )
+                inv1 = result1.scalars().first()
 
-                import time
-                time.sleep(0.05)
+                import asyncio
+                await asyncio.sleep(0.05)
 
-                inv2 = db.query(Invoice).filter(
-                    Invoice.id == invoice2.id
-                ).with_for_update().first()
+                result2 = await db.execute(
+                    select(Invoice).where(Invoice.id == invoice2.id).with_for_update()
+                )
+                inv2 = result2.scalars().first()
 
                 inv1.notes = "Transaction 1"
                 inv2.notes = "Transaction 1"
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
-                db.rollback()
+                await db.rollback()
                 return False
 
-        def transaction_2():
+        async def transaction_2():
             """Access invoice2 then invoice1 (reverse order - deadlock risk!)."""
             try:
-                inv2 = db.query(Invoice).filter(
-                    Invoice.id == invoice2.id
-                ).with_for_update().first()
+                from sqlalchemy import select
+                result2 = await db.execute(
+                    select(Invoice).where(Invoice.id == invoice2.id).with_for_update()
+                )
+                inv2 = result2.scalars().first()
 
-                import time
-                time.sleep(0.05)
+                import asyncio
+                await asyncio.sleep(0.05)
 
-                inv1 = db.query(Invoice).filter(
-                    Invoice.id == invoice1.id
-                ).with_for_update().first()
+                result1 = await db.execute(
+                    select(Invoice).where(Invoice.id == invoice1.id).with_for_update()
+                )
+                inv1 = result1.scalars().first()
 
                 inv2.notes = "Transaction 2"
                 inv1.notes = "Transaction 2"
-                db.commit()
+                await db.commit()
                 return True
             except Exception:
-                db.rollback()
+                await db.rollback()
                 return False
 
-        # Execute in parallel (may deadlock!)
-        results = []
-        thread1 = threading.Thread(target=lambda: results.append(transaction_1()))
-        thread2 = threading.Thread(target=lambda: results.append(transaction_2()))
-
-        thread1.start()
-        thread2.start()
-        thread1.join(timeout=2.0)
-        thread2.join(timeout=2.0)
+        # Execute in parallel with asyncio (may deadlock!)
+        import asyncio
+        results = await asyncio.gather(
+            transaction_1(),
+            transaction_2(),
+            return_exceptions=True
+        )
 
         # At least one should complete (or both if no deadlock)
         # This test documents the deadlock risk
-        assert len(results) > 0, "Both transactions blocked (deadlock)"
+        assert len([r for r in results if r is True]) > 0, "Both transactions blocked (deadlock)"
 
 
 # =============================================================================

@@ -18,8 +18,8 @@ from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from uuid import uuid4, UUID
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment
 from app.models.clinic import Clinic
@@ -63,14 +63,16 @@ class TestAIChatAPI:
             mock.return_value = assistant
             yield assistant
 
-    def test_send_chat_message_query(
+    @pytest.mark.asyncio
+
+    async def test_send_chat_message_query(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         mock_ai_assistant,
     ):
         """Test sending a natural language query to AI."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat",
             headers=auth_headers,
             json={
@@ -86,14 +88,16 @@ class TestAIChatAPI:
         assert "session_id" in data
         assert isinstance(data["suggestions"], list)
 
-    def test_send_chat_message_with_session_context(
+    @pytest.mark.asyncio
+
+    async def test_send_chat_message_with_session_context(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         mock_ai_assistant,
     ):
         """Test sending message with session context."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat",
             headers=auth_headers,
             json={
@@ -106,10 +110,12 @@ class TestAIChatAPI:
         data = response.json()
         assert data["session_id"] == "test-session-123"
 
-    def test_send_chat_message_without_clinic(
+    @pytest.mark.asyncio
+
+    async def test_send_chat_message_without_clinic(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
     ):
         """Test chat message fails without clinic."""
         # Create user without clinic
@@ -125,12 +131,12 @@ class TestAIChatAPI:
             clinic_id=None,  # No clinic
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         token = create_access_token(subject=user.id)
         headers = {"Authorization": f"Bearer {token}"}
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat",
             headers=headers,
             json={"message": "Test query"},
@@ -138,9 +144,11 @@ class TestAIChatAPI:
         assert response.status_code == 400
         assert "clinic" in response.json()["detail"].lower()
 
-    def test_send_chat_message_llm_error(
+    @pytest.mark.asyncio
+
+    async def test_send_chat_message_llm_error(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test handling LLM service errors gracefully."""
@@ -152,7 +160,7 @@ class TestAIChatAPI:
             assistant.chat = mock_error
             mock.return_value = assistant
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat",
                 headers=auth_headers,
                 json={"message": "Test query"},
@@ -160,9 +168,11 @@ class TestAIChatAPI:
             assert response.status_code == 500
             assert "failed" in response.json()["detail"].lower()
 
-    def test_get_session_history(
+    @pytest.mark.asyncio
+
+    async def test_get_session_history(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
@@ -191,7 +201,7 @@ class TestAIChatAPI:
             assistant.get_session = MagicMock(return_value=session_data)
             mock.return_value = assistant
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/sessions/test-session-123",
                 headers=auth_headers,
             )
@@ -202,9 +212,11 @@ class TestAIChatAPI:
             assert data["messages"][0]["role"] == "user"
             assert data["messages"][1]["role"] == "assistant"
 
-    def test_get_session_history_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_session_history_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting non-existent session."""
@@ -213,15 +225,17 @@ class TestAIChatAPI:
             assistant.get_session = MagicMock(return_value=None)
             mock.return_value = assistant
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/sessions/nonexistent",
                 headers=auth_headers,
             )
             assert response.status_code == 404
 
-    def test_get_session_history_unauthorized(
+    @pytest.mark.asyncio
+
+    async def test_get_session_history_unauthorized(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test accessing another user's session."""
@@ -235,15 +249,17 @@ class TestAIChatAPI:
             assistant.get_session = MagicMock(return_value=session_data)
             mock.return_value = assistant
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/sessions/other-session",
                 headers=auth_headers,
             )
             assert response.status_code == 403
 
-    def test_clear_session(
+    @pytest.mark.asyncio
+
+    async def test_clear_session(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
@@ -258,7 +274,7 @@ class TestAIChatAPI:
             assistant.clear_session = MagicMock(return_value=True)
             mock.return_value = assistant
 
-            response = client.delete(
+            response = await client.delete(
                 "/api/v1/ai/sessions/test-session-123",
                 headers=auth_headers,
             )
@@ -267,9 +283,11 @@ class TestAIChatAPI:
             assert data["success"] is True
             assert "cleared" in data["message"].lower()
 
-    def test_clear_session_not_found(
+    @pytest.mark.asyncio
+
+    async def test_clear_session_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test clearing non-existent session returns success."""
@@ -279,7 +297,7 @@ class TestAIChatAPI:
             assistant.clear_session = MagicMock(return_value=False)
             mock.return_value = assistant
 
-            response = client.delete(
+            response = await client.delete(
                 "/api/v1/ai/sessions/nonexistent",
                 headers=auth_headers,
             )
@@ -291,9 +309,11 @@ class TestAIChatAPI:
 class TestAIActionsAPI:
     """Tests for AI Conversational Actions (Phase 16b)."""
 
-    def test_action_chat_book_appointment(
+    @pytest.mark.asyncio
+
+    async def test_action_chat_book_appointment(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_doctor: Doctor,
@@ -323,11 +343,11 @@ class TestAIActionsAPI:
 
             mock_extractor.return_value = extractor
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={
-                    "message": f"Book {test_patient.name} for tomorrow at 3pm",
+                    "message": f"Book {test_patient.full_name} for tomorrow at 3pm",
                     "context": {},
                 },
             )
@@ -337,9 +357,11 @@ class TestAIActionsAPI:
             assert "action_preview" in data
             assert data["action_preview"]["action_type"] == "book_appointment"
 
-    def test_action_chat_patient_not_found(
+    @pytest.mark.asyncio
+
+    async def test_action_chat_patient_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test action when patient cannot be found."""
@@ -352,7 +374,7 @@ class TestAIActionsAPI:
             extractor.extract_patient = mock_no_patient
             mock_extractor.return_value = extractor
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={"message": "Book Unknown Patient tomorrow"},
@@ -362,9 +384,11 @@ class TestAIActionsAPI:
             assert data["requires_confirmation"] is False
             assert "couldn't find" in data["response"].lower()
 
-    def test_action_chat_fallback_to_query(
+    @pytest.mark.asyncio
+
+    async def test_action_chat_fallback_to_query(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test non-action messages fall back to query mode."""
@@ -380,7 +404,7 @@ class TestAIActionsAPI:
             assistant.chat = mock_chat
             mock_assistant.return_value = assistant
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={"message": "How many appointments today?"},
@@ -390,9 +414,11 @@ class TestAIActionsAPI:
             assert data["requires_confirmation"] is False
             assert "appointments" in data["response"].lower()
 
-    def test_confirm_action_success(
+    @pytest.mark.asyncio
+
+    async def test_confirm_action_success(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_doctor: Doctor,
@@ -419,15 +445,15 @@ class TestAIActionsAPI:
             _pending_actions[action_id] = {
                 "action_type": ActionType.BOOK_APPOINTMENT,
                 "params": {
-                    "patient_id": test_patient.id,
-                    "doctor_id": test_doctor.id,
+                    "patient_id": str(test_patient.id),
+                    "doctor_id": str(test_doctor.id),
                 },
                 "user_id": str(auth_headers.get("user_id", uuid4())),
                 "clinic_id": str(test_patient.clinic_id),
                 "expires_at": datetime.utcnow() + timedelta(minutes=5),
             }
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat/confirm",
                 headers=auth_headers,
                 json={
@@ -439,9 +465,11 @@ class TestAIActionsAPI:
             data = response.json()
             assert data["success"] is True
 
-    def test_confirm_action_cancelled(
+    @pytest.mark.asyncio
+
+    async def test_confirm_action_cancelled(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
@@ -458,7 +486,7 @@ class TestAIActionsAPI:
             "expires_at": datetime.utcnow() + timedelta(minutes=5),
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
@@ -471,13 +499,15 @@ class TestAIActionsAPI:
         assert data["success"] is True
         assert "cancelled" in data["message"].lower()
 
-    def test_confirm_action_not_found(
+    @pytest.mark.asyncio
+
+    async def test_confirm_action_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test confirming non-existent action."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
@@ -487,9 +517,11 @@ class TestAIActionsAPI:
         )
         assert response.status_code == 404
 
-    def test_confirm_action_expired(
+    @pytest.mark.asyncio
+
+    async def test_confirm_action_expired(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_user: User,
     ):
@@ -506,7 +538,7 @@ class TestAIActionsAPI:
             "expires_at": datetime.utcnow() - timedelta(minutes=1),  # Expired
         }
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
@@ -516,9 +548,11 @@ class TestAIActionsAPI:
         )
         assert response.status_code == 410  # Gone
 
-    def test_undo_action(
+    @pytest.mark.asyncio
+
+    async def test_undo_action(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test undoing the last action."""
@@ -536,7 +570,7 @@ class TestAIActionsAPI:
             executor.undo_last_action = mock_undo
             mock_executor.return_value = executor
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/ai/chat/undo",
                 headers=auth_headers,
                 json={"session_id": "test-session"},
@@ -549,9 +583,11 @@ class TestAIActionsAPI:
 class TestProactiveInsightsAPI:
     """Tests for Proactive Intelligence endpoints (Phase 16c)."""
 
-    def test_get_insights(
+    @pytest.mark.asyncio
+
+    async def test_get_insights(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test retrieving active insights."""
@@ -572,7 +608,7 @@ class TestProactiveInsightsAPI:
             engine.get_active_insights = mock_get_insights
             mock_engine.return_value = engine
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/insights",
                 headers=auth_headers,
             )
@@ -582,9 +618,11 @@ class TestProactiveInsightsAPI:
             assert "total" in data
             assert isinstance(data["insights"], list)
 
-    def test_get_insights_with_filter(
+    @pytest.mark.asyncio
+
+    async def test_get_insights_with_filter(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test filtering insights by type."""
@@ -597,15 +635,17 @@ class TestProactiveInsightsAPI:
             engine.get_active_insights = mock_get_insights
             mock_engine.return_value = engine
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/insights?insight_types=followup_due,revenue_alert",
                 headers=auth_headers,
             )
             assert response.status_code == 200
 
-    def test_get_daily_digest(
+    @pytest.mark.asyncio
+
+    async def test_get_daily_digest(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test retrieving daily digest."""
@@ -626,7 +666,7 @@ class TestProactiveInsightsAPI:
             service.generate_digest = mock_generate
             mock_service.return_value = service
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/insights/digest",
                 headers=auth_headers,
             )
@@ -635,9 +675,11 @@ class TestProactiveInsightsAPI:
             assert "appointments_today" in data
             assert "revenue_yesterday" in data
 
-    def test_dismiss_insight(
+    @pytest.mark.asyncio
+
+    async def test_dismiss_insight(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test dismissing an insight."""
@@ -652,7 +694,7 @@ class TestProactiveInsightsAPI:
             engine.dismiss_insight = mock_dismiss
             mock_engine.return_value = engine
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/ai/insights/{insight_id}/dismiss",
                 headers=auth_headers,
             )
@@ -660,9 +702,11 @@ class TestProactiveInsightsAPI:
             data = response.json()
             assert data["success"] is True
 
-    def test_act_on_insight(
+    @pytest.mark.asyncio
+
+    async def test_act_on_insight(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test acting on an insight."""
@@ -677,7 +721,7 @@ class TestProactiveInsightsAPI:
             engine.act_on_insight = mock_act
             mock_engine.return_value = engine
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/ai/insights/{insight_id}/act",
                 headers=auth_headers,
             )
@@ -685,9 +729,11 @@ class TestProactiveInsightsAPI:
             data = response.json()
             assert data["success"] is True
 
-    def test_get_digest_preferences(
+    @pytest.mark.asyncio
+
+    async def test_get_digest_preferences(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting user's digest preferences."""
@@ -706,7 +752,7 @@ class TestProactiveInsightsAPI:
             service.get_user_preferences = mock_get_prefs
             mock_service.return_value = service
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/ai/preferences/digest",
                 headers=auth_headers,
             )
@@ -715,9 +761,11 @@ class TestProactiveInsightsAPI:
             assert "enabled" in data
             assert "delivery_time" in data
 
-    def test_update_digest_preferences(
+    @pytest.mark.asyncio
+
+    async def test_update_digest_preferences(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test updating digest preferences."""
@@ -735,7 +783,7 @@ class TestProactiveInsightsAPI:
             service.create_or_update_preferences = mock_update
             mock_service.return_value = service
 
-            response = client.put(
+            response = await client.put(
                 "/api/v1/ai/preferences/digest",
                 headers=auth_headers,
                 json={
@@ -756,9 +804,11 @@ class TestProactiveInsightsAPI:
 class TestTelemedicineAPI:
     """Tests for Telemedicine video consultation endpoints."""
 
-    def test_create_consultation(
+    @pytest.mark.asyncio
+
+    async def test_create_consultation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment: Appointment,
     ):
@@ -780,7 +830,7 @@ class TestTelemedicineAPI:
             service.create_consultation = mock_create
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/telemedicine/consultations",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
@@ -791,25 +841,29 @@ class TestTelemedicineAPI:
             assert "room_url" in data
             assert data["status"] == "waiting_room"
 
-    def test_create_consultation_appointment_not_found(
+    @pytest.mark.asyncio
+
+    async def test_create_consultation_appointment_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test creating consultation for non-existent appointment."""
         fake_id = uuid4()
-        response = client.post(
+        response = await client.post(
             "/api/v1/telemedicine/consultations",
             headers=auth_headers,
             json={"appointment_id": str(fake_id)},
         )
         assert response.status_code == 404
 
-    def test_join_waiting_room(
+    @pytest.mark.asyncio
+
+    async def test_join_waiting_room(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test patient joining the waiting room."""
@@ -821,14 +875,14 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.WAITING_ROOM,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.telemedicine.TelemedicineService") as mock_service:
             service = MagicMock()
 
             async def mock_join(*args, **kwargs):
                 return {
-                    "consultation_id": consultation.id,
+                    "consultation_id": str(consultation.id),
                     "status": ConsultationStatus.WAITING_ROOM,
                     "message": "You are in the waiting room",
                     "position": 1,
@@ -838,7 +892,7 @@ class TestTelemedicineAPI:
             service.join_waiting_room = mock_join
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation.id}/waiting-room/join",
                 headers=auth_headers,
                 params={
@@ -851,11 +905,13 @@ class TestTelemedicineAPI:
             assert data["status"] == "waiting_room"
             assert "position" in data
 
-    def test_admit_patient(
+    @pytest.mark.asyncio
+
+    async def test_admit_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test doctor admitting patient from waiting room."""
@@ -866,7 +922,7 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.WAITING_ROOM,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.telemedicine.TelemedicineService") as mock_service:
             service = MagicMock()
@@ -876,14 +932,14 @@ class TestTelemedicineAPI:
                     "room_url": "https://meet.jit.si/test-room-123",
                     "jwt_token": "fake-jwt-token",
                     "room_name": "test-room-123",
-                    "consultation_id": consultation.id,
+                    "consultation_id": str(consultation.id),
                     "role": "doctor",
                 }
 
             service.doctor_admits_patient = mock_admit
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation.id}/admit",
                 headers=doctor_auth_headers,
             )
@@ -893,11 +949,13 @@ class TestTelemedicineAPI:
             assert "room_url" in data
             assert data["role"] == "doctor"
 
-    def test_admit_patient_non_doctor(
+    @pytest.mark.asyncio
+
+    async def test_admit_patient_non_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test non-doctor cannot admit patient."""
@@ -908,19 +966,21 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.WAITING_ROOM,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/telemedicine/consultations/{consultation.id}/admit",
             headers=auth_headers,
         )
         assert response.status_code == 403
 
-    def test_join_consultation(
+    @pytest.mark.asyncio
+
+    async def test_join_consultation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test joining an active consultation."""
@@ -931,7 +991,7 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.IN_PROGRESS,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.telemedicine.TelemedicineService") as mock_service:
             service = MagicMock()
@@ -941,14 +1001,14 @@ class TestTelemedicineAPI:
                     "room_url": "https://meet.jit.si/test-room-123",
                     "jwt_token": "fake-jwt-token",
                     "room_name": "test-room-123",
-                    "consultation_id": consultation.id,
+                    "consultation_id": str(consultation.id),
                     "role": "patient",
                 }
 
             service.patient_join_consultation = mock_join
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation.id}/join",
                 headers=auth_headers,
             )
@@ -957,11 +1017,13 @@ class TestTelemedicineAPI:
             assert "jwt_token" in data
             assert data["role"] == "patient"
 
-    def test_end_consultation(
+    @pytest.mark.asyncio
+
+    async def test_end_consultation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test ending a consultation."""
@@ -973,7 +1035,7 @@ class TestTelemedicineAPI:
             started_at=datetime.utcnow() - timedelta(minutes=15),
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.telemedicine.TelemedicineService") as mock_service:
             service = MagicMock()
@@ -987,7 +1049,7 @@ class TestTelemedicineAPI:
             service.end_consultation = mock_end
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation.id}/end",
                 headers=auth_headers,
                 json={
@@ -999,11 +1061,13 @@ class TestTelemedicineAPI:
             data = response.json()
             assert data["status"] == "completed"
 
-    def test_submit_recording_consent(
+    @pytest.mark.asyncio
+
+    async def test_submit_recording_consent(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test submitting recording consent."""
@@ -1014,7 +1078,7 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.IN_PROGRESS,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.telemedicine.TelemedicineService") as mock_service:
             service = MagicMock()
@@ -1025,7 +1089,7 @@ class TestTelemedicineAPI:
             service.submit_recording_consent = mock_consent
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation.id}/recording/consent",
                 headers=auth_headers,
                 json={
@@ -1038,11 +1102,13 @@ class TestTelemedicineAPI:
             assert data["consent_given"] is True
             assert "can_start_recording" in data
 
-    def test_update_connection_quality(
+    @pytest.mark.asyncio
+
+    async def test_update_connection_quality(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test updating connection quality during consultation."""
@@ -1053,9 +1119,9 @@ class TestTelemedicineAPI:
             status=ConsultationStatus.IN_PROGRESS,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/telemedicine/consultations/{consultation.id}/connection-quality",
             headers=auth_headers,
             json={
@@ -1066,9 +1132,11 @@ class TestTelemedicineAPI:
         )
         assert response.status_code == 204
 
-    def test_get_doctor_queue(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_queue(
         self,
-        client: TestClient,
+        client: AsyncClient,
         doctor_auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -1091,7 +1159,7 @@ class TestTelemedicineAPI:
             service.get_doctor_queue = mock_queue
             mock_service.return_value = service
 
-            response = client.get(
+            response = await client.get(
                 "/api/v1/telemedicine/consultations/queue",
                 headers=doctor_auth_headers,
             )
@@ -1109,9 +1177,11 @@ class TestTelemedicineAPI:
 class TestWebSocketEndpoints:
     """Tests for WebSocket real-time updates."""
 
-    def test_websocket_connection_requires_auth(
+    @pytest.mark.asyncio
+
+    async def test_websocket_connection_requires_auth(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test WebSocket requires authentication."""
         from fastapi import status as ws_status
@@ -1121,9 +1191,11 @@ class TestWebSocketEndpoints:
             with client.websocket_connect("/api/v1/ws?clinic_id=test") as websocket:
                 pass
 
-    def test_websocket_connection_invalid_token(
+    @pytest.mark.asyncio
+
+    async def test_websocket_connection_invalid_token(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test WebSocket rejects invalid token."""
         with pytest.raises(Exception):
@@ -1132,9 +1204,11 @@ class TestWebSocketEndpoints:
             ) as websocket:
                 pass
 
-    def test_websocket_connection_success(
+    @pytest.mark.asyncio
+
+    async def test_websocket_connection_success(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_user: User,
         test_clinic: Clinic,
     ):
@@ -1147,7 +1221,7 @@ class TestWebSocketEndpoints:
         # In production, use websockets library for full testing
         try:
             with client.websocket_connect(
-                f"/api/v1/ws?token={token}&clinic_id={test_clinic.id}"
+                f"/api/v1/ws?token={token}&clinic_id={str(test_clinic.id)}"
             ) as websocket:
                 data = websocket.receive_json()
                 assert data["event_type"] == "connected"
@@ -1157,9 +1231,11 @@ class TestWebSocketEndpoints:
             # This is acceptable for basic integration tests
             pass
 
-    def test_websocket_heartbeat(
+    @pytest.mark.asyncio
+
+    async def test_websocket_heartbeat(
         self,
-        client: TestClient,
+        client: AsyncClient,
         test_user: User,
         test_clinic: Clinic,
     ):
@@ -1170,7 +1246,7 @@ class TestWebSocketEndpoints:
 
         try:
             with client.websocket_connect(
-                f"/api/v1/ws?token={token}&clinic_id={test_clinic.id}"
+                f"/api/v1/ws?token={token}&clinic_id={str(test_clinic.id)}"
             ) as websocket:
                 # Should receive connected message
                 data = websocket.receive_json()
@@ -1191,11 +1267,13 @@ class TestWebSocketEndpoints:
 class TestWaitlistAdvanced:
     """Advanced waitlist management tests."""
 
-    def test_waitlist_position_tracking(
+    @pytest.mark.asyncio
+
+    async def test_waitlist_position_tracking(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -1205,7 +1283,7 @@ class TestWaitlistAdvanced:
             id=uuid4(),
             clinic_id=test_clinic.id,
             patient_id=test_patient.id,
-            patient_name=test_patient.name,
+            patient_name=test_patient.full_name,
             patient_phone=test_patient.phone,
             preferred_date=date.today() + timedelta(days=1),
             priority=WaitlistPriority.NORMAL,
@@ -1213,7 +1291,7 @@ class TestWaitlistAdvanced:
             queue_position=1,
         )
         db.add(entry)
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.waitlist.get_waitlist_service") as mock_service:
             service = MagicMock()
@@ -1231,7 +1309,7 @@ class TestWaitlistAdvanced:
             service.get_queue_position = mock_position
             mock_service.return_value = service
 
-            response = client.get(
+            response = await client.get(
                 f"/api/v1/waitlist/{entry.id}/position",
                 headers=auth_headers,
             )
@@ -1240,11 +1318,13 @@ class TestWaitlistAdvanced:
             assert data["position"] == 1
             assert data["ahead_count"] == 0
 
-    def test_waitlist_slot_confirmation(
+    @pytest.mark.asyncio
+
+    async def test_waitlist_slot_confirmation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -1253,14 +1333,14 @@ class TestWaitlistAdvanced:
             id=uuid4(),
             clinic_id=test_clinic.id,
             patient_id=test_patient.id,
-            patient_name=test_patient.name,
+            patient_name=test_patient.full_name,
             patient_phone=test_patient.phone,
             preferred_date=date.today() + timedelta(days=1),
-            status=WaitlistStatus.OFFERED,
+            status=WaitlistStatus.NOTIFIED,
             queue_position=1,
         )
         db.add(entry)
-        db.commit()
+        await db.commit()
 
         appointment_id = uuid4()
 
@@ -1274,7 +1354,7 @@ class TestWaitlistAdvanced:
             service.confirm_slot = mock_confirm
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/waitlist/{entry.id}/confirm",
                 headers=auth_headers,
                 params={"appointment_id": str(appointment_id)},
@@ -1283,18 +1363,20 @@ class TestWaitlistAdvanced:
             data = response.json()
             assert data["status"] == "booked"
 
-    def test_waitlist_cleanup_expired(
+    @pytest.mark.asyncio
+
+    async def test_waitlist_cleanup_expired(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_user: User,
         test_clinic: Clinic,
     ):
         """Test cleanup of expired waitlist entries."""
         # Update user to admin
         test_user.role = "admin"
-        db.commit()
+        await db.commit()
 
         with patch("app.api.v1.waitlist.get_waitlist_service") as mock_service:
             service = MagicMock()
@@ -1305,7 +1387,7 @@ class TestWaitlistAdvanced:
             service.cleanup_expired = mock_cleanup
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/waitlist/cleanup",
                 headers=auth_headers,
             )
@@ -1313,9 +1395,11 @@ class TestWaitlistAdvanced:
             data = response.json()
             assert data["expired_count"] == 3
 
-    def test_waitlist_process_cancellation(
+    @pytest.mark.asyncio
+
+    async def test_waitlist_process_cancellation(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -1335,7 +1419,7 @@ class TestWaitlistAdvanced:
             service.process_cancelled_slot = mock_process
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/waitlist/process-cancellation",
                 headers=auth_headers,
                 params={
@@ -1357,66 +1441,78 @@ class TestWaitlistAdvanced:
 class TestAdvancedAPIsErrorHandling:
     """Tests for error handling across advanced APIs."""
 
-    def test_ai_chat_without_authentication(
+    @pytest.mark.asyncio
+
+    async def test_ai_chat_without_authentication(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test AI endpoints require authentication."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat",
             json={"message": "Test"},
         )
         assert response.status_code == 401
 
-    def test_telemedicine_without_authentication(
+    @pytest.mark.asyncio
+
+    async def test_telemedicine_without_authentication(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test telemedicine endpoints require authentication."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/telemedicine/consultations",
             json={"appointment_id": str(uuid4())},
         )
         assert response.status_code == 401
 
-    def test_waitlist_without_authentication(
+    @pytest.mark.asyncio
+
+    async def test_waitlist_without_authentication(
         self,
-        client: TestClient,
+        client: AsyncClient,
     ):
         """Test waitlist endpoints require authentication."""
-        response = client.get("/api/v1/waitlist/")
+        response = await client.get("/api/v1/waitlist/")
         assert response.status_code == 401
 
-    def test_invalid_uuid_handling(
+    @pytest.mark.asyncio
+
+    async def test_invalid_uuid_handling(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test handling of invalid UUID in path parameters."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/telemedicine/consultations/invalid-uuid",
             headers=auth_headers,
         )
         assert response.status_code == 422
 
-    def test_missing_required_fields(
+    @pytest.mark.asyncio
+
+    async def test_missing_required_fields(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test validation errors for missing fields."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/ai/chat",
             headers=auth_headers,
             json={},  # Missing required 'message' field
         )
         assert response.status_code == 422
 
-    def test_invalid_enum_values(
+    @pytest.mark.asyncio
+
+    async def test_invalid_enum_values(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test validation of enum values."""
@@ -1427,9 +1523,9 @@ class TestAdvancedAPIsErrorHandling:
             status=ConsultationStatus.IN_PROGRESS,
         )
         db.add(consultation)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/telemedicine/consultations/{consultation.id}/connection-quality",
             headers=auth_headers,
             json={
@@ -1447,12 +1543,14 @@ class TestAdvancedAPIsErrorHandling:
 class TestAdvancedAPIsIntegration:
     """End-to-end integration tests."""
 
-    def test_complete_telemedicine_workflow(
+    @pytest.mark.asyncio
+
+    async def test_complete_telemedicine_workflow(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         doctor_auth_headers: dict,
-        db: Session,
+        db: AsyncSession,
         test_appointment: Appointment,
     ):
         """Test complete telemedicine consultation workflow."""
@@ -1472,7 +1570,7 @@ class TestAdvancedAPIsIntegration:
             service.create_consultation = mock_create
             mock_service.return_value = service
 
-            response = client.post(
+            response = await client.post(
                 "/api/v1/telemedicine/consultations",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
@@ -1490,7 +1588,7 @@ class TestAdvancedAPIsIntegration:
 
             service.join_waiting_room = mock_join
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation_id}/waiting-room/join",
                 headers=auth_headers,
             )
@@ -1508,7 +1606,7 @@ class TestAdvancedAPIsIntegration:
 
             service.doctor_admits_patient = mock_admit
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation_id}/admit",
                 headers=doctor_auth_headers,
             )
@@ -1524,10 +1622,11 @@ class TestAdvancedAPIsIntegration:
 
             service.end_consultation = mock_end
 
-            response = client.post(
+            response = await client.post(
                 f"/api/v1/telemedicine/consultations/{consultation_id}/end",
                 headers=auth_headers,
             )
             assert response.status_code == 200
             data = response.json()
             assert data["status"] == "completed"
+

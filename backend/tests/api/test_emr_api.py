@@ -16,9 +16,11 @@ from app.models.procedure import Procedure
 class TestEMRStatusEndpoints:
     """Test EMR status and sync endpoints."""
 
-    def test_get_emr_status(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_get_emr_status(self, client, auth_headers):
         """Test getting EMR sync status."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/emr/status",
             headers=auth_headers,
         )
@@ -32,9 +34,11 @@ class TestEMRStatusEndpoints:
         assert "stats" in data
         assert "sync_interval_seconds" in data
 
-    def test_trigger_manual_sync_unavailable(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_trigger_manual_sync_unavailable(self, client, auth_headers):
         """Test manual sync when EMR is unavailable."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/emr/sync",
             headers=auth_headers,
         )
@@ -49,10 +53,12 @@ class TestEMRStatusEndpoints:
 class TestPatientEMREndpoints:
     """Test patient-specific EMR endpoints."""
 
-    def test_get_patient_visits_not_found(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_get_patient_visits_not_found(self, client, auth_headers):
         """Test getting visits for non-existent patient."""
         fake_id = str(uuid4())
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{fake_id}/visits",
             headers=auth_headers,
         )
@@ -60,10 +66,12 @@ class TestPatientEMREndpoints:
         # Should return 404 or 503 depending on EMR availability
         assert response.status_code in [404, 503]
 
-    def test_get_patient_prescriptions_not_found(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_get_patient_prescriptions_not_found(self, client, auth_headers):
         """Test getting prescriptions for non-existent patient."""
         fake_id = str(uuid4())
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{fake_id}/prescriptions",
             headers=auth_headers,
         )
@@ -75,7 +83,9 @@ class TestPatientEMREndpoints:
 class TestPatientTimeline:
     """Test patient timeline endpoint."""
 
-    def test_get_patient_timeline_success(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_success(
         self,
         client,
         auth_headers,
@@ -83,7 +93,7 @@ class TestPatientTimeline:
         test_appointment,
     ):
         """Test getting patient timeline."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             headers=auth_headers,
         )
@@ -100,7 +110,9 @@ class TestPatientTimeline:
         # Should have at least the test appointment
         assert data["total_events"] >= 1
 
-    def test_get_patient_timeline_with_appointment(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_with_appointment(
         self,
         client,
         auth_headers,
@@ -124,9 +136,9 @@ class TestPatientTimeline:
                 appointment_type="follow_up",
             )
             db.add(appointment)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             headers=auth_headers,
         )
@@ -145,7 +157,9 @@ class TestPatientTimeline:
         assert "doctor_name" in event
         assert "source" in event
 
-    def test_get_patient_timeline_with_procedure(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_with_procedure(
         self,
         client,
         auth_headers,
@@ -169,9 +183,9 @@ class TestPatientTimeline:
             severity="minor",
         )
         db.add(procedure)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             headers=auth_headers,
         )
@@ -192,14 +206,16 @@ class TestPatientTimeline:
         assert "Echocardiogram" in proc_event["title"]
         assert proc_event["source"] == "practice_manager"
 
-    def test_get_patient_timeline_filtering(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_filtering(
         self,
         client,
         auth_headers,
         test_patient,
     ):
         """Test timeline with filtering options."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             params={
                 "limit": 10,
@@ -217,17 +233,21 @@ class TestPatientTimeline:
         for event in data["events"]:
             assert event["event_type"] == "appointment"
 
-    def test_get_patient_timeline_not_found(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_not_found(self, client, auth_headers):
         """Test timeline for non-existent patient."""
         fake_id = str(uuid4())
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{fake_id}/timeline",
             headers=auth_headers,
         )
 
         assert response.status_code == 404
 
-    def test_get_patient_timeline_limit(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_timeline_limit(
         self,
         client,
         auth_headers,
@@ -251,10 +271,10 @@ class TestPatientTimeline:
                 appointment_type="follow_up",
             )
             db.add(appointment)
-        db.commit()
+        await db.commit()
 
         # Request only 5 events
-        response = client.get(
+        response = await client.get(
             f"/api/v1/emr/patients/{test_patient.id}/timeline",
             params={"limit": 5},
             headers=auth_headers,
@@ -270,15 +290,18 @@ class TestPatientTimeline:
 class TestAppointmentVisitLinking:
     """Test appointment-visit linking endpoints."""
 
-    def test_link_appointment_to_visit_not_found(self, client, auth_headers):
+    @pytest.mark.asyncio
+
+    async def test_link_appointment_to_visit_not_found(self, client, auth_headers):
         """Test linking non-existent appointment."""
         fake_appointment_id = str(uuid4())
         fake_visit_id = "visit-123"
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/emr/appointments/{fake_appointment_id}/link-visit/{fake_visit_id}",
             headers=auth_headers,
         )
 
         # Should return 400 or 503 depending on EMR availability
         assert response.status_code in [400, 503]
+

@@ -450,5 +450,5 @@ class TestDoctorQueue:
         assert len(queue) == 3
         # Should be ordered by join time
         for item in queue:
-            assert item.patient_name == test_patient.name
+            assert item.patient_name == test_patient.full_name
             assert item.wait_time_minutes >= 0

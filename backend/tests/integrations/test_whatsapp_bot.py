@@ -137,7 +137,9 @@ class TestWhatsAppBot:
         # Mock patient lookup
         mock_patient = MagicMock()
         mock_patient.id = str(uuid4())
-        mock_patient.name = "Test Patient"
+        mock_patient.first_name = "Test"
+        mock_patient.last_name = "Patient"
+        mock_patient.full_name = "Test Patient"
 
         mock_result = MagicMock()
         mock_result.scalars.return_value.first.return_value = mock_patient

@@ -81,6 +81,8 @@ async def async_db(async_engine) -> AsyncGenerator[AsyncSession, None]:
 # ==================
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_clinic(async_db: AsyncSession) -> Clinic:
     """Create test clinic."""
     clinic = Clinic(
@@ -103,6 +105,8 @@ async def test_clinic(async_db: AsyncSession) -> Clinic:
 
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_user(async_db: AsyncSession, test_clinic: Clinic) -> User:
     """Create test admin user."""
     user = User(
@@ -122,6 +126,8 @@ async def test_user(async_db: AsyncSession, test_clinic: Clinic) -> User:
 
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_doctor(async_db: AsyncSession, test_clinic: Clinic) -> Doctor:
     """Create test doctor."""
     user = User(
@@ -161,6 +167,8 @@ async def test_doctor(async_db: AsyncSession, test_clinic: Clinic) -> Doctor:
 
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_patient(async_db: AsyncSession, test_clinic: Clinic) -> Patient:
     """Create test patient."""
     patient = Patient(
@@ -183,6 +191,8 @@ async def test_patient(async_db: AsyncSession, test_clinic: Clinic) -> Patient:
 
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_service(async_db: AsyncSession, test_clinic: Clinic) -> Service:
     """Create test service."""
     service = Service(
@@ -202,6 +212,8 @@ async def test_service(async_db: AsyncSession, test_clinic: Clinic) -> Service:
 
 
 @pytest.fixture
+@pytest.mark.asyncio
+
 async def test_invoice(
     async_db: AsyncSession,
     test_clinic: Clinic,
@@ -262,6 +274,8 @@ class TestPaymentCreation:
     """Test payment creation with various methods."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_create_cash_payment(
         self,
         async_db: AsyncSession,
@@ -296,6 +310,8 @@ class TestPaymentCreation:
         assert not payment.is_refunded
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_create_upi_payment(
         self,
         async_db: AsyncSession,
@@ -323,6 +339,8 @@ class TestPaymentCreation:
         assert payment.transaction_id == "TXN123456789"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_create_card_payment(
         self,
         async_db: AsyncSession,
@@ -347,6 +365,8 @@ class TestPaymentCreation:
         assert payment.payment_gateway == "razorpay"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_create_insurance_payment(
         self,
         async_db: AsyncSession,
@@ -372,6 +392,8 @@ class TestPaymentCreation:
         assert "Star Health Insurance" in payment.notes
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_partial_payment(
         self,
         async_db: AsyncSession,
@@ -404,6 +426,8 @@ class TestPaymentCreation:
         assert not test_invoice.is_fully_paid
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_multiple_partial_payments(
         self,
         async_db: AsyncSession,
@@ -446,6 +470,8 @@ class TestPaymentCreation:
         assert test_invoice.is_fully_paid
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_with_gst_calculation(
         self,
         async_db: AsyncSession,
@@ -471,6 +497,8 @@ class TestRazorpayIntegration:
     """Test Razorpay payment gateway integration."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_order_creation(self):
         """Test creating a Razorpay order."""
         service = RazorpayService(
@@ -508,6 +536,8 @@ class TestRazorpayIntegration:
         assert order.status == "created"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_order_creation_failure(self):
         """Test Razorpay order creation failure."""
         service = RazorpayService(
@@ -531,7 +561,10 @@ class TestRazorpayIntegration:
 
         assert order is None
 
-    def test_verify_valid_payment_signature(self):
+    @pytest.mark.asyncio
+
+
+    async def test_verify_valid_payment_signature(self):
         """Test verifying valid Razorpay payment signature."""
         service = RazorpayService(
             key_id="rzp_test_key",
@@ -557,7 +590,10 @@ class TestRazorpayIntegration:
 
         assert result is True
 
-    def test_verify_invalid_payment_signature(self):
+    @pytest.mark.asyncio
+
+
+    async def test_verify_invalid_payment_signature(self):
         """Test verifying invalid Razorpay payment signature."""
         service = RazorpayService(
             key_id="rzp_test_key",
@@ -572,7 +608,10 @@ class TestRazorpayIntegration:
 
         assert result is False
 
-    def test_verify_tampered_signature(self):
+    @pytest.mark.asyncio
+
+
+    async def test_verify_tampered_signature(self):
         """Test signature verification fails for tampered data."""
         service = RazorpayService(
             key_id="rzp_test_key",
@@ -599,6 +638,8 @@ class TestRazorpayIntegration:
         assert result is False
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_payment_capture(self):
         """Test capturing an authorized payment."""
         service = RazorpayService(
@@ -623,6 +664,8 @@ class TestRazorpayIntegration:
         assert result is True
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_refund_full(self):
         """Test creating a full refund."""
         service = RazorpayService(
@@ -657,6 +700,8 @@ class TestRazorpayIntegration:
         assert result.status == "processed"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_refund_partial(self):
         """Test creating a partial refund."""
         service = RazorpayService(
@@ -689,6 +734,8 @@ class TestRazorpayIntegration:
         assert result.amount == 118000
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_refund_failure(self):
         """Test refund failure."""
         service = RazorpayService(
@@ -713,7 +760,10 @@ class TestRazorpayIntegration:
         assert result.success is False
         assert result.error is not None
 
-    def test_verify_webhook_signature_valid(self):
+    @pytest.mark.asyncio
+
+
+    async def test_verify_webhook_signature_valid(self):
         """Test verifying valid webhook signature."""
         service = RazorpayService(
             key_id="rzp_test_key",
@@ -738,7 +788,10 @@ class TestRazorpayIntegration:
 
         assert result is True
 
-    def test_verify_webhook_signature_invalid(self):
+    @pytest.mark.asyncio
+
+
+    async def test_verify_webhook_signature_invalid(self):
         """Test verifying invalid webhook signature."""
         service = RazorpayService(
             key_id="rzp_test_key",
@@ -754,6 +807,8 @@ class TestRazorpayIntegration:
         assert result is False
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_webhook_payment_captured(
         self,
         async_db: AsyncSession,
@@ -793,6 +848,8 @@ class TestRazorpayIntegration:
         assert test_invoice.status == InvoiceStatus.PAID.value
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_webhook_payment_failed(
         self,
         async_db: AsyncSession,
@@ -836,6 +893,8 @@ class TestPaymentEdgeCases:
     """Test edge cases and error scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_for_nonexistent_invoice(
         self,
         async_db: AsyncSession,
@@ -859,6 +918,8 @@ class TestPaymentEdgeCases:
             await async_db.commit()
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_exceeds_balance_due(
         self,
         async_db: AsyncSession,
@@ -876,6 +937,8 @@ class TestPaymentEdgeCases:
         # This test verifies the validation logic exists
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_for_cancelled_invoice(
         self,
         async_db: AsyncSession,
@@ -894,6 +957,8 @@ class TestPaymentEdgeCases:
         assert test_invoice.is_cancelled is True
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_duplicate_payment_prevention(
         self,
         async_db: AsyncSession,
@@ -923,6 +988,8 @@ class TestPaymentEdgeCases:
         # Attempting another payment should be rejected
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_currency_validation_inr_only(self):
         """Test payment system only accepts INR currency."""
         service = RazorpayService(
@@ -955,6 +1022,8 @@ class TestPaymentEdgeCases:
         assert order.currency == "INR"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_timeout_handling(
         self,
         async_db: AsyncSession,
@@ -989,6 +1058,8 @@ class TestPaymentEdgeCases:
         assert "timeout" in payment.notes.lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_negative_amount_validation(self):
         """Test payment amount must be positive."""
         # Pydantic schema should reject negative amounts
@@ -1004,6 +1075,8 @@ class TestPaymentEdgeCases:
             )
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_zero_amount_validation(self):
         """Test payment amount must be greater than zero."""
         from app.schemas.payment import PaymentCreate
@@ -1025,6 +1098,8 @@ class TestPaymentRefunds:
     """Test refund processing."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_full_refund(
         self,
         async_db: AsyncSession,
@@ -1067,6 +1142,8 @@ class TestPaymentRefunds:
         assert test_invoice.status == InvoiceStatus.REFUNDED.value
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_partial_refund(
         self,
         async_db: AsyncSession,
@@ -1107,6 +1184,8 @@ class TestPaymentRefunds:
         assert payment.is_refunded
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_refund_exceeds_payment_amount(
         self,
         async_db: AsyncSession,
@@ -1133,6 +1212,8 @@ class TestPaymentRefunds:
         # API should reject this
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_refund_pending_payment(
         self,
         async_db: AsyncSession,
@@ -1163,6 +1244,8 @@ class TestInvoiceGeneration:
     """Test invoice generation and numbering."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_invoice_number_generation(
         self,
         async_db: AsyncSession,
@@ -1205,6 +1288,8 @@ class TestInvoiceGeneration:
         assert invoice2.invoice_number.endswith("-002")
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_invoice_with_gst_details(
         self,
         async_db: AsyncSession,
@@ -1224,6 +1309,8 @@ class TestInvoiceGeneration:
         assert test_invoice.tax_amount == total_gst
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_invoice_interstate_gst(
         self,
         async_db: AsyncSession,
@@ -1274,6 +1361,8 @@ class TestInvoiceGeneration:
         assert invoice.tax_amount == invoice.igst_amount
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_invoice_balance_calculation(
         self,
         async_db: AsyncSession,
@@ -1310,6 +1399,8 @@ class TestPaymentReporting:
     """Test payment summary and reporting features."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_summary_by_method(
         self,
         async_db: AsyncSession,
@@ -1360,6 +1451,8 @@ class TestPaymentReporting:
         assert total_card == Decimal("860.00")
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_summary_with_refunds(
         self,
         async_db: AsyncSession,

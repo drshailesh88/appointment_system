@@ -1,11 +1,13 @@
 """
 Tests for SQLAlchemy models.
+All tests use async patterns to match the application's async architecture.
 """
 from datetime import datetime, timedelta
 from uuid import uuid4
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 from app.models.clinic import Clinic
@@ -21,7 +23,8 @@ from app.core.security import get_password_hash
 class TestClinicModel:
     """Clinic model tests."""
 
-    def test_create_clinic(self, db: Session):
+    @pytest.mark.asyncio
+    async def test_create_clinic(self, db: AsyncSession):
         """Test creating a clinic."""
         clinic = Clinic(
             id=str(uuid4()),
@@ -35,21 +38,29 @@ class TestClinicModel:
             subscription_tier="free",
         )
         db.add(clinic)
-        db.commit()
-        db.refresh(clinic)
+        await db.commit()
+        await db.refresh(clinic)
 
         assert clinic.id is not None
         assert clinic.name == "Test Clinic"
         assert clinic.subscription_tier == "free"
         assert clinic.created_at is not None
 
-    def test_clinic_relationships(self, db: Session, test_clinic, test_doctor, test_patient):
+    @pytest.mark.asyncio
+    async def test_clinic_relationships(self, db: AsyncSession, test_clinic, test_doctor, test_patient):
         """Test clinic relationships."""
         assert test_clinic.id is not None
 
-        # Verify relationships can be accessed
-        doctors = db.query(Doctor).filter(Doctor.clinic_id == test_clinic.id).all()
-        patients = db.query(Patient).filter(Patient.clinic_id == test_clinic.id).all()
+        # Use async query pattern
+        result = await db.execute(
+            select(Doctor).where(Doctor.clinic_id == test_clinic.id)
+        )
+        doctors = result.scalars().all()
+
+        result = await db.execute(
+            select(Patient).where(Patient.clinic_id == test_clinic.id)
+        )
+        patients = result.scalars().all()
 
         assert len(doctors) >= 1
         assert len(patients) >= 1
@@ -58,7 +69,8 @@ class TestClinicModel:
 class TestUserModel:
     """User model tests."""
 
-    def test_create_user(self, db: Session, test_clinic):
+    @pytest.mark.asyncio
+    async def test_create_user(self, db: AsyncSession, test_clinic):
         """Test creating a user."""
         user = User(
             id=str(uuid4()),
@@ -71,14 +83,15 @@ class TestUserModel:
             is_active=True,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
 
         assert user.id is not None
         assert user.email == "testuser@test.com"
         assert user.is_active == True
 
-    def test_user_password_hash(self, db: Session, test_clinic):
+    @pytest.mark.asyncio
+    async def test_user_password_hash(self, db: AsyncSession, test_clinic):
         """Test that password is hashed."""
         password = "mypassword123"
         user = User(
@@ -91,7 +104,7 @@ class TestUserModel:
             clinic_id=test_clinic.id,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         assert user.password_hash != password
         assert len(user.password_hash) > 20
@@ -100,13 +113,15 @@ class TestUserModel:
 class TestDoctorModel:
     """Doctor model tests."""
 
-    def test_doctor_working_hours(self, test_doctor):
+    @pytest.mark.asyncio
+    async def test_doctor_working_hours(self, test_doctor):
         """Test doctor working hours JSON field."""
         assert test_doctor.working_hours is not None
         assert "monday" in test_doctor.working_hours
         assert test_doctor.working_hours["monday"]["start"] == "09:00"
 
-    def test_doctor_fees(self, test_doctor):
+    @pytest.mark.asyncio
+    async def test_doctor_fees(self, test_doctor):
         """Test doctor fee fields."""
         assert test_doctor.consultation_fee == 500.0
         assert test_doctor.followup_fee == 300.0
@@ -115,13 +130,15 @@ class TestDoctorModel:
 class TestPatientModel:
     """Patient model tests."""
 
-    def test_patient_age_calculation(self, test_patient):
+    @pytest.mark.asyncio
+    async def test_patient_age_calculation(self, test_patient):
         """Test patient date of birth."""
         assert test_patient.date_of_birth is not None
         age = (datetime.now().date() - test_patient.date_of_birth).days // 365
         assert age > 0
 
-    def test_patient_gender(self, test_patient):
+    @pytest.mark.asyncio
+    async def test_patient_gender(self, test_patient):
         """Test patient gender field."""
         assert test_patient.gender in ["male", "female", "other"]
 
@@ -129,18 +146,21 @@ class TestPatientModel:
 class TestAppointmentModel:
     """Appointment model tests."""
 
-    def test_appointment_creation(self, test_appointment):
+    @pytest.mark.asyncio
+    async def test_appointment_creation(self, test_appointment):
         """Test appointment creation."""
         assert test_appointment.id is not None
         assert test_appointment.status == "scheduled"
         assert test_appointment.scheduled_start < test_appointment.scheduled_end
 
-    def test_appointment_duration(self, test_appointment):
+    @pytest.mark.asyncio
+    async def test_appointment_duration(self, test_appointment):
         """Test appointment duration."""
         duration = test_appointment.scheduled_end - test_appointment.scheduled_start
         assert duration == timedelta(minutes=15)
 
-    def test_appointment_status_values(self, db: Session, test_appointment):
+    @pytest.mark.asyncio
+    async def test_appointment_status_values(self, db: AsyncSession, test_appointment):
         """Test appointment status transitions."""
         valid_statuses = [
             "scheduled",
@@ -152,14 +172,15 @@ class TestAppointmentModel:
         ]
         for status in valid_statuses:
             test_appointment.status = status
-            db.commit()
+            await db.commit()
             assert test_appointment.status == status
 
 
 class TestServiceModel:
     """Service model tests."""
 
-    def test_service_creation(self, test_service):
+    @pytest.mark.asyncio
+    async def test_service_creation(self, test_service):
         """Test service creation."""
         assert test_service.id is not None
         assert test_service.name == "General Consultation"
@@ -170,7 +191,8 @@ class TestServiceModel:
 class TestInvoiceModel:
     """Invoice model tests."""
 
-    def test_create_invoice(self, db: Session, test_clinic, test_patient):
+    @pytest.mark.asyncio
+    async def test_create_invoice(self, db: AsyncSession, test_clinic, test_patient):
         """Test creating an invoice."""
         invoice = Invoice(
             id=str(uuid4()),
@@ -185,14 +207,15 @@ class TestInvoiceModel:
             status="pending",
         )
         db.add(invoice)
-        db.commit()
-        db.refresh(invoice)
+        await db.commit()
+        await db.refresh(invoice)
 
         assert invoice.id is not None
         assert invoice.total_amount == 590.0
         assert invoice.status == "pending"
 
-    def test_invoice_calculations(self, db: Session, test_clinic, test_patient):
+    @pytest.mark.asyncio
+    async def test_invoice_calculations(self, db: AsyncSession, test_clinic, test_patient):
         """Test invoice amount calculations."""
         subtotal = 1000.0
         tax = subtotal * 0.18  # 18% GST
@@ -212,7 +235,7 @@ class TestInvoiceModel:
             status="pending",
         )
         db.add(invoice)
-        db.commit()
+        await db.commit()
 
         assert invoice.total_amount == 1080.0
 
@@ -220,7 +243,8 @@ class TestInvoiceModel:
 class TestPaymentModel:
     """Payment model tests."""
 
-    def test_create_payment(self, db: Session, test_clinic, test_patient):
+    @pytest.mark.asyncio
+    async def test_create_payment(self, db: AsyncSession, test_clinic, test_patient):
         """Test creating a payment."""
         # First create an invoice
         invoice = Invoice(
@@ -234,7 +258,7 @@ class TestPaymentModel:
             status="pending",
         )
         db.add(invoice)
-        db.commit()
+        await db.commit()
 
         payment = Payment(
             id=str(uuid4()),
@@ -246,8 +270,8 @@ class TestPaymentModel:
             transaction_id="TXN-001",
         )
         db.add(payment)
-        db.commit()
-        db.refresh(payment)
+        await db.commit()
+        await db.refresh(payment)
 
         assert payment.id is not None
         assert payment.amount == 500.0

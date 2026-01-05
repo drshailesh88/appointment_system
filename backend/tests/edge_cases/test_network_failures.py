@@ -42,6 +42,8 @@ class TestRazorpayNetworkFailures:
     """Test Razorpay payment gateway network failure scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_timeout(self):
         """Test Razorpay API timeout is handled gracefully."""
         service = RazorpayService(
@@ -63,6 +65,8 @@ class TestRazorpayNetworkFailures:
             assert order is None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_500_error(self):
         """Test Razorpay API 500 error is handled."""
         service = RazorpayService(
@@ -86,6 +90,8 @@ class TestRazorpayNetworkFailures:
             assert order is None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_network_error(self):
         """Test Razorpay network connection error."""
         service = RazorpayService(
@@ -106,6 +112,8 @@ class TestRazorpayNetworkFailures:
             assert order is None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_not_configured(self):
         """Test app works when Razorpay is not configured."""
         service = RazorpayService(key_id=None, key_secret=None)
@@ -121,6 +129,8 @@ class TestRazorpayNetworkFailures:
         assert order is None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_refund_failure(self):
         """Test refund failure doesn't crash the app."""
         service = RazorpayService(
@@ -151,6 +161,8 @@ class TestSMSNetworkFailures:
     """Test SMS gateway network failure scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_sms_timeout(self):
         """Test SMS API timeout is handled gracefully."""
         service = SMSService(
@@ -179,6 +191,8 @@ class TestSMSNetworkFailures:
             assert result.error is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_sms_not_configured(self):
         """Test app continues without SMS service."""
         service = SMSService(api_key=None, sender_id=None)
@@ -194,6 +208,8 @@ class TestSMSNetworkFailures:
         assert "not configured" in result.error.lower()
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_whatsapp_fallback_to_sms(self):
         """Test WhatsApp failure falls back to SMS."""
         service = SMSService(
@@ -226,6 +242,8 @@ class TestSMSNetworkFailures:
             mock_sms.assert_called_once()
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_sms_api_500_error(self):
         """Test SMS API 500 error is handled."""
         service = SMSService(
@@ -259,7 +277,10 @@ class TestSMSNetworkFailures:
 class TestGoogleCalendarNetworkFailures:
     """Test Google Calendar API network failure scenarios."""
 
-    def test_google_calendar_not_configured(self):
+    @pytest.mark.asyncio
+
+
+    async def test_google_calendar_not_configured(self):
         """Test app works when Google Calendar is not configured."""
         integration = GoogleCalendarIntegration(
             client_id=None,
@@ -268,7 +289,10 @@ class TestGoogleCalendarNetworkFailures:
 
         assert not integration.is_configured()
 
-    def test_google_calendar_token_refresh_failure(self):
+    @pytest.mark.asyncio
+
+
+    async def test_google_calendar_token_refresh_failure(self):
         """Test token refresh failure is handled."""
         integration = GoogleCalendarIntegration(
             client_id="test_client_id",
@@ -283,7 +307,10 @@ class TestGoogleCalendarNetworkFailures:
             with pytest.raises(RefreshError):
                 integration.get_credentials(encrypted_token)
 
-    def test_google_calendar_create_event_404(self):
+    @pytest.mark.asyncio
+
+
+    async def test_google_calendar_create_event_404(self):
         """Test creating event on non-existent calendar."""
         integration = GoogleCalendarIntegration(
             client_id="test_client_id",
@@ -315,7 +342,10 @@ class TestGoogleCalendarNetworkFailures:
                     end_time=datetime.now() + timedelta(hours=1),
                 )
 
-    def test_google_calendar_delete_missing_event(self):
+    @pytest.mark.asyncio
+
+
+    async def test_google_calendar_delete_missing_event(self):
         """Test deleting already deleted event is handled gracefully."""
         integration = GoogleCalendarIntegration(
             client_id="test_client_id",
@@ -344,7 +374,10 @@ class TestGoogleCalendarNetworkFailures:
                 event_id="deleted_event_id",
             )
 
-    def test_google_calendar_network_timeout(self):
+    @pytest.mark.asyncio
+
+
+    async def test_google_calendar_network_timeout(self):
         """Test Google Calendar API timeout."""
         integration = GoogleCalendarIntegration(
             client_id="test_client_id",
@@ -381,6 +414,8 @@ class TestFirebaseNetworkFailures:
     """Test Firebase push notification failure scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_firebase_not_initialized(self, db):
         """Test app works when Firebase is not initialized."""
         service = PushNotificationService(db)
@@ -400,6 +435,8 @@ class TestFirebaseNetworkFailures:
         assert result["failed"] == 0
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_firebase_invalid_token_cleanup(self, db, test_user):
         """Test invalid FCM tokens are deactivated."""
         service = PushNotificationService(db)
@@ -428,6 +465,8 @@ class TestFirebaseNetworkFailures:
             assert not device.is_active
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_firebase_topic_send_failure(self, db):
         """Test Firebase topic send failure is handled."""
         service = PushNotificationService(db)
@@ -455,6 +494,8 @@ class TestOllamaNetworkFailures:
     """Test Ollama LLM service failure scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_ollama_not_running(self):
         """Test AI assistant when Ollama is not running."""
         assistant = PracticeAIAssistant(
@@ -477,6 +518,8 @@ class TestOllamaNetworkFailures:
             assert response.session_id is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_ollama_timeout(self):
         """Test Ollama API timeout."""
         assistant = PracticeAIAssistant(
@@ -497,6 +540,8 @@ class TestOllamaNetworkFailures:
             assert response.response is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_ollama_malformed_response(self):
         """Test Ollama returns malformed JSON."""
         assistant = PracticeAIAssistant(
@@ -524,6 +569,8 @@ class TestOllamaNetworkFailures:
             assert response.response is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_ollama_500_error(self):
         """Test Ollama API 500 error."""
         assistant = PracticeAIAssistant(
@@ -559,6 +606,8 @@ class TestDatabaseConnectionFailures:
     """Test database connection failure scenarios."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_database_timeout(self, db):
         """Test database query timeout."""
         from app.models.patient import Patient
@@ -577,6 +626,8 @@ class TestDatabaseConnectionFailures:
                 )
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_database_connection_lost(self, db):
         """Test database connection lost during query."""
         with patch.object(db, "execute") as mock_execute:
@@ -590,6 +641,8 @@ class TestDatabaseConnectionFailures:
                 await db.execute("SELECT 1")
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_connection_pool_exhausted(self, db):
         """Test connection pool exhaustion."""
         with patch.object(db, "execute") as mock_execute:
@@ -609,7 +662,10 @@ class TestDatabaseConnectionFailures:
 class TestEMRDatabaseFailures:
     """Test EMR SQLite database failure scenarios."""
 
-    def test_emr_database_not_found(self):
+    @pytest.mark.asyncio
+
+
+    async def test_emr_database_not_found(self):
         """Test EMR integration when database doesn't exist."""
         integration = EMRIntegration(emr_db_path=None)
 
@@ -619,7 +675,10 @@ class TestEMRDatabaseFailures:
         patient = integration.get_patient("patient_123")
         assert patient is None
 
-    def test_emr_database_locked(self, tmp_path):
+    @pytest.mark.asyncio
+
+
+    async def test_emr_database_locked(self, tmp_path):
         """Test EMR database file locked by another process."""
         db_path = tmp_path / "test_emr.db"
 
@@ -652,7 +711,10 @@ class TestEMRDatabaseFailures:
 
         conn.close()
 
-    def test_emr_corrupted_database(self, tmp_path):
+    @pytest.mark.asyncio
+
+
+    async def test_emr_corrupted_database(self, tmp_path):
         """Test EMR database file is corrupted."""
         db_path = tmp_path / "corrupted.db"
 
@@ -666,7 +728,10 @@ class TestEMRDatabaseFailures:
         conn = integration.get_connection()
         assert conn is None
 
-    def test_emr_sync_timeout(self, tmp_path):
+    @pytest.mark.asyncio
+
+
+    async def test_emr_sync_timeout(self, tmp_path):
         """Test EMR sync operation timeout."""
         db_path = tmp_path / "test_emr.db"
 
@@ -709,7 +774,10 @@ class TestEMRDatabaseFailures:
 class TestQdrantNetworkFailures:
     """Test Qdrant vector database failure scenarios."""
 
-    def test_qdrant_not_available(self):
+    @pytest.mark.asyncio
+
+
+    async def test_qdrant_not_available(self):
         """Test RAG search when Qdrant is not installed."""
         with patch("app.services.rag_search.QDRANT_AVAILABLE", False):
             service = RAGSearchService(qdrant_url="http://localhost:6333")
@@ -717,7 +785,10 @@ class TestQdrantNetworkFailures:
 
             assert service._client is None
 
-    def test_qdrant_connection_refused(self):
+    @pytest.mark.asyncio
+
+
+    async def test_qdrant_connection_refused(self):
         """Test RAG search when Qdrant server is down."""
         service = RAGSearchService(qdrant_url="http://localhost:6333")
 
@@ -729,6 +800,8 @@ class TestQdrantNetworkFailures:
             assert service._client is None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_qdrant_search_timeout(self):
         """Test Qdrant search timeout."""
         service = RAGSearchService(qdrant_url="http://localhost:6333")
@@ -748,7 +821,10 @@ class TestQdrantNetworkFailures:
 
         assert results == []
 
-    def test_fastembed_not_available(self):
+    @pytest.mark.asyncio
+
+
+    async def test_fastembed_not_available(self):
         """Test RAG search when FastEmbed is not installed."""
         with patch("app.services.rag_search.FASTEMBED_AVAILABLE", False):
             service = RAGSearchService()
@@ -771,6 +847,8 @@ class TestGracefulDegradation:
     """Test app continues functioning when optional services fail."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_appointment_creation_without_sms(self, db, test_clinic, test_doctor, test_patient):
         """Test appointment can be created even if SMS fails."""
         from app.models.appointment import Appointment
@@ -797,6 +875,8 @@ class TestGracefulDegradation:
             assert appointment.id is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_appointment_creation_without_calendar_sync(self, db, test_clinic, test_doctor, test_patient):
         """Test appointment creation works without calendar sync."""
         from app.models.appointment import Appointment
@@ -822,6 +902,8 @@ class TestGracefulDegradation:
             assert appointment.id is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_search_without_qdrant(self, db, test_clinic):
         """Test search falls back to database when Qdrant unavailable."""
         service = RAGSearchService(qdrant_url="http://localhost:6333")
@@ -839,6 +921,8 @@ class TestGracefulDegradation:
         assert response.total_count >= 0
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_payment_without_razorpay(self, db):
         """Test payment can be recorded even if Razorpay is unavailable."""
         from app.models.payment import Payment
@@ -871,6 +955,8 @@ class TestRetryLogic:
     """Test retry mechanisms for transient failures."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_razorpay_retry_on_timeout(self):
         """Test Razorpay retries on timeout (if implemented)."""
         service = RazorpayService(
@@ -914,6 +1000,8 @@ class TestRetryLogic:
             # assert order is not None  # Would work with retry
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_exponential_backoff_simulation(self):
         """Test exponential backoff pattern for retries."""
         retry_delays = []
@@ -927,6 +1015,8 @@ class TestRetryLogic:
         assert retry_delays == [1, 2, 4, 8, 16]
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_max_retry_limit(self):
         """Test retry logic respects max retry limit."""
         max_retries = 3
@@ -959,6 +1049,8 @@ class TestDataConsistency:
     """Test data consistency during network failures."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_transaction_rollback_on_failure(self, db):
         """Test transaction rollback when operation fails."""
         from app.models.patient import Patient
@@ -986,6 +1078,8 @@ class TestDataConsistency:
         assert final_count == initial_count
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_idempotent_payment_creation(self):
         """Test duplicate payment requests are handled idempotently."""
         service = RazorpayService(
@@ -1025,6 +1119,8 @@ class TestDataConsistency:
             assert order2 is not None
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_duplicate_webhook_handling(self):
         """Test duplicate webhooks are handled correctly."""
         service = RazorpayService(
@@ -1055,6 +1151,8 @@ class TestDataConsistency:
         assert result2 is False  # Duplicate ignored
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_partial_sync_recovery(self, tmp_path):
         """Test EMR sync can recover from partial failures."""
         db_path = tmp_path / "test_emr.db"
@@ -1133,6 +1231,8 @@ class TestOfflineQueue:
     """Test offline operation queue for failed network operations."""
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_queue_failed_sms_for_retry(self):
         """Test failed SMS operations are queued for retry."""
         failed_queue = []
@@ -1156,6 +1256,8 @@ class TestOfflineQueue:
         assert failed_queue[0]["phone"] == "+919876543210"
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_queue_failed_push_notification(self):
         """Test failed push notifications are queued."""
         dead_letter_queue = []
@@ -1182,6 +1284,8 @@ class TestOfflineQueue:
         assert dead_letter_queue[0]["attempts"] == 3
 
     @pytest.mark.asyncio
+    @pytest.mark.asyncio
+
     async def test_process_queued_operations_on_reconnect(self):
         """Test queued operations are processed when network returns."""
         pending_queue = [

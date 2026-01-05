@@ -28,7 +28,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment, AppointmentStatus, AppointmentType, BookingSource
 from app.models.clinic import Clinic
@@ -45,7 +45,7 @@ from app.core.security import get_password_hash
 
 
 @pytest.fixture
-def hindi_clinic(db: Session) -> Clinic:
+async def hindi_clinic(db: AsyncSession) -> Clinic:
     """Clinic with Hindi name."""
     clinic = Clinic(
         id=str(uuid4()),
@@ -60,13 +60,13 @@ def hindi_clinic(db: Session) -> Clinic:
         subscription_tier="professional",
     )
     db.add(clinic)
-    db.commit()
-    db.refresh(clinic)
+    await db.commit()
+    await db.refresh(clinic)
     return clinic
 
 
 @pytest.fixture
-def tamil_clinic(db: Session) -> Clinic:
+async def tamil_clinic(db: AsyncSession) -> Clinic:
     """Clinic with Tamil name."""
     clinic = Clinic(
         id=str(uuid4()),
@@ -81,8 +81,8 @@ def tamil_clinic(db: Session) -> Clinic:
         subscription_tier="professional",
     )
     db.add(clinic)
-    db.commit()
-    db.refresh(clinic)
+    await db.commit()
+    await db.refresh(clinic)
     return clinic
 
 
@@ -94,7 +94,10 @@ def tamil_clinic(db: Session) -> Clinic:
 class TestMultiLanguageSupport:
     """Tests for Indian language support (Hindi, Tamil, Telugu)."""
 
-    def test_hindi_patient_name(self, db: Session, hindi_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_hindi_patient_name(self, db: AsyncSession, hindi_clinic: Clinic):
         """Test patient with Hindi name (Devanagari script)."""
         patient = Patient(
             id=str(uuid4()),
@@ -111,8 +114,8 @@ class TestMultiLanguageSupport:
             preferred_language="hi",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         # Verify data persisted correctly
         assert patient.first_name == "राजेश"
@@ -121,7 +124,10 @@ class TestMultiLanguageSupport:
         assert patient.city == "नोएडा"
         assert patient.state == "उत्तर प्रदेश"
 
-    def test_tamil_patient_name(self, db: Session, tamil_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_tamil_patient_name(self, db: AsyncSession, tamil_clinic: Clinic):
         """Test patient with Tamil name."""
         patient = Patient(
             id=str(uuid4()),
@@ -138,14 +144,17 @@ class TestMultiLanguageSupport:
             preferred_language="ta",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.first_name == "முருகன்"
         assert patient.full_name == "முருகன் குமார்"
         assert patient.preferred_language == "ta"
 
-    def test_telugu_patient_name(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_telugu_patient_name(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient with Telugu name."""
         patient = Patient(
             id=str(uuid4()),
@@ -162,14 +171,17 @@ class TestMultiLanguageSupport:
             preferred_language="te",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.first_name == "వెంకటేష్"
         assert patient.last_name == "రెడ్డి"
         assert patient.state == "తెలంగాణ"
 
-    def test_mixed_language_patient(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_mixed_language_patient(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient with mixed Hindi-English name."""
         patient = Patient(
             id=str(uuid4()),
@@ -183,15 +195,18 @@ class TestMultiLanguageSupport:
             address="123 Main Road, सेक्टर 10",  # Mixed address
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert "राज" in patient.first_name
         assert "Kumar" in patient.first_name
         assert "पटेल" in patient.last_name
         assert "Patel" in patient.last_name
 
-    def test_unicode_normalization(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_unicode_normalization(self, db: AsyncSession, test_clinic: Clinic):
         """Test Unicode normalization for Indian scripts."""
         # Create patient with non-normalized Unicode
         name_nfc = unicodedata.normalize('NFC', "प्रिया")  # Priya in Hindi
@@ -213,17 +228,20 @@ class TestMultiLanguageSupport:
 
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Both forms should be preserved as entered
-        db.refresh(patient1)
-        db.refresh(patient2)
+        await db.refresh(patient1)
+        await db.refresh(patient2)
 
         # Check they're both stored (they're different Unicode forms)
         assert patient1.first_name is not None
         assert patient2.first_name is not None
 
-    def test_right_to_left_text(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_right_to_left_text(self, db: AsyncSession, test_clinic: Clinic):
         """Test handling of RTL text (Urdu/Arabic script)."""
         # Note: While not primary Indian language, some clinics may have Urdu-speaking patients
         patient = Patient(
@@ -236,13 +254,16 @@ class TestMultiLanguageSupport:
             address="حیدرآباد، ہندوستان",  # Hyderabad, India
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.first_name == "احمد"
         assert patient.last_name == "خان"
 
-    def test_all_indian_languages_preference(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_all_indian_languages_preference(self, db: AsyncSession, test_clinic: Clinic):
         """Test all 23 Indian language preferences supported by voice agent."""
         languages = [
             "hi", "ta", "te", "bn", "mr", "gu", "kn", "ml", "pa", "or",
@@ -260,7 +281,7 @@ class TestMultiLanguageSupport:
             )
             db.add(patient)
 
-        db.commit()
+        await db.commit()
 
         # Verify all patients were created with correct language preferences
         patients = db.query(Patient).filter(
@@ -280,9 +301,12 @@ class TestMultiLanguageSupport:
 class TestDateTimeEdgeCases:
     """Tests for date/time edge cases."""
 
-    def test_midnight_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_midnight_appointment(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_doctor: Doctor,
         test_patient: Patient,
@@ -303,16 +327,19 @@ class TestDateTimeEdgeCases:
             appointment_type=AppointmentType.NEW_CONSULTATION.value,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert appointment.scheduled_start.hour == 0
         assert appointment.scheduled_start.minute == 0
         assert appointment.duration_minutes == 15
 
-    def test_end_of_month_appointment(
+    @pytest.mark.asyncio
+
+
+    async def test_end_of_month_appointment(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -330,15 +357,18 @@ class TestDateTimeEdgeCases:
             status=AppointmentStatus.SCHEDULED.value,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert appointment.scheduled_start.day == 31
         assert appointment.scheduled_start.month == 1
 
-    def test_leap_year_feb_29(
+    @pytest.mark.asyncio
+
+
+    async def test_leap_year_feb_29(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -355,14 +385,17 @@ class TestDateTimeEdgeCases:
             duration_minutes=15,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert appointment.scheduled_start.day == 29
         assert appointment.scheduled_start.month == 2
         assert appointment.scheduled_start.year == 2024
 
-    def test_patient_born_on_leap_day(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_patient_born_on_leap_day(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient born on Feb 29."""
         patient = Patient(
             id=str(uuid4()),
@@ -373,8 +406,8 @@ class TestDateTimeEdgeCases:
             date_of_birth=date(2000, 2, 29),
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.date_of_birth.day == 29
         assert patient.date_of_birth.month == 2
@@ -383,9 +416,12 @@ class TestDateTimeEdgeCases:
         # Mock current date as 2026-01-05 (non-leap year)
         assert patient.age is not None  # Should calculate correctly
 
-    def test_timezone_handling_ist(
+    @pytest.mark.asyncio
+
+
+    async def test_timezone_handling_ist(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -402,14 +438,17 @@ class TestDateTimeEdgeCases:
             duration_minutes=15,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         # Verify time is preserved
         assert appointment.scheduled_start.hour == 14
         assert appointment.scheduled_start.minute == 30
 
-    def test_date_format_variations(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_date_format_variations(self, db: AsyncSession, test_clinic: Clinic):
         """Test different date formats for date_of_birth."""
         # All these should work
         test_dates = [
@@ -429,7 +468,7 @@ class TestDateTimeEdgeCases:
             )
             db.add(patient)
 
-        db.commit()
+        await db.commit()
 
         patients = db.query(Patient).filter(
             Patient.clinic_id == test_clinic.id
@@ -437,7 +476,10 @@ class TestDateTimeEdgeCases:
 
         assert len(patients) == len(test_dates)
 
-    def test_very_old_patient(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_very_old_patient(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient born in 1920 (100+ years old)."""
         patient = Patient(
             id=str(uuid4()),
@@ -448,13 +490,16 @@ class TestDateTimeEdgeCases:
             date_of_birth=date(1920, 1, 1),
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.age is not None
         assert patient.age > 100
 
-    def test_very_young_patient(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_very_young_patient(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient born yesterday."""
         yesterday = date.today() - timedelta(days=1)
 
@@ -466,8 +511,8 @@ class TestDateTimeEdgeCases:
             date_of_birth=yesterday,
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.age == 0  # Less than 1 year
 
@@ -480,7 +525,10 @@ class TestDateTimeEdgeCases:
 class TestLargeDataHandling:
     """Tests for handling large amounts of data."""
 
-    def test_very_long_patient_name(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_very_long_patient_name(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient with 100+ character name."""
         # Some South Indian names can be very long
         long_name = "Venkatanarasimharajuvaripeta Srinivasa Ramanujan Krishna Murthy Sastry"  # ~75 chars
@@ -493,13 +541,16 @@ class TestLargeDataHandling:
             phone="+919876543210",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert len(patient.first_name) > 70
         assert patient.full_name == f"{long_name} Venkatapuram"
 
-    def test_very_long_address(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_very_long_address(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient with very long address."""
         long_address = (
             "Flat No. 402, Building Name: Shree Krishna Residency, "
@@ -521,15 +572,18 @@ class TestLargeDataHandling:
             address=long_address,
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert len(patient.address) > 400
         assert "Ghatkopar" in patient.address
 
-    def test_very_long_chief_complaint(
+    @pytest.mark.asyncio
+
+
+    async def test_very_long_chief_complaint(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -555,14 +609,17 @@ class TestLargeDataHandling:
             chief_complaint=long_complaint,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert len(appointment.chief_complaint) > 400
 
-    def test_many_appointments_for_patient(
+    @pytest.mark.asyncio
+
+
+    async def test_many_appointments_for_patient(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -586,7 +643,7 @@ class TestLargeDataHandling:
             )
 
         db.bulk_save_objects(appointments)
-        db.commit()
+        await db.commit()
 
         # Query to verify
         count = db.query(Appointment).filter(
@@ -595,7 +652,10 @@ class TestLargeDataHandling:
 
         assert count == 1000
 
-    def test_many_patients_in_clinic(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_many_patients_in_clinic(self, db: AsyncSession, test_clinic: Clinic):
         """Test clinic with 10,000+ patients."""
         patients = []
 
@@ -610,7 +670,7 @@ class TestLargeDataHandling:
             )
 
         db.bulk_save_objects(patients)
-        db.commit()
+        await db.commit()
 
         count = db.query(Patient).filter(
             Patient.clinic_id == test_clinic.id
@@ -618,9 +678,12 @@ class TestLargeDataHandling:
 
         assert count >= 10000
 
-    def test_very_long_notes(
+    @pytest.mark.asyncio
+
+
+    async def test_very_long_notes(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -637,12 +700,15 @@ class TestLargeDataHandling:
             notes=long_notes,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert len(appointment.notes) > 5000
 
-    def test_doctor_with_many_languages(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_doctor_with_many_languages(self, db: AsyncSession, test_clinic: Clinic):
         """Test doctor who speaks all 23 Indian languages."""
         all_languages = [
             "hi", "ta", "te", "bn", "mr", "gu", "kn", "ml", "pa", "or",
@@ -660,7 +726,7 @@ class TestLargeDataHandling:
             clinic_id=test_clinic.id,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         doctor = Doctor(
             id=str(uuid4()),
@@ -670,8 +736,8 @@ class TestLargeDataHandling:
             languages=all_languages,
         )
         db.add(doctor)
-        db.commit()
-        db.refresh(doctor)
+        await db.commit()
+        await db.refresh(doctor)
 
         assert len(doctor.languages) == 23
         assert "hi" in doctor.languages
@@ -686,7 +752,10 @@ class TestLargeDataHandling:
 class TestSpecialCharacters:
     """Tests for special characters in various fields."""
 
-    def test_name_with_apostrophe(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_name_with_apostrophe(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient name with apostrophe (O'Brien)."""
         patient = Patient(
             id=str(uuid4()),
@@ -696,13 +765,16 @@ class TestSpecialCharacters:
             phone="+919876543210",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.last_name == "O'Brien"
         assert "'" in patient.full_name
 
-    def test_name_with_hyphen(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_name_with_hyphen(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient name with hyphen (Anne-Marie)."""
         patient = Patient(
             id=str(uuid4()),
@@ -712,13 +784,16 @@ class TestSpecialCharacters:
             phone="+919876543210",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.first_name == "Anne-Marie"
         assert "-" in patient.first_name
 
-    def test_address_with_special_chars(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_address_with_special_chars(self, db: AsyncSession, test_clinic: Clinic):
         """Test address with special characters."""
         patient = Patient(
             id=str(uuid4()),
@@ -728,14 +803,17 @@ class TestSpecialCharacters:
             address="Flat #402, Builder's Colony, St. Xavier's Road, D'Souza Compound",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert "#" in patient.address
         assert "'" in patient.address
         assert "." in patient.address
 
-    def test_phone_with_plus_prefix(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_phone_with_plus_prefix(self, db: AsyncSession, test_clinic: Clinic):
         """Test phone number with +91 prefix."""
         patient = Patient(
             id=str(uuid4()),
@@ -744,13 +822,16 @@ class TestSpecialCharacters:
             phone="+919876543210",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.phone.startswith("+91")
         assert "+" in patient.phone
 
-    def test_email_with_dots_and_plus(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_email_with_dots_and_plus(self, db: AsyncSession, test_clinic: Clinic):
         """Test email with dots and plus signs."""
         patient = Patient(
             id=str(uuid4()),
@@ -760,14 +841,17 @@ class TestSpecialCharacters:
             email="john.doe+clinic@gmail.com",
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert "." in patient.email
         assert "+" in patient.email
         assert patient.email == "john.doe+clinic@gmail.com"
 
-    def test_clinic_name_with_ampersand(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_clinic_name_with_ampersand(self, db: AsyncSession):
         """Test clinic name with ampersand."""
         clinic = Clinic(
             id=str(uuid4()),
@@ -776,15 +860,18 @@ class TestSpecialCharacters:
             phone="+919876543210",
         )
         db.add(clinic)
-        db.commit()
-        db.refresh(clinic)
+        await db.commit()
+        await db.refresh(clinic)
 
         assert "&" in clinic.name
         assert clinic.name == "Sharma & Associates Clinic"
 
-    def test_doctor_qualification_with_special_chars(
+    @pytest.mark.asyncio
+
+
+    async def test_doctor_qualification_with_special_chars(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
     ):
         """Test doctor qualification with commas and periods."""
@@ -798,7 +885,7 @@ class TestSpecialCharacters:
             clinic_id=test_clinic.id,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         doctor = Doctor(
             id=str(uuid4()),
@@ -807,15 +894,18 @@ class TestSpecialCharacters:
             qualification="M.B.B.S., M.D. (Gen. Medicine), D.N.B., F.I.C.A.",
         )
         db.add(doctor)
-        db.commit()
-        db.refresh(doctor)
+        await db.commit()
+        await db.refresh(doctor)
 
         assert "," in doctor.qualification
         assert "." in doctor.qualification
         assert "(" in doctor.qualification
         assert ")" in doctor.qualification
 
-    def test_gst_number_format(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_gst_number_format(self, db: AsyncSession):
         """Test GST number with special format."""
         clinic = Clinic(
             id=str(uuid4()),
@@ -825,8 +915,8 @@ class TestSpecialCharacters:
             gst_number="27AABCU9603R1ZX",  # Sample GST format
         )
         db.add(clinic)
-        db.commit()
-        db.refresh(clinic)
+        await db.commit()
+        await db.refresh(clinic)
 
         assert len(clinic.gst_number) == 15
         assert clinic.gst_number.startswith("27")  # State code
@@ -840,7 +930,10 @@ class TestSpecialCharacters:
 class TestEmptyNullData:
     """Tests for empty and null data handling."""
 
-    def test_patient_with_minimal_data(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_patient_with_minimal_data(self, db: AsyncSession, test_clinic: Clinic):
         """Test patient with only required fields."""
         patient = Patient(
             id=str(uuid4()),
@@ -850,8 +943,8 @@ class TestEmptyNullData:
             # All other fields are None/default
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.first_name == "Minimal"
         assert patient.last_name is None
@@ -859,7 +952,10 @@ class TestEmptyNullData:
         assert patient.date_of_birth is None
         assert patient.gender is None
 
-    def test_patient_null_vs_empty_string(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_patient_null_vs_empty_string(self, db: AsyncSession, test_clinic: Clinic):
         """Test difference between null and empty string."""
         patient1 = Patient(
             id=str(uuid4()),
@@ -880,16 +976,19 @@ class TestEmptyNullData:
 
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
-        db.refresh(patient1)
-        db.refresh(patient2)
+        await db.refresh(patient1)
+        await db.refresh(patient2)
 
         assert patient1.email is None
 
-    def test_appointment_optional_fields_null(
+    @pytest.mark.asyncio
+
+
+    async def test_appointment_optional_fields_null(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -908,15 +1007,18 @@ class TestEmptyNullData:
             service_id=None,
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert appointment.chief_complaint is None
         assert appointment.notes is None
         assert appointment.token_number is None
         assert appointment.service_id is None
 
-    def test_clinic_minimal_data(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_clinic_minimal_data(self, db: AsyncSession):
         """Test clinic with minimal required data."""
         clinic = Clinic(
             id=str(uuid4()),
@@ -926,15 +1028,18 @@ class TestEmptyNullData:
             # All optional fields as default/None
         )
         db.add(clinic)
-        db.commit()
-        db.refresh(clinic)
+        await db.commit()
+        await db.refresh(clinic)
 
         assert clinic.name == "Minimal Clinic"
         assert clinic.email is None
         assert clinic.address is None
         assert clinic.gst_number is None
 
-    def test_default_value_handling(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_default_value_handling(self, db: AsyncSession, test_clinic: Clinic):
         """Test that default values are applied correctly."""
         patient = Patient(
             id=str(uuid4()),
@@ -944,15 +1049,18 @@ class TestEmptyNullData:
             # Don't specify preferred_language, should default to 'en'
         )
         db.add(patient)
-        db.commit()
-        db.refresh(patient)
+        await db.commit()
+        await db.refresh(patient)
 
         assert patient.preferred_language == "en"
         assert patient.sms_consent is True  # Default
         assert patient.whatsapp_consent is True  # Default
         assert patient.is_active is True  # Default
 
-    def test_empty_search_results(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_empty_search_results(self, db: AsyncSession, test_clinic: Clinic):
         """Test querying when no results exist."""
         # Search for non-existent patient
         results = db.query(Patient).filter(
@@ -963,9 +1071,12 @@ class TestEmptyNullData:
         assert results == []
         assert len(results) == 0
 
-    def test_null_foreign_key_optional(
+    @pytest.mark.asyncio
+
+
+    async def test_null_foreign_key_optional(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -980,13 +1091,16 @@ class TestEmptyNullData:
             service_id=None,  # Optional FK
         )
         db.add(appointment)
-        db.commit()
-        db.refresh(appointment)
+        await db.commit()
+        await db.refresh(appointment)
 
         assert appointment.service_id is None
         assert appointment.service is None
 
-    def test_null_json_fields(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_null_json_fields(self, db: AsyncSession, test_clinic: Clinic):
         """Test null JSON/JSONB fields."""
         user = User(
             id=str(uuid4()),
@@ -998,7 +1112,7 @@ class TestEmptyNullData:
             clinic_id=test_clinic.id,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         doctor = Doctor(
             id=str(uuid4()),
@@ -1009,8 +1123,8 @@ class TestEmptyNullData:
             languages=None,
         )
         db.add(doctor)
-        db.commit()
-        db.refresh(doctor)
+        await db.commit()
+        await db.refresh(doctor)
 
         assert doctor.working_hours is None
         assert doctor.break_slots is None
@@ -1025,9 +1139,12 @@ class TestEmptyNullData:
 class TestConcurrentOperations:
     """Tests for concurrent operations and race conditions."""
 
-    def test_duplicate_phone_numbers_different_clinics(
+    @pytest.mark.asyncio
+
+
+    async def test_duplicate_phone_numbers_different_clinics(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         hindi_clinic: Clinic,
     ):
@@ -1048,16 +1165,19 @@ class TestConcurrentOperations:
 
         db.add(patient1)
         db.add(patient2)
-        db.commit()
+        await db.commit()
 
         # Both should exist
         assert db.query(Patient).filter(
             Patient.phone == "+919876543210"
         ).count() == 2
 
-    def test_overlapping_appointments_same_doctor(
+    @pytest.mark.asyncio
+
+
+    async def test_overlapping_appointments_same_doctor(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
     ):
         """Test creating overlapping appointments (should be prevented by business logic)."""
@@ -1075,7 +1195,7 @@ class TestConcurrentOperations:
             phone="+919876543211",
         )
         db.add_all([patient1, patient2])
-        db.commit()
+        await db.commit()
 
         start_time = datetime.now() + timedelta(days=1, hours=2)
 
@@ -1100,7 +1220,7 @@ class TestConcurrentOperations:
 
         db.add(appointment1)
         db.add(appointment2)
-        db.commit()  # Database allows this; business logic should prevent
+        await db.commit()  # Database allows this; business logic should prevent
 
         # Both appointments exist at data layer
         assert db.query(Appointment).filter(
@@ -1116,7 +1236,10 @@ class TestConcurrentOperations:
 class TestBoundaryValues:
     """Tests for boundary values in various fields."""
 
-    def test_phone_number_lengths(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_phone_number_lengths(self, db: AsyncSession, test_clinic: Clinic):
         """Test various phone number lengths."""
         # Minimum length (10 digits + country code)
         patient1 = Patient(
@@ -1135,12 +1258,15 @@ class TestBoundaryValues:
         )
 
         db.add_all([patient1, patient2])
-        db.commit()
+        await db.commit()
 
         assert len(patient1.phone) >= 10
         assert len(patient2.phone) <= 15
 
-    def test_age_extremes(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_age_extremes(self, db: AsyncSession, test_clinic: Clinic):
         """Test age calculation for extreme ages."""
         # Newborn (0 years)
         newborn = Patient(
@@ -1161,15 +1287,18 @@ class TestBoundaryValues:
         )
 
         db.add_all([newborn, very_old])
-        db.commit()
-        db.refresh(newborn)
-        db.refresh(very_old)
+        await db.commit()
+        await db.refresh(newborn)
+        await db.refresh(very_old)
 
         assert newborn.age == 0
         assert very_old.age is not None
         assert very_old.age > 100
 
-    def test_consultation_fee_boundaries(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_consultation_fee_boundaries(self, db: AsyncSession, test_clinic: Clinic):
         """Test consultation fee at boundary values."""
         user = User(
             id=str(uuid4()),
@@ -1181,7 +1310,7 @@ class TestBoundaryValues:
             clinic_id=test_clinic.id,
         )
         db.add(user)
-        db.commit()
+        await db.commit()
 
         # Free consultation
         doctor1 = Doctor(
@@ -1200,17 +1329,20 @@ class TestBoundaryValues:
         )
 
         db.add_all([doctor1, doctor2])
-        db.commit()
+        await db.commit()
 
-        db.refresh(doctor1)
-        db.refresh(doctor2)
+        await db.refresh(doctor1)
+        await db.refresh(doctor2)
 
         assert doctor1.consultation_fee == Decimal("0.00")
         assert doctor2.consultation_fee == Decimal("50000.00")
 
-    def test_appointment_duration_boundaries(
+    @pytest.mark.asyncio
+
+
+    async def test_appointment_duration_boundaries(
         self,
-        db: Session,
+        db: AsyncSession,
         test_doctor: Doctor,
         test_patient: Patient,
     ):
@@ -1238,10 +1370,10 @@ class TestBoundaryValues:
         )
 
         db.add_all([short_appointment, long_appointment])
-        db.commit()
+        await db.commit()
 
-        db.refresh(short_appointment)
-        db.refresh(long_appointment)
+        await db.refresh(short_appointment)
+        await db.refresh(long_appointment)
 
         assert short_appointment.duration_minutes == 5
         assert long_appointment.duration_minutes == 120
@@ -1255,7 +1387,10 @@ class TestBoundaryValues:
 class TestDataIntegrity:
     """Tests for data integrity and database constraints."""
 
-    def test_required_field_validation(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_required_field_validation(self, db: AsyncSession, test_clinic: Clinic):
         """Test that required fields cannot be null."""
         with pytest.raises(Exception):  # IntegrityError or ValidationError
             patient = Patient(
@@ -1265,9 +1400,12 @@ class TestDataIntegrity:
                 phone="+919876543210",
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
-    def test_foreign_key_integrity(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_foreign_key_integrity(self, db: AsyncSession):
         """Test foreign key constraint (patient needs valid clinic)."""
         with pytest.raises(IntegrityError):
             # Invalid clinic_id
@@ -1278,9 +1416,12 @@ class TestDataIntegrity:
                 phone="+919876543210",
             )
             db.add(patient)
-            db.commit()
+            await db.commit()
 
-    def test_unique_constraint_clinic_slug(self, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_unique_constraint_clinic_slug(self, db: AsyncSession):
         """Test unique constraint on clinic slug."""
         clinic1 = Clinic(
             id=str(uuid4()),
@@ -1289,7 +1430,7 @@ class TestDataIntegrity:
             phone="+919876543210",
         )
         db.add(clinic1)
-        db.commit()
+        await db.commit()
 
         with pytest.raises(IntegrityError):
             clinic2 = Clinic(
@@ -1299,11 +1440,14 @@ class TestDataIntegrity:
                 phone="+919876543211",
             )
             db.add(clinic2)
-            db.commit()
+            await db.commit()
 
-    def test_cascading_delete_prevention(
+    @pytest.mark.asyncio
+
+
+    async def test_cascading_delete_prevention(
         self,
-        db: Session,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_patient: Patient,
     ):
@@ -1322,7 +1466,7 @@ class TestDataIntegrity:
         # Try to delete clinic (should fail due to FK constraint)
         try:
             db.delete(test_clinic)
-            db.commit()
+            await db.commit()
             # If we reach here, cascade delete is configured
         except IntegrityError:
             # Expected: cannot delete clinic with patients

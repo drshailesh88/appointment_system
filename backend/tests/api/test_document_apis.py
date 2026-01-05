@@ -14,9 +14,9 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
-from fastapi.testclient import TestClient
+from httpx import AsyncClient
 from PIL import Image
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.appointment import Appointment
 from app.models.calendar_settings import DoctorCalendarSettings
@@ -88,7 +88,8 @@ startxref
 
 
 @pytest.fixture
-def test_document(db: Session, test_clinic: Clinic, test_patient: Patient) -> Document:
+@pytest.mark.asyncio
+async def test_document(db: AsyncSession, test_clinic: Clinic, test_patient: Patient) -> Document:
     """Create a test document."""
     document = Document(
         id=uuid4(),
@@ -102,14 +103,15 @@ def test_document(db: Session, test_clinic: Clinic, test_patient: Patient) -> Do
         is_processed=False,
     )
     db.add(document)
-    db.commit()
-    db.refresh(document)
+    await db.commit()
+    await db.refresh(document)
     return document
 
 
 @pytest.fixture
-def test_processed_document(
-    db: Session, test_clinic: Clinic, test_patient: Patient
+@pytest.mark.asyncio
+async def test_processed_document(
+    db: AsyncSession, test_clinic: Clinic, test_patient: Patient
 ) -> Document:
     """Create a test document with OCR processed."""
     document = Document(
@@ -131,14 +133,15 @@ def test_processed_document(
         },
     )
     db.add(document)
-    db.commit()
-    db.refresh(document)
+    await db.commit()
+    await db.refresh(document)
     return document
 
 
 @pytest.fixture
-def test_procedure(
-    db: Session, test_clinic: Clinic, test_doctor: Doctor, test_patient: Patient
+@pytest.mark.asyncio
+async def test_procedure(
+    db: AsyncSession, test_clinic: Clinic, test_doctor: Doctor, test_patient: Patient
 ) -> Procedure:
     """Create a test procedure."""
     procedure = Procedure(
@@ -157,8 +160,8 @@ def test_procedure(
         notes="Routine echo completed successfully",
     )
     db.add(procedure)
-    db.commit()
-    db.refresh(procedure)
+    await db.commit()
+    await db.refresh(procedure)
     return procedure
 
 
@@ -170,16 +173,18 @@ def test_procedure(
 class TestDocumentsAPI:
     """Test suite for Documents API endpoints."""
 
-    def test_upload_document_image(
+    @pytest.mark.asyncio
+
+    async def test_upload_document_image(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
         """Test uploading an image document."""
         img_bytes = create_test_image()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/documents/upload",
             headers=auth_headers,
             data={
@@ -199,16 +204,18 @@ class TestDocumentsAPI:
         assert "file_path" in data
         assert data["message"] == "Document uploaded successfully"
 
-    def test_upload_document_pdf(
+    @pytest.mark.asyncio
+
+    async def test_upload_document_pdf(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
         """Test uploading a PDF document."""
         pdf_bytes = create_test_pdf()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/documents/upload",
             headers=auth_headers,
             data={
@@ -224,15 +231,17 @@ class TestDocumentsAPI:
         assert data["original_filename"] == "prescription.pdf"
         assert data["file_type"] == "application/pdf"
 
-    def test_upload_document_invalid_patient(
+    @pytest.mark.asyncio
+
+    async def test_upload_document_invalid_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test uploading document with invalid patient ID."""
         img_bytes = create_test_image()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/documents/upload",
             headers=auth_headers,
             data={
@@ -245,16 +254,18 @@ class TestDocumentsAPI:
         assert response.status_code == 404
         assert "Patient not found" in response.json()["detail"]
 
-    def test_upload_document_invalid_file_type(
+    @pytest.mark.asyncio
+
+    async def test_upload_document_invalid_file_type(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
         """Test uploading document with invalid file type."""
         invalid_file = io.BytesIO(b"Invalid file content")
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/documents/upload",
             headers=auth_headers,
             data={
@@ -266,9 +277,11 @@ class TestDocumentsAPI:
         assert response.status_code == 400
         assert "File type not allowed" in response.json()["detail"]
 
-    def test_process_ocr(
+    @pytest.mark.asyncio
+
+    async def test_process_ocr(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
         monkeypatch,
@@ -294,11 +307,11 @@ class TestDocumentsAPI:
             img.save(tmp.name, format="JPEG")
 
             # Update document file path to temp file
-            from sqlalchemy.orm import Session
+            from sqlalchemy.ext.asyncio import AsyncSession
             # Get the DB session from the test
             # For this test, we'll just mock the file existence check
 
-        response = client.post(
+        response = await client.post(
             f"/api/v1/documents/{test_document.id}/ocr",
             headers=auth_headers,
             json={
@@ -312,15 +325,17 @@ class TestDocumentsAPI:
         # For now, we expect either success or 404 for file not found
         assert response.status_code in [200, 404]
 
-    def test_list_documents(
+    @pytest.mark.asyncio
+
+    async def test_list_documents(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
         test_processed_document: Document,
     ):
         """Test listing documents with pagination."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/documents",
             headers=auth_headers,
             params={"limit": 10, "offset": 0},
@@ -335,15 +350,17 @@ class TestDocumentsAPI:
         assert isinstance(data["items"], list)
         assert data["total"] >= 2
 
-    def test_list_documents_with_filters(
+    @pytest.mark.asyncio
+
+    async def test_list_documents_with_filters(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_document: Document,
     ):
         """Test listing documents with filters."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/documents",
             headers=auth_headers,
             params={
@@ -363,15 +380,17 @@ class TestDocumentsAPI:
             if item["document_type"]:
                 assert item["document_type"] == "lab_report"
 
-    def test_get_patient_documents(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_documents(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_document: Document,
     ):
         """Test getting all documents for a patient."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/documents/patient/{test_patient.id}",
             headers=auth_headers,
         )
@@ -383,27 +402,31 @@ class TestDocumentsAPI:
         for doc in data:
             assert doc["patient_id"] == str(test_patient.id)
 
-    def test_get_patient_documents_invalid_patient(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_documents_invalid_patient(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting documents for non-existent patient."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/documents/patient/{uuid4()}",
             headers=auth_headers,
         )
 
         assert response.status_code == 404
 
-    def test_get_document_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_document_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
     ):
         """Test getting a specific document by ID."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/documents/{test_document.id}",
             headers=auth_headers,
         )
@@ -414,14 +437,16 @@ class TestDocumentsAPI:
         assert data["patient_id"] == str(test_document.patient_id)
         assert data["original_filename"] == test_document.original_filename
 
-    def test_get_document_text(
+    @pytest.mark.asyncio
+
+    async def test_get_document_text(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_processed_document: Document,
     ):
         """Test getting extracted text from a processed document."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/documents/{test_processed_document.id}/text",
             headers=auth_headers,
         )
@@ -434,14 +459,16 @@ class TestDocumentsAPI:
         assert "John Doe" in data["ocr_text"]
         assert data["extracted_data"] is not None
 
-    def test_update_document(
+    @pytest.mark.asyncio
+
+    async def test_update_document(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
     ):
         """Test updating document metadata."""
-        response = client.patch(
+        response = await client.patch(
             f"/api/v1/documents/{test_document.id}",
             headers=auth_headers,
             json={
@@ -457,14 +484,16 @@ class TestDocumentsAPI:
         assert data["notes"] == "Updated notes"
         assert "updated" in data["tags"]
 
-    def test_delete_document(
+    @pytest.mark.asyncio
+
+    async def test_delete_document(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
     ):
         """Test deleting a document."""
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/documents/{test_document.id}",
             headers=auth_headers,
         )
@@ -472,19 +501,21 @@ class TestDocumentsAPI:
         assert response.status_code == 204
 
         # Verify document is deleted
-        get_response = client.get(
+        get_response = await client.get(
             f"/api/v1/documents/{test_document.id}",
             headers=auth_headers,
         )
         assert get_response.status_code == 404
 
-    def test_get_document_types(
+    @pytest.mark.asyncio
+
+    async def test_get_document_types(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting available document types."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/documents/types/available",
             headers=auth_headers,
         )
@@ -496,15 +527,17 @@ class TestDocumentsAPI:
         assert "lab_report" in data["types"]
         assert "prescription" in data["types"]
 
-    def test_get_document_stats(
+    @pytest.mark.asyncio
+
+    async def test_get_document_stats(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_document: Document,
         test_processed_document: Document,
     ):
         """Test getting document statistics."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/documents/stats/summary",
             headers=auth_headers,
         )
@@ -520,15 +553,17 @@ class TestDocumentsAPI:
         assert data["processed"] >= 1
         assert data["unprocessed"] >= 1
 
-    def test_get_patient_document_summary(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_document_summary(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_document: Document,
     ):
         """Test getting patient document summary."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/documents/patient/{test_patient.id}/summary",
             headers=auth_headers,
         )
@@ -550,14 +585,16 @@ class TestDocumentsAPI:
 class TestReportsAPI:
     """Test suite for Reports API endpoints."""
 
-    def test_download_daily_summary_pdf(
+    @pytest.mark.asyncio
+
+    async def test_download_daily_summary_pdf(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment: Appointment,
     ):
         """Test downloading daily summary report as PDF."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/daily-summary/pdf",
             headers=auth_headers,
             params={"report_date": date.today().isoformat()},
@@ -571,26 +608,30 @@ class TestReportsAPI:
             assert response.headers["content-type"] == "application/pdf"
             assert "attachment" in response.headers["content-disposition"]
 
-    def test_download_daily_summary_pdf_default_date(
+    @pytest.mark.asyncio
+
+    async def test_download_daily_summary_pdf_default_date(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading daily summary with default date (today)."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/daily-summary/pdf",
             headers=auth_headers,
         )
 
         assert response.status_code in [200, 500]
 
-    def test_download_monthly_report_pdf(
+    @pytest.mark.asyncio
+
+    async def test_download_monthly_report_pdf(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading monthly analytics report as PDF."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/monthly/pdf",
             headers=auth_headers,
             params={"year": 2024, "month": 1},
@@ -602,13 +643,15 @@ class TestReportsAPI:
             assert response.headers["content-type"] == "application/pdf"
             assert "monthly_report" in response.headers["content-disposition"]
 
-    def test_download_monthly_report_invalid_month(
+    @pytest.mark.asyncio
+
+    async def test_download_monthly_report_invalid_month(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading monthly report with invalid month."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/monthly/pdf",
             headers=auth_headers,
             params={"year": 2024, "month": 13},
@@ -617,13 +660,15 @@ class TestReportsAPI:
         assert response.status_code == 400
         assert "Month must be between 1 and 12" in response.json()["detail"]
 
-    def test_download_revenue_report_pdf(
+    @pytest.mark.asyncio
+
+    async def test_download_revenue_report_pdf(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading revenue report as PDF."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/revenue/pdf",
             headers=auth_headers,
             params={"period": "month"},
@@ -631,16 +676,18 @@ class TestReportsAPI:
 
         assert response.status_code in [200, 500]
 
-    def test_download_revenue_report_with_custom_dates(
+    @pytest.mark.asyncio
+
+    async def test_download_revenue_report_with_custom_dates(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading revenue report with custom date range."""
         start_date = date.today() - timedelta(days=30)
         end_date = date.today()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/revenue/pdf",
             headers=auth_headers,
             params={
@@ -651,14 +698,16 @@ class TestReportsAPI:
 
         assert response.status_code in [200, 500]
 
-    def test_download_revenue_report_with_doctor_filter(
+    @pytest.mark.asyncio
+
+    async def test_download_revenue_report_with_doctor_filter(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
         """Test downloading revenue report filtered by doctor."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/revenue/pdf",
             headers=auth_headers,
             params={
@@ -669,14 +718,16 @@ class TestReportsAPI:
 
         assert response.status_code in [200, 500]
 
-    def test_download_appointments_excel(
+    @pytest.mark.asyncio
+
+    async def test_download_appointments_excel(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_appointment: Appointment,
     ):
         """Test downloading appointments report as Excel."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/appointments/excel",
             headers=auth_headers,
             params={"period": "month"},
@@ -691,13 +742,15 @@ class TestReportsAPI:
             )
             assert "appointments" in response.headers["content-disposition"]
 
-    def test_download_revenue_excel(
+    @pytest.mark.asyncio
+
+    async def test_download_revenue_excel(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test downloading revenue report as Excel."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/revenue/excel",
             headers=auth_headers,
             params={"period": "week"},
@@ -705,14 +758,16 @@ class TestReportsAPI:
 
         assert response.status_code in [200, 500]
 
-    def test_download_doctor_utilization_excel(
+    @pytest.mark.asyncio
+
+    async def test_download_doctor_utilization_excel(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
         """Test downloading doctor utilization report as Excel."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/doctors/utilization/excel",
             headers=auth_headers,
             params={"period": "month"},
@@ -720,27 +775,31 @@ class TestReportsAPI:
 
         assert response.status_code in [200, 500]
 
-    def test_download_patient_demographics_excel(
+    @pytest.mark.asyncio
+
+    async def test_download_patient_demographics_excel(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
         """Test downloading patient demographics report as Excel."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/patients/demographics/excel",
             headers=auth_headers,
         )
 
         assert response.status_code in [200, 500]
 
-    def test_list_available_reports(
+    @pytest.mark.asyncio
+
+    async def test_list_available_reports(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test listing all available reports."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/reports/available",
             headers=auth_headers,
         )
@@ -773,9 +832,11 @@ class TestReportsAPI:
 class TestCalendarAPI:
     """Test suite for Calendar API endpoints."""
 
-    def test_get_auth_url_success(
+    @pytest.mark.asyncio
+
+    async def test_get_auth_url_success(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         monkeypatch,
@@ -797,7 +858,7 @@ class TestCalendarAPI:
             lambda: MockGoogleCalendar(),
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/calendar/auth-url",
             headers=auth_headers,
             params={"doctor_id": str(test_doctor.id)},
@@ -809,9 +870,11 @@ class TestCalendarAPI:
         assert "state" in data
         assert "accounts.google.com" in data["auth_url"]
 
-    def test_get_auth_url_not_configured(
+    @pytest.mark.asyncio
+
+    async def test_get_auth_url_not_configured(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
         monkeypatch,
@@ -829,7 +892,7 @@ class TestCalendarAPI:
             lambda: MockGoogleCalendar(),
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/calendar/auth-url",
             headers=auth_headers,
             params={"doctor_id": str(test_doctor.id)},
@@ -837,9 +900,11 @@ class TestCalendarAPI:
 
         assert response.status_code == 503
 
-    def test_get_auth_url_invalid_doctor(
+    @pytest.mark.asyncio
+
+    async def test_get_auth_url_invalid_doctor(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         monkeypatch,
     ):
@@ -856,7 +921,7 @@ class TestCalendarAPI:
             lambda: MockGoogleCalendar(),
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/calendar/auth-url",
             headers=auth_headers,
             params={"doctor_id": str(uuid4())},
@@ -864,14 +929,16 @@ class TestCalendarAPI:
 
         assert response.status_code == 404
 
-    def test_get_sync_status_not_connected(
+    @pytest.mark.asyncio
+
+    async def test_get_sync_status_not_connected(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
         """Test getting sync status when calendar not connected."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/calendar/status",
             headers=auth_headers,
             params={"doctor_id": str(test_doctor.id)},
@@ -881,12 +948,14 @@ class TestCalendarAPI:
         data = response.json()
         assert data["connected"] is False
 
-    def test_get_sync_status_connected(
+    @pytest.mark.asyncio
+
+    async def test_get_sync_status_connected(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test getting sync status when calendar is connected."""
         # Create calendar settings
@@ -899,9 +968,9 @@ class TestCalendarAPI:
             last_synced_at=datetime.now(),
         )
         db.add(settings)
-        db.commit()
+        await db.commit()
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/calendar/status",
             headers=auth_headers,
             params={"doctor_id": str(test_doctor.id)},
@@ -914,14 +983,16 @@ class TestCalendarAPI:
         assert data["calendar_id"] == "primary"
         assert data["last_synced_at"] is not None
 
-    def test_trigger_sync_not_connected(
+    @pytest.mark.asyncio
+
+    async def test_trigger_sync_not_connected(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
         """Test triggering sync when calendar not connected."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/calendar/sync",
             headers=auth_headers,
             json={"doctor_id": str(test_doctor.id), "force": False},
@@ -930,12 +1001,14 @@ class TestCalendarAPI:
         # Should fail since no calendar is connected
         assert response.status_code == 500
 
-    def test_disconnect_calendar(
+    @pytest.mark.asyncio
+
+    async def test_disconnect_calendar(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
-        db: Session,
+        db: AsyncSession,
     ):
         """Test disconnecting Google Calendar."""
         # Create calendar settings
@@ -947,9 +1020,9 @@ class TestCalendarAPI:
             sync_enabled=True,
         )
         db.add(settings)
-        db.commit()
+        await db.commit()
 
-        response = client.delete(
+        response = await client.delete(
             "/api/v1/calendar/disconnect",
             headers=auth_headers,
             json={"doctor_id": str(test_doctor.id)},
@@ -958,9 +1031,11 @@ class TestCalendarAPI:
         # The service should handle the disconnection
         assert response.status_code in [200, 500]
 
-    def test_check_conflicts_no_conflicts(
+    @pytest.mark.asyncio
+
+    async def test_check_conflicts_no_conflicts(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_doctor: Doctor,
     ):
@@ -969,7 +1044,7 @@ class TestCalendarAPI:
         start_time = tomorrow.replace(hour=14, minute=0, second=0, microsecond=0)
         end_time = start_time + timedelta(hours=1)
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/calendar/conflicts",
             headers=auth_headers,
             json={
@@ -991,15 +1066,17 @@ class TestCalendarAPI:
 class TestProceduresAPI:
     """Test suite for Procedures API endpoints."""
 
-    def test_create_procedure(
+    @pytest.mark.asyncio
+
+    async def test_create_procedure(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_doctor: Doctor,
     ):
         """Test creating a new procedure record."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/procedures",
             headers=auth_headers,
             json={
@@ -1025,14 +1102,16 @@ class TestProceduresAPI:
         assert data["procedure_type"] == "Echo"
         assert data["outcome"] == "success"
 
-    def test_quick_log_procedure(
+    @pytest.mark.asyncio
+
+    async def test_quick_log_procedure(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
     ):
         """Test quick logging a procedure with minimal fields."""
-        response = client.post(
+        response = await client.post(
             "/api/v1/procedures/quick",
             headers=auth_headers,
             json={
@@ -1050,14 +1129,16 @@ class TestProceduresAPI:
         assert data["patient_id"] == str(test_patient.id)
         assert data["category"] == "Cardiology"
 
-    def test_get_procedure_by_id(
+    @pytest.mark.asyncio
+
+    async def test_get_procedure_by_id(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting a procedure by ID."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/procedures/{test_procedure.id}",
             headers=auth_headers,
         )
@@ -1068,14 +1149,16 @@ class TestProceduresAPI:
         assert data["category"] == "Cardiology"
         assert data["procedure_type"] == "Echo"
 
-    def test_update_procedure(
+    @pytest.mark.asyncio
+
+    async def test_update_procedure(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test updating a procedure."""
-        response = client.put(
+        response = await client.put(
             f"/api/v1/procedures/{test_procedure.id}",
             headers=auth_headers,
             json={
@@ -1090,14 +1173,16 @@ class TestProceduresAPI:
         assert data["notes"] == "Updated procedure notes"
         assert data["billed_amount"] == 3000.0
 
-    def test_delete_procedure(
+    @pytest.mark.asyncio
+
+    async def test_delete_procedure(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test deleting a procedure."""
-        response = client.delete(
+        response = await client.delete(
             f"/api/v1/procedures/{test_procedure.id}",
             headers=auth_headers,
         )
@@ -1105,20 +1190,22 @@ class TestProceduresAPI:
         assert response.status_code == 204
 
         # Verify procedure is deleted
-        get_response = client.get(
+        get_response = await client.get(
             f"/api/v1/procedures/{test_procedure.id}",
             headers=auth_headers,
         )
         assert get_response.status_code == 404
 
-    def test_list_procedures(
+    @pytest.mark.asyncio
+
+    async def test_list_procedures(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test listing procedures with pagination."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures",
             headers=auth_headers,
             params={"period": "month", "limit": 50, "offset": 0},
@@ -1130,16 +1217,18 @@ class TestProceduresAPI:
         assert "total" in data
         assert data["total"] >= 1
 
-    def test_list_procedures_with_filters(
+    @pytest.mark.asyncio
+
+    async def test_list_procedures_with_filters(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_doctor: Doctor,
         test_procedure: Procedure,
     ):
         """Test listing procedures with filters."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures",
             headers=auth_headers,
             params={
@@ -1156,15 +1245,17 @@ class TestProceduresAPI:
             assert item["patient_id"] == str(test_patient.id)
             assert item["category"] == "Cardiology"
 
-    def test_get_patient_procedures(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_procedures(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_procedure: Procedure,
     ):
         """Test getting all procedures for a patient."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/procedures/patient/{test_patient.id}",
             headers=auth_headers,
         )
@@ -1176,15 +1267,17 @@ class TestProceduresAPI:
         for proc in data:
             assert proc["patient_id"] == str(test_patient.id)
 
-    def test_get_patient_procedure_summary(
+    @pytest.mark.asyncio
+
+    async def test_get_patient_procedure_summary(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_patient: Patient,
         test_procedure: Procedure,
     ):
         """Test getting procedure summary for a patient."""
-        response = client.get(
+        response = await client.get(
             f"/api/v1/procedures/patient/{test_patient.id}/summary",
             headers=auth_headers,
         )
@@ -1195,14 +1288,16 @@ class TestProceduresAPI:
         assert "summary" in data
         assert isinstance(data["summary"], dict)
 
-    def test_get_procedure_stats(
+    @pytest.mark.asyncio
+
+    async def test_get_procedure_stats(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting procedure statistics."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/analytics/stats",
             headers=auth_headers,
             params={"period": "month"},
@@ -1214,14 +1309,16 @@ class TestProceduresAPI:
         assert "by_category" in data
         assert "by_outcome" in data
 
-    def test_get_procedure_type_counts(
+    @pytest.mark.asyncio
+
+    async def test_get_procedure_type_counts(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting procedure counts by type."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/analytics/types",
             headers=auth_headers,
             params={"period": "month"},
@@ -1231,14 +1328,16 @@ class TestProceduresAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_doctor_procedure_stats(
+    @pytest.mark.asyncio
+
+    async def test_get_doctor_procedure_stats(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting procedure statistics per doctor."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/analytics/doctors",
             headers=auth_headers,
             params={"period": "month"},
@@ -1248,14 +1347,16 @@ class TestProceduresAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_procedure_trend(
+    @pytest.mark.asyncio
+
+    async def test_get_procedure_trend(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting day-by-day procedure trend."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/analytics/trend",
             headers=auth_headers,
             params={"period": "month"},
@@ -1265,14 +1366,16 @@ class TestProceduresAPI:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_get_consumables_usage(
+    @pytest.mark.asyncio
+
+    async def test_get_consumables_usage(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
         test_procedure: Procedure,
     ):
         """Test getting consumables usage summary."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/analytics/consumables",
             headers=auth_headers,
             params={"period": "month"},
@@ -1284,13 +1387,15 @@ class TestProceduresAPI:
         assert "period_end" in data
         assert "usage" in data
 
-    def test_get_procedure_templates(
+    @pytest.mark.asyncio
+
+    async def test_get_procedure_templates(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting predefined procedure templates."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/templates",
             headers=auth_headers,
         )
@@ -1300,13 +1405,15 @@ class TestProceduresAPI:
         assert "templates" in data
         assert isinstance(data["templates"], dict)
 
-    def test_get_category_template(
+    @pytest.mark.asyncio
+
+    async def test_get_category_template(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting templates for a specific category."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/templates/cardiology",
             headers=auth_headers,
         )
@@ -1317,15 +1424,18 @@ class TestProceduresAPI:
         assert "types" in data
         assert data["category"] == "Cardiology"
 
-    def test_get_category_template_not_found(
+    @pytest.mark.asyncio
+
+    async def test_get_category_template_not_found(
         self,
-        client: TestClient,
+        client: AsyncClient,
         auth_headers: dict,
     ):
         """Test getting templates for non-existent category."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/procedures/templates/nonexistent",
             headers=auth_headers,
         )
 
         assert response.status_code == 404
+

@@ -345,8 +345,8 @@ class TestActionFlow:
         book_result = await executor.execute_action(
             action_type=ActionType.BOOK_APPOINTMENT,
             params={
-                "patient_id": patient.id,
-                "doctor_id": doctor.id,
+                "patient_id": str(patient.id),
+                "doctor_id": str(doctor.id),
                 "date": date.today() + timedelta(days=1),
                 "time": time(15, 0),
                 "reason": "Follow-up",

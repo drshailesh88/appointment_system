@@ -15,8 +15,8 @@ from uuid import uuid4
 
 import jwt
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import (
@@ -35,15 +35,21 @@ from app.models.patient import Patient
 class TestAuthenticationBypass:
     """Test authentication bypass attempts."""
 
-    def test_access_protected_endpoint_without_token(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_access_protected_endpoint_without_token(self, client: AsyncClient):
         """Test accessing protected endpoint without authentication token."""
-        response = client.get("/api/v1/auth/me")
+        response = await client.get("/api/v1/auth/me")
 
         assert response.status_code == 401
         assert "detail" in response.json()
         assert "not authenticated" in response.json()["detail"].lower()
 
-    def test_access_with_expired_token(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_access_with_expired_token(self, client: AsyncClient, test_user: User):
         """Test accessing endpoint with expired token."""
         # Create token that expired 1 hour ago
         expired_token = create_access_token(
@@ -51,7 +57,7 @@ class TestAuthenticationBypass:
             expires_delta=timedelta(hours=-1)
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {expired_token}"}
         )
@@ -59,7 +65,10 @@ class TestAuthenticationBypass:
         assert response.status_code == 401
         assert "detail" in response.json()
 
-    def test_access_with_malformed_token(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_access_with_malformed_token(self, client: AsyncClient):
         """Test accessing endpoint with malformed token."""
         malformed_tokens = [
             "not-a-jwt-token",
@@ -70,14 +79,17 @@ class TestAuthenticationBypass:
         ]
 
         for token in malformed_tokens:
-            response = client.get(
+            response = await client.get(
                 "/api/v1/auth/me",
                 headers={"Authorization": f"Bearer {token}"}
             )
 
             assert response.status_code == 401, f"Failed for token: {token}"
 
-    def test_access_with_wrong_secret(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_access_with_wrong_secret(self, client: AsyncClient, test_user: User):
         """Test accessing endpoint with token signed using wrong secret."""
         # Create token with different secret
         wrong_secret_token = jwt.encode(
@@ -90,14 +102,17 @@ class TestAuthenticationBypass:
             algorithm="HS256"
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {wrong_secret_token}"}
         )
 
         assert response.status_code == 401
 
-    def test_access_with_wrong_algorithm(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_access_with_wrong_algorithm(self, client: AsyncClient, test_user: User):
         """Test accessing endpoint with token using wrong algorithm."""
         # Create token with HS512 instead of HS256
         wrong_algo_token = jwt.encode(
@@ -110,14 +125,17 @@ class TestAuthenticationBypass:
             algorithm="HS512"
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {wrong_algo_token}"}
         )
 
         assert response.status_code == 401
 
-    def test_sql_injection_in_login_username(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_sql_injection_in_login_username(self, client: AsyncClient):
         """Test SQL injection attempts in login username field."""
         sql_injection_payloads = [
             "admin' OR '1'='1",
@@ -130,7 +148,7 @@ class TestAuthenticationBypass:
         ]
 
         for payload in sql_injection_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/login",
                 data={
                     "username": payload,
@@ -144,7 +162,10 @@ class TestAuthenticationBypass:
             if response.status_code != 422:
                 assert "sql" not in response.json().get("detail", "").lower()
 
-    def test_sql_injection_in_login_password(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_sql_injection_in_login_password(self, client: AsyncClient, test_user: User):
         """Test SQL injection attempts in login password field."""
         sql_injection_payloads = [
             "' OR '1'='1",
@@ -153,7 +174,7 @@ class TestAuthenticationBypass:
         ]
 
         for payload in sql_injection_payloads:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/login",
                 data={
                     "username": test_user.email,
@@ -164,7 +185,10 @@ class TestAuthenticationBypass:
             assert response.status_code == 401
             assert "sql" not in response.json().get("detail", "").lower()
 
-    def test_timing_attack_resistance_on_password_comparison(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_timing_attack_resistance_on_password_comparison(self, client: AsyncClient, test_user: User):
         """Test that password comparison is resistant to timing attacks."""
         # This tests that wrong passwords take roughly the same time
         # regardless of how many characters match
@@ -193,34 +217,43 @@ class TestAuthenticationBypass:
         max_diff = max(times) - min(times)
         assert max_diff < 0.05, f"Timing difference too large: {max_diff}s"
 
-    def test_refresh_token_cannot_be_used_as_access_token(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_token_cannot_be_used_as_access_token(self, client: AsyncClient, test_user: User):
         """Test that refresh tokens cannot be used to access protected endpoints."""
         refresh_token = create_refresh_token(subject=str(test_user.id))
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {refresh_token}"}
         )
 
         assert response.status_code == 401
 
-    def test_token_with_invalid_user_id(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_token_with_invalid_user_id(self, client: AsyncClient):
         """Test token with non-existent user ID."""
         fake_user_id = str(uuid4())
         token = create_access_token(subject=fake_user_id)
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 401
 
-    def test_token_with_malformed_user_id(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_token_with_malformed_user_id(self, client: AsyncClient):
         """Test token with malformed user ID (not UUID)."""
         token = create_access_token(subject="not-a-uuid")
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -231,12 +264,15 @@ class TestAuthenticationBypass:
 class TestSessionSecurity:
     """Test session and token security."""
 
-    def test_token_not_exposed_in_response_body(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_token_not_exposed_in_response_body(self, client: AsyncClient, test_user: User):
         """Test that tokens are not exposed in error responses."""
         token = create_access_token(subject=str(test_user.id))
 
         # Make a request that might fail
-        response = client.post(
+        response = await client.post(
             "/api/v1/appointments",
             headers={"Authorization": f"Bearer {token}"},
             json={"invalid": "data"}
@@ -247,10 +283,13 @@ class TestSessionSecurity:
         assert token not in response_text
         assert "bearer" not in response_text or "www-authenticate" in response_text
 
-    def test_refresh_token_rotation(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_refresh_token_rotation(self, client: AsyncClient, test_user: User):
         """Test that refresh token is rotated on use."""
         # Login to get initial refresh token
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -262,7 +301,7 @@ class TestSessionSecurity:
         first_refresh_token = response.json()["refresh_token"]
 
         # Use refresh token to get new tokens
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": first_refresh_token}
         )
@@ -274,17 +313,20 @@ class TestSessionSecurity:
         assert first_refresh_token != second_refresh_token
 
         # Old refresh token should no longer work
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": first_refresh_token}
         )
 
         assert response.status_code == 401
 
-    def test_session_invalidation_on_logout(self, client: TestClient, test_user: User, db: Session):
+    @pytest.mark.asyncio
+
+
+    async def test_session_invalidation_on_logout(self, client: AsyncClient, test_user: User, db: AsyncSession):
         """Test that session is properly invalidated on logout."""
         # Login
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -296,7 +338,7 @@ class TestSessionSecurity:
         refresh_token = response.json()["refresh_token"]
 
         # Logout
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/logout",
             headers={"Authorization": f"Bearer {access_token}"}
         )
@@ -304,7 +346,7 @@ class TestSessionSecurity:
         assert response.status_code == 200
 
         # Refresh token should no longer work
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/refresh",
             json={"refresh_token": refresh_token}
         )
@@ -312,16 +354,19 @@ class TestSessionSecurity:
         assert response.status_code == 401
 
         # Verify refresh token cleared in database
-        db.refresh(test_user)
+        await db.refresh(test_user)
         assert test_user.refresh_token is None
 
-    def test_inactive_user_cannot_login(self, client: TestClient, db: Session, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_inactive_user_cannot_login(self, client: AsyncClient, db: AsyncSession, test_user: User):
         """Test that inactive users cannot login."""
         # Deactivate user
         test_user.is_active = False
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -332,17 +377,20 @@ class TestSessionSecurity:
         assert response.status_code == 403
         assert "deactivated" in response.json()["detail"].lower()
 
-    def test_inactive_user_token_rejected(self, client: TestClient, db: Session, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_inactive_user_token_rejected(self, client: AsyncClient, db: AsyncSession, test_user: User):
         """Test that tokens for inactive users are rejected."""
         # Create token before deactivation
         token = create_access_token(subject=str(test_user.id))
 
         # Deactivate user
         test_user.is_active = False
-        db.commit()
+        await db.commit()
 
         # Token should be rejected
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -353,7 +401,10 @@ class TestSessionSecurity:
 class TestPasswordSecurity:
     """Test password security mechanisms."""
 
-    def test_password_is_hashed_with_bcrypt(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_password_is_hashed_with_bcrypt(self, db: AsyncSession, test_clinic: Clinic):
         """Test that passwords are hashed using bcrypt."""
         password = "SecurePassword123!"
         hashed = get_password_hash(password)
@@ -367,7 +418,10 @@ class TestPasswordSecurity:
         # Hash should be verifiable
         assert verify_password(password, hashed)
 
-    def test_password_not_stored_in_plaintext(self, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_password_not_stored_in_plaintext(self, db: AsyncSession, test_clinic: Clinic):
         """Test that passwords are never stored in plaintext."""
         password = "MySecretPassword123!"
 
@@ -382,16 +436,19 @@ class TestPasswordSecurity:
             is_active=True,
         )
         db.add(user)
-        db.commit()
-        db.refresh(user)
+        await db.commit()
+        await db.refresh(user)
 
         # Password should be hashed
         assert user.password_hash != password
         assert user.password_hash.startswith("$2b$") or user.password_hash.startswith("$2a$")
 
-    def test_password_not_in_user_response(self, client: TestClient, test_user: User, auth_headers: dict):
+    @pytest.mark.asyncio
+
+
+    async def test_password_not_in_user_response(self, client: AsyncClient, test_user: User, auth_headers: dict):
         """Test that password hash is not exposed in API responses."""
-        response = client.get("/api/v1/auth/me", headers=auth_headers)
+        response = await client.get("/api/v1/auth/me", headers=auth_headers)
 
         assert response.status_code == 200
         data = response.json()
@@ -401,7 +458,10 @@ class TestPasswordSecurity:
         assert "password_hash" not in data
         assert "hashed_password" not in data
 
-    def test_same_password_produces_different_hashes(self):
+    @pytest.mark.asyncio
+
+
+    async def test_same_password_produces_different_hashes(self):
         """Test that hashing the same password produces different hashes (salted)."""
         password = "TestPassword123"
 
@@ -415,7 +475,10 @@ class TestPasswordSecurity:
         assert verify_password(password, hash1)
         assert verify_password(password, hash2)
 
-    def test_password_verification_case_sensitive(self):
+    @pytest.mark.asyncio
+
+
+    async def test_password_verification_case_sensitive(self):
         """Test that password verification is case-sensitive."""
         password = "MyPassword123"
         hashed = get_password_hash(password)
@@ -424,7 +487,10 @@ class TestPasswordSecurity:
         assert not verify_password("mypassword123", hashed)
         assert not verify_password("MYPASSWORD123", hashed)
 
-    def test_weak_passwords_in_registration(self, client: TestClient, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_weak_passwords_in_registration(self, client: AsyncClient, test_clinic: Clinic):
         """Test that weak passwords are handled (if validation exists)."""
         weak_passwords = [
             "123",
@@ -434,7 +500,7 @@ class TestPasswordSecurity:
         ]
 
         for weak_password in weak_passwords:
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/register",
                 json={
                     "email": f"user_{uuid4()}@test.com",
@@ -453,7 +519,10 @@ class TestPasswordSecurity:
 class TestRBACEnforcement:
     """Test Role-Based Access Control enforcement."""
 
-    def test_staff_cannot_access_admin_endpoints(self, client: TestClient, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_staff_cannot_access_admin_endpoints(self, client: AsyncClient, db: AsyncSession, test_clinic: Clinic):
         """Test that staff users cannot access admin-only endpoints."""
         # Create receptionist user
         receptionist = User(
@@ -467,14 +536,14 @@ class TestRBACEnforcement:
             is_active=True,
         )
         db.add(receptionist)
-        db.commit()
+        await db.commit()
 
         # Create token for receptionist
         token = create_access_token(subject=str(receptionist.id))
 
         # Try to access admin endpoint (if exists)
         # This is a placeholder - adjust based on actual admin endpoints
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",  # Replace with actual admin endpoint
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -482,10 +551,13 @@ class TestRBACEnforcement:
         # Should either succeed (non-admin endpoint) or return 403
         assert response.status_code in [200, 403]
 
-    def test_doctor_cannot_access_other_doctors_data(
+    @pytest.mark.asyncio
+
+
+    async def test_doctor_cannot_access_other_doctors_data(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_doctor: Doctor
     ):
@@ -502,7 +574,7 @@ class TestRBACEnforcement:
             is_active=True,
         )
         db.add(user2)
-        db.commit()
+        await db.commit()
 
         doctor2 = Doctor(
             id=str(uuid4()),
@@ -516,7 +588,7 @@ class TestRBACEnforcement:
             is_active=True,
         )
         db.add(doctor2)
-        db.commit()
+        await db.commit()
 
         # Create appointment for doctor2
         patient = Patient(
@@ -527,7 +599,7 @@ class TestRBACEnforcement:
             gender="male",
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         appointment = Appointment(
             id=str(uuid4()),
@@ -540,14 +612,14 @@ class TestRBACEnforcement:
             appointment_type="new_consultation",
         )
         db.add(appointment)
-        db.commit()
+        await db.commit()
 
         # Get token for first doctor
         user1 = db.query(User).filter(User.id == test_doctor.user_id).first()
         token = create_access_token(subject=str(user1.id))
 
         # Try to access doctor2's appointment
-        response = client.get(
+        response = await client.get(
             f"/api/v1/appointments/{appointment.id}",
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -556,10 +628,13 @@ class TestRBACEnforcement:
         # Adjust based on actual API behavior
         assert response.status_code in [200, 403, 404]
 
-    def test_staff_from_different_clinic_cannot_access_data(
+    @pytest.mark.asyncio
+
+
+    async def test_staff_from_different_clinic_cannot_access_data(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
         test_clinic: Clinic
     ):
         """Test that staff from one clinic cannot access another clinic's data."""
@@ -577,7 +652,7 @@ class TestRBACEnforcement:
             subscription_tier="basic",
         )
         db.add(other_clinic)
-        db.commit()
+        await db.commit()
 
         # Create user in other clinic
         other_user = User(
@@ -591,7 +666,7 @@ class TestRBACEnforcement:
             is_active=True,
         )
         db.add(other_user)
-        db.commit()
+        await db.commit()
 
         # Create token for other clinic user
         token = create_access_token(subject=str(other_user.id))
@@ -605,10 +680,10 @@ class TestRBACEnforcement:
             gender="female",
         )
         db.add(patient)
-        db.commit()
+        await db.commit()
 
         # Try to access test_clinic's patient
-        response = client.get(
+        response = await client.get(
             f"/api/v1/patients/{patient.id}",
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -616,10 +691,13 @@ class TestRBACEnforcement:
         # Should deny access
         assert response.status_code in [403, 404]
 
-    def test_vertical_privilege_escalation_prevention(
+    @pytest.mark.asyncio
+
+
+    async def test_vertical_privilege_escalation_prevention(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
         test_clinic: Clinic
     ):
         """Test that users cannot escalate their own privileges."""
@@ -635,12 +713,12 @@ class TestRBACEnforcement:
             is_active=True,
         )
         db.add(receptionist)
-        db.commit()
+        await db.commit()
 
         token = create_access_token(subject=str(receptionist.id))
 
         # Try to update own role to admin (if such endpoint exists)
-        response = client.put(
+        response = await client.put(
             f"/api/v1/users/{receptionist.id}",
             headers={"Authorization": f"Bearer {token}"},
             json={"role": "admin"}
@@ -649,17 +727,20 @@ class TestRBACEnforcement:
         # Should deny or not allow role change
         assert response.status_code in [403, 404, 405, 422]
 
-    def test_admin_can_access_all_clinics(
+    @pytest.mark.asyncio
+
+
+    async def test_admin_can_access_all_clinics(
         self,
-        client: TestClient,
-        db: Session,
+        client: AsyncClient,
+        db: AsyncSession,
         test_clinic: Clinic,
         test_user: User
     ):
         """Test that admin users can access any clinic's data."""
         # Ensure test_user is admin
         test_user.role = UserRole.ADMIN.value
-        db.commit()
+        await db.commit()
 
         token = create_access_token(subject=str(test_user.id))
 
@@ -677,10 +758,10 @@ class TestRBACEnforcement:
             subscription_tier="premium",
         )
         db.add(other_clinic)
-        db.commit()
+        await db.commit()
 
         # Admin should be able to access it
-        response = client.get(
+        response = await client.get(
             f"/api/v1/clinics/{other_clinic.id}",
             headers={"Authorization": f"Bearer {token}"}
         )
@@ -693,7 +774,10 @@ class TestRBACEnforcement:
 class TestAPISecurityHeaders:
     """Test API security headers."""
 
-    def test_cors_headers_present(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_cors_headers_present(self, client: AsyncClient):
         """Test that CORS headers are properly configured."""
         response = client.options(
             "/api/v1/auth/me",
@@ -706,9 +790,12 @@ class TestAPISecurityHeaders:
         # CORS should be configured
         assert response.status_code in [200, 405]
 
-    def test_cors_restricts_unauthorized_origins(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_cors_restricts_unauthorized_origins(self, client: AsyncClient):
         """Test that CORS blocks unauthorized origins."""
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Origin": "https://evil-site.com"}
         )
@@ -718,9 +805,12 @@ class TestAPISecurityHeaders:
         if "access-control-allow-origin" in response.headers:
             assert response.headers["access-control-allow-origin"] != "https://evil-site.com"
 
-    def test_no_sensitive_headers_in_error_responses(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_no_sensitive_headers_in_error_responses(self, client: AsyncClient):
         """Test that error responses don't leak sensitive headers."""
-        response = client.get("/api/v1/auth/me")
+        response = await client.get("/api/v1/auth/me")
 
         # Check for sensitive header exposure
         sensitive_headers = ["x-powered-by", "server", "x-aspnet-version"]
@@ -728,16 +818,22 @@ class TestAPISecurityHeaders:
         for header in sensitive_headers:
             assert header not in response.headers.keys()
 
-    def test_content_type_header_on_json_responses(self, client: TestClient, auth_headers: dict):
+    @pytest.mark.asyncio
+
+
+    async def test_content_type_header_on_json_responses(self, client: AsyncClient, auth_headers: dict):
         """Test that JSON responses have correct content-type."""
-        response = client.get("/api/v1/auth/me", headers=auth_headers)
+        response = await client.get("/api/v1/auth/me", headers=auth_headers)
 
         if response.status_code == 200:
             assert "application/json" in response.headers.get("content-type", "")
 
-    def test_no_caching_for_authenticated_endpoints(self, client: TestClient, auth_headers: dict):
+    @pytest.mark.asyncio
+
+
+    async def test_no_caching_for_authenticated_endpoints(self, client: AsyncClient, auth_headers: dict):
         """Test that authenticated endpoints are not cached."""
-        response = client.get("/api/v1/auth/me", headers=auth_headers)
+        response = await client.get("/api/v1/auth/me", headers=auth_headers)
 
         if response.status_code == 200:
             # Should have cache-control headers preventing caching
@@ -749,11 +845,14 @@ class TestAPISecurityHeaders:
 class TestAuthenticationEdgeCases:
     """Test edge cases in authentication."""
 
-    def test_login_with_very_long_username(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_login_with_very_long_username(self, client: AsyncClient):
         """Test login with extremely long username."""
         long_username = "a" * 10000
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": long_username,
@@ -764,11 +863,14 @@ class TestAuthenticationEdgeCases:
         # Should handle gracefully
         assert response.status_code in [401, 422]
 
-    def test_login_with_very_long_password(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_login_with_very_long_password(self, client: AsyncClient, test_user: User):
         """Test login with extremely long password."""
         long_password = "a" * 10000
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -779,7 +881,10 @@ class TestAuthenticationEdgeCases:
         # Should handle gracefully
         assert response.status_code in [401, 422]
 
-    def test_login_with_unicode_characters(self, client: TestClient, db: Session, test_clinic: Clinic):
+    @pytest.mark.asyncio
+
+
+    async def test_login_with_unicode_characters(self, client: AsyncClient, db: AsyncSession, test_clinic: Clinic):
         """Test login with unicode characters in credentials."""
         unicode_user = User(
             id=str(uuid4()),
@@ -792,9 +897,9 @@ class TestAuthenticationEdgeCases:
             is_active=True,
         )
         db.add(unicode_user)
-        db.commit()
+        await db.commit()
 
-        response = client.post(
+        response = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": "unicode@test.com",
@@ -805,10 +910,13 @@ class TestAuthenticationEdgeCases:
         # Should handle unicode properly
         assert response.status_code in [200, 422]
 
-    def test_multiple_failed_login_attempts(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_multiple_failed_login_attempts(self, client: AsyncClient, test_user: User):
         """Test multiple failed login attempts (rate limiting check)."""
         for i in range(10):
-            response = client.post(
+            response = await client.post(
                 "/api/v1/auth/login",
                 data={
                     "username": test_user.email,
@@ -819,10 +927,13 @@ class TestAuthenticationEdgeCases:
             # Should either reject or rate limit
             assert response.status_code in [401, 429]
 
-    def test_simultaneous_logins_same_user(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_simultaneous_logins_same_user(self, client: AsyncClient, test_user: User):
         """Test that same user can login from multiple devices."""
         # First login
-        response1 = client.post(
+        response1 = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -834,7 +945,7 @@ class TestAuthenticationEdgeCases:
         token1 = response1.json()["access_token"]
 
         # Second login
-        response2 = client.post(
+        response2 = await client.post(
             "/api/v1/auth/login",
             data={
                 "username": test_user.email,
@@ -846,13 +957,16 @@ class TestAuthenticationEdgeCases:
         token2 = response2.json()["access_token"]
 
         # Both tokens should work (or have session limit)
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token1}"}
         )
         assert response.status_code in [200, 401]
 
-    def test_token_with_missing_required_claims(self, client: TestClient):
+    @pytest.mark.asyncio
+
+
+    async def test_token_with_missing_required_claims(self, client: AsyncClient):
         """Test token with missing required claims."""
         # Token without 'sub' claim
         token = jwt.encode(
@@ -864,14 +978,17 @@ class TestAuthenticationEdgeCases:
             algorithm="HS256"
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
 
         assert response.status_code == 401
 
-    def test_token_with_extra_claims(self, client: TestClient, test_user: User):
+    @pytest.mark.asyncio
+
+
+    async def test_token_with_extra_claims(self, client: AsyncClient, test_user: User):
         """Test that extra claims in token don't cause issues."""
         token = create_access_token(
             subject=str(test_user.id),
@@ -881,7 +998,7 @@ class TestAuthenticationEdgeCases:
             }
         )
 
-        response = client.get(
+        response = await client.get(
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {token}"}
         )
