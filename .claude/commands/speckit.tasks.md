@@ -1,8 +1,23 @@
 # DocAssist Practice Manager - Task Breakdown
 
+**Last Updated:** 2026-01-05
+**Status:** Phases 1-14, 16C, 17 Backend Complete
+
+---
+
+## 📌 IMPORTANT: Use Master Roadmap
+
+**For current project status, read:**
+- `/.claude/MASTER_ROADMAP.md` - SINGLE SOURCE OF TRUTH
+- `/.claude/specs/PHASE_INDEX.md` - Index of all phase specs
+
+This file provides task breakdowns for active development phases only.
+
+---
+
 ## Development Workflow Reminder
 
-**IMPORTANT:** All development follows Spec-Kit + Ralph Wiggum methodology:
+**MANDATORY:** All development follows Spec-Kit + Ralph Wiggum methodology:
 
 1. Before implementing any feature, reference:
    - `speckit.constitution.md` - For principles and constraints
@@ -15,531 +30,372 @@
    - Commit working code
    - Continue until tests pass
 
-3. After completing tasks, update this file with status
+3. After completing tasks, update:
+   - This file with status
+   - `/.claude/MASTER_ROADMAP.md` with phase progress
+   - Create implementation summary in `/PHASE_XX_SUMMARY.md`
 
 ---
 
-## Phase 1: Foundation
+## 🎯 ACTIVE DEVELOPMENT PHASES
 
-### Task 1.1: Project Initialization
-**Status:** Pending
-**Ralph Loop:** Not required (setup tasks)
+### Phase 15: Multi-Location & Staff Management
+**Status:** Backend ✅ Complete, Mobile UI ⏳ Pending
+**Priority:** HIGH
+**Completion:** 75%
 
-- [ ] Create pyproject.toml with all dependencies
-- [ ] Create requirements.txt for pip compatibility
-- [ ] Set up virtual environment structure
-- [ ] Create .gitignore for Python project
-- [ ] Create .env.example with all config options
-- [ ] Set up pytest.ini with coverage settings
-- [ ] Configure mypy.ini for strict type checking
-- [ ] Create CLAUDE.md with project instructions
-- [ ] Replicate to AGENTS.md, CODEX.md, GEMINI.md, GROK.md
-- [ ] Create README.md with project overview
-
-**Verification:**
-```bash
-python -m pytest --version  # pytest available
-mypy --version              # mypy available
-```
-
-### Task 1.2: Database Models
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement all SQLAlchemy models with tests"
-**Max Iterations:** 30
-
-- [ ] Create src/models/base.py with SQLAlchemy base
-- [ ] Implement Patient model with EMR sync fields
-- [ ] Implement Doctor model
-- [ ] Implement Staff model with roles
-- [ ] Implement Appointment model with constraints
-- [ ] Implement Service model
-- [ ] Implement Invoice and InvoiceItem models
-- [ ] Implement Payment model
-- [ ] Implement Notification model
-- [ ] Implement AuditLog model
-- [ ] Create database initialization script
-- [ ] Write tests for all models
-
-**Verification:**
-```bash
-pytest tests/test_models/ -v
-mypy src/models/ --strict
-```
-
-**Completion Criteria:**
-- All models defined with proper relationships
-- All constraints working (foreign keys, unique)
-- 100% test coverage on models
-- mypy passes with strict mode
-
-### Task 1.3: Configuration System
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement configuration management"
-**Max Iterations:** 15
-
-- [ ] Create src/utils/config.py with Pydantic settings
-- [ ] Support environment variables
-- [ ] Support config file (config.yaml)
-- [ ] Create default configuration
-- [ ] Implement path management
-- [ ] Add EMR integration paths
-- [ ] Write tests for config loading
-
-**Verification:**
-```bash
-pytest tests/test_utils/test_config.py -v
-```
-
-### Task 1.4: Logging Infrastructure
-**Status:** Pending
-**Ralph Loop:** Not required (simple task)
-
-- [ ] Create src/utils/logging.py
-- [ ] Configure rotating file logs
-- [ ] Set up console logging with colors
-- [ ] Create log formatters
-- [ ] Integrate with all modules
-
-### Task 1.5: Basic UI Shell
-**Status:** Pending
-**Ralph Loop:** Yes - "Create Flet UI shell with navigation"
+#### Task 15.1: Mobile UI - Organization Switcher
+**Status:** Not Started
+**Ralph Loop:** Yes - "Implement org switcher in Flutter app"
 **Max Iterations:** 25
 
-- [ ] Create src/ui/app.py with main application
-- [ ] Implement theme system (src/ui/theme.py)
-- [ ] Create sidebar navigation component
-- [ ] Implement page routing
-- [ ] Create placeholder pages (Dashboard, Calendar, etc.)
-- [ ] Add dark mode toggle
-- [ ] Test on Windows and Linux
+- [ ] Create org/branch switcher component
+- [ ] Add to app bar or drawer
+- [ ] Store selected org in local state (Riverpod)
+- [ ] Filter all API calls by selected org
+- [ ] Test org switching flow
+- [ ] Handle permissions (users with single org)
 
 **Verification:**
-```bash
-python main.py  # App launches without errors
-```
+- User can switch between orgs
+- Data filtered correctly per org
+- No cross-contamination
 
 **Completion Criteria:**
-- App launches in < 2 seconds
-- Navigation works between all pages
-- Dark mode toggle works
-- No visual glitches
+- Switcher UI functional
+- Data isolation working
+- No performance issues
+
+#### Task 15.2: Mobile UI - Staff Management
+**Status:** Not Started
+**Ralph Loop:** Yes - "Create staff management screens"
+**Max Iterations:** 30
+
+- [ ] Create staff list screen
+- [ ] Implement staff detail/profile
+- [ ] Add staff form (create/edit)
+- [ ] Role assignment UI
+- [ ] Permission display
+- [ ] Staff search and filters
+- [ ] Integration with backend `/api/v1/staff`
+
+**Verification:**
+- All CRUD operations work
+- Roles displayed correctly
+- Permissions enforced
+
+#### Task 15.3: Cross-Location Patient Search
+**Status:** Not Started
+**Ralph Loop:** Yes - "Enhance patient search for multi-location"
+**Max Iterations:** 20
+
+- [ ] Update patient search to support org filter
+- [ ] Add "All Locations" option
+- [ ] Display patient's primary location
+- [ ] Show cross-location visit history
+- [ ] Handle duplicate patient detection
+
+**Verification:**
+- Search works across locations
+- Results show location info
+- No duplicates shown
+
+#### Task 15.4: Consolidated Analytics Dashboard
+**Status:** Not Started
+**Ralph Loop:** Yes - "Build multi-location analytics"
+**Max Iterations:** 30
+
+- [ ] Create org-level analytics screen
+- [ ] Revenue by branch chart
+- [ ] Patients by branch chart
+- [ ] Appointments by branch chart
+- [ ] Comparative metrics
+- [ ] Branch performance leaderboard
+
+**Verification:**
+- Charts render correctly
+- Data aggregates properly
+- Performance acceptable
+
+**Completion Criteria:**
+- All screens functional
+- Data accurate
+- UX smooth
 
 ---
 
-## Phase 2: Core Features
+### Phase 16A: Natural Language Analytics (AI Chat)
+**Status:** Not Started
+**Priority:** MEDIUM
+**Completion:** 0%
 
-### Task 2.1: Patient Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement patient CRUD with search"
-**Max Iterations:** 30
+#### Task 16A.1: Chat UI Component
+**Status:** Not Started
+**Ralph Loop:** Yes - "Implement chat interface in Flutter"
+**Max Iterations:** 25
 
-- [ ] Create src/services/patient_service.py
-- [ ] Implement create patient
-- [ ] Implement read patient (by ID, phone, name)
-- [ ] Implement update patient
-- [ ] Implement delete patient (soft delete)
-- [ ] Implement search with fuzzy matching
-- [ ] Add pagination support
+- [ ] Create chat screen with message list
+- [ ] Message input field
+- [ ] Voice input button (reuse Phase 1 Whisper)
+- [ ] Suggested query chips
+- [ ] Loading states (typing indicator)
+- [ ] Error handling UI
+- [ ] Chat history persistence (local storage)
+
+**Verification:**
+```bash
+# Test chat UI
+flutter test test/features/ai_chat/chat_screen_test.dart
+```
+
+**Completion Criteria:**
+- Chat UI matches mockup
+- Voice input works
+- Messages persist locally
+
+#### Task 16A.2: Backend - Query Understanding
+**Status:** Not Started
+**Ralph Loop:** Yes - "Implement NL query parser with Ollama"
+**Max Iterations:** 40
+
+- [ ] Create `/api/v1/ai/query` endpoint
+- [ ] Implement prompt templates for query parsing
+- [ ] Parse common query patterns:
+  - Procedure counts ("How many echos this month?")
+  - Revenue queries ("Today's collection")
+  - Appointment queries ("Busiest day this week")
+  - Patient queries ("New patients this month")
+- [ ] Extract entities (dates, procedures, doctors, etc.)
+- [ ] Handle Hinglish queries
+- [ ] Context management (remember last 5 queries)
 - [ ] Write comprehensive tests
 
 **Verification:**
 ```bash
-pytest tests/test_services/test_patient_service.py -v
+pytest tests/api/test_ai_query.py -v
+# Target: 90%+ accuracy on test queries
 ```
 
 **Completion Criteria:**
-- All CRUD operations working
-- Search returns results in < 200ms for 10k patients
-- Tests pass with 90%+ coverage
+- 90%+ query understanding accuracy
+- Handles ambiguity with clarification
+- Context maintained for 5+ turns
+- Response time < 2 seconds
 
-### Task 2.2: Patient UI
-**Status:** Pending
-**Ralph Loop:** Yes - "Create patient list and profile pages"
+#### Task 16A.3: Backend - Response Generation
+**Status:** Not Started
+**Ralph Loop:** Yes - "Implement AI response formatter"
 **Max Iterations:** 30
 
-- [ ] Create patient list page (src/ui/pages/patient_list.py)
-- [ ] Implement search bar with instant results
-- [ ] Create patient card component
-- [ ] Implement infinite scroll / pagination
-- [ ] Create patient profile page
-- [ ] Implement patient timeline
-- [ ] Add new patient dialog
-- [ ] Add edit patient functionality
-
-**Verification:**
-- Visual inspection
-- User testing
-
-**Completion Criteria:**
-- Search is instant (< 100ms feedback)
-- List scrolls smoothly
-- All patient details visible
-- Edit flow intuitive
-
-### Task 2.3: Appointment Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement appointment booking with conflict detection"
-**Max Iterations:** 40
-
-- [ ] Create src/services/appointment_service.py
-- [ ] Implement slot availability calculation
-- [ ] Implement appointment creation
-- [ ] Implement conflict detection
-- [ ] Implement appointment update
-- [ ] Implement appointment cancellation
-- [ ] Implement recurring appointments
-- [ ] Add appointment status management
-- [ ] Write comprehensive tests
+- [ ] Create response templates
+- [ ] Format analytics results as natural language
+- [ ] Add context (trends, comparisons)
+- [ ] Suggest follow-up queries
+- [ ] Support tabular output
+- [ ] Add export options
+- [ ] Integrate with existing analytics services
 
 **Verification:**
 ```bash
-pytest tests/test_services/test_appointment_service.py -v
+pytest tests/services/test_ai_response.py -v
 ```
 
 **Completion Criteria:**
-- Booking works correctly
-- No double bookings possible
-- Recurring appointments created correctly
-- All edge cases handled
+- Responses are clear and actionable
+- Include relevant context
+- Suggest next steps
+- Export works
 
-### Task 2.4: Calendar UI
-**Status:** Pending
-**Ralph Loop:** Yes - "Create calendar view with interactions"
-**Max Iterations:** 50
+#### Task 16A.4: Integration & Testing
+**Status:** Not Started
+**Ralph Loop:** Yes - "Integrate chat UI with backend"
+**Max Iterations:** 20
 
-- [ ] Create calendar view page (src/ui/pages/calendar_view.py)
-- [ ] Implement day view
-- [ ] Implement week view
-- [ ] Implement month view (overview)
-- [ ] Create appointment card component
-- [ ] Implement drag-and-drop rescheduling
-- [ ] Implement click to book
-- [ ] Add appointment detail popup
-- [ ] Add color coding by status/type
+- [ ] Connect Flutter chat to `/api/v1/ai/query`
+- [ ] Implement API client methods
+- [ ] Handle streaming responses (if needed)
+- [ ] Error handling and retries
+- [ ] End-to-end testing
+- [ ] Performance optimization
 
 **Verification:**
-- Visual inspection
-- User testing
-
-**Completion Criteria:**
-- Calendar renders correctly
-- All views work
-- Interactions feel natural
-- Performance is smooth
-
-### Task 2.5: Dashboard
-**Status:** Pending
-**Ralph Loop:** Yes - "Build dashboard with all widgets"
-**Max Iterations:** 30
-
-- [ ] Create dashboard page (src/ui/pages/dashboard.py)
-- [ ] Implement today's schedule widget
-- [ ] Implement metrics cards (patients, revenue, etc.)
-- [ ] Create quick actions section
-- [ ] Add upcoming appointments widget
-- [ ] Add recent activity feed
-- [ ] Implement real-time updates
-
-**Verification:**
-- Visual inspection
-- Data accuracy verification
-
-**Completion Criteria:**
-- Dashboard loads in < 1 second
-- All metrics accurate
-- Widgets update in real-time
-- Premium look and feel
+- Manual testing with 20+ query variations
+- Response time < 2 seconds
+- No crashes or errors
 
 ---
 
-## Phase 3: Billing & Analytics
+### Phase 16B: Conversational Actions
+**Status:** Not Started
+**Priority:** MEDIUM
+**Completion:** 0%
 
-### Task 3.1: Service Catalog
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement service catalog management"
-**Max Iterations:** 20
-
-- [ ] Create service management in settings
-- [ ] Implement CRUD for services
-- [ ] Add category support
-- [ ] Implement pricing with tax
-- [ ] Add service search
-
-**Verification:**
-```bash
-pytest tests/test_services/test_service_catalog.py -v
-```
-
-### Task 3.2: Billing Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement billing with invoice generation"
+#### Task 16B.1: Action Execution Framework
+**Status:** Not Started
+**Ralph Loop:** Yes - "Build AI action execution system"
 **Max Iterations:** 35
 
-- [ ] Create src/services/billing_service.py
-- [ ] Implement invoice creation
-- [ ] Implement invoice number generation
-- [ ] Implement line item management
-- [ ] Implement tax calculation
-- [ ] Implement discount application
-- [ ] Implement payment recording
-- [ ] Implement invoice PDF generation
-- [ ] Implement UPI QR code generation
-
-**Verification:**
-```bash
-pytest tests/test_services/test_billing_service.py -v
-```
-
-**Completion Criteria:**
-- Invoices generate correctly
-- PDF looks professional
-- UPI QR works
-- All calculations accurate
-
-### Task 3.3: Billing UI
-**Status:** Pending
-**Ralph Loop:** Yes - "Create billing interface"
-**Max Iterations:** 30
-
-- [ ] Create billing page (src/ui/pages/billing.py)
-- [ ] Implement invoice creation flow
-- [ ] Create invoice list view
-- [ ] Implement payment recording UI
-- [ ] Add print functionality
-- [ ] Add PDF download
-
-**Verification:**
-- Visual inspection
-- End-to-end billing test
-
-### Task 3.4: Analytics Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement analytics calculations"
-**Max Iterations:** 30
-
-- [ ] Create src/services/analytics_service.py
-- [ ] Implement revenue analytics
-- [ ] Implement patient analytics
-- [ ] Implement appointment analytics
-- [ ] Implement trends calculation
-- [ ] Implement forecasting (simple)
-- [ ] Write tests with sample data
-
-**Verification:**
-```bash
-pytest tests/test_services/test_analytics_service.py -v
-```
-
-### Task 3.5: Analytics UI
-**Status:** Pending
-**Ralph Loop:** Yes - "Create analytics dashboard"
-**Max Iterations:** 40
-
-- [ ] Create analytics page (src/ui/pages/analytics.py)
-- [ ] Implement revenue charts
-- [ ] Implement patient charts
-- [ ] Implement date range selector
-- [ ] Add export functionality
-- [ ] Create report templates
-
-**Verification:**
-- Visual inspection
-- Chart accuracy verification
-
----
-
-## Phase 4: Voice Agent
-
-### Task 4.1: Audio Infrastructure
-**Status:** Pending
-**Ralph Loop:** Yes - "Set up audio I/O with Whisper"
-**Max Iterations:** 25
-
-- [ ] Create src/voice/__init__.py
-- [ ] Implement audio capture (src/voice/audio_capture.py)
-- [ ] Integrate Whisper for STT
-- [ ] Integrate Piper for TTS
-- [ ] Handle audio device selection
-- [ ] Test on various hardware
-
-**Verification:**
-```bash
-pytest tests/test_voice/test_audio.py -v
-```
-
-### Task 4.2: Wake Word Detection
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement wake word detection"
-**Max Iterations:** 20
-
-- [ ] Create src/voice/wake_word.py
-- [ ] Integrate openwakeword
-- [ ] Train custom "Hey DocAssist" model
-- [ ] Implement detection loop
-- [ ] Add visual/audio feedback
-
-**Verification:**
-- Manual testing with wake word
-
-### Task 4.3: Intent Classification
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement intent parser with 95% accuracy"
-**Max Iterations:** 40
-
-- [ ] Create src/voice/intent_parser.py
-- [ ] Create prompt templates (prompts/voice_intent.txt)
-- [ ] Implement intent classification with Ollama
-- [ ] Implement slot extraction
-- [ ] Create test dataset
-- [ ] Measure and improve accuracy
-
-**Verification:**
-```bash
-pytest tests/test_voice/test_intent.py -v
-# Target: 95% accuracy on test set
-```
-
-**Completion Criteria:**
-- 95%+ intent classification accuracy
-- All required slots extracted
-- Handles variations gracefully
-
-### Task 4.4: Voice Action Handler
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement voice command execution"
-**Max Iterations:** 35
-
-- [ ] Create src/voice/action_handler.py
-- [ ] Implement book_appointment action
-- [ ] Implement cancel_appointment action
-- [ ] Implement reschedule_appointment action
-- [ ] Implement schedule query actions
+- [ ] Define action schemas (book, cancel, reschedule, etc.)
+- [ ] Create `/api/v1/ai/actions` endpoint
 - [ ] Implement confirmation flow
-- [ ] Add multi-turn dialogue support
+- [ ] Add undo capability (30 second window)
+- [ ] Audit logging for all AI actions
+- [ ] Safety checks (no deletion, no clinical actions)
 
 **Verification:**
 ```bash
-pytest tests/test_voice/test_actions.py -v
-```
-
-### Task 4.5: Voice UI Integration
-**Status:** Pending
-**Ralph Loop:** Yes - "Integrate voice agent with UI"
-**Max Iterations:** 25
-
-- [ ] Create voice indicator component
-- [ ] Add voice button to UI
-- [ ] Implement listening state
-- [ ] Show transcription in real-time
-- [ ] Display confirmation dialogs
-- [ ] Handle errors gracefully
-
-**Verification:**
-- End-to-end voice booking test
-
----
-
-## Phase 5: Integration & Polish
-
-### Task 5.1: EMR Sync Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement EMR synchronization"
-**Max Iterations:** 35
-
-- [ ] Create src/integrations/emr_bridge.py
-- [ ] Implement database change detection
-- [ ] Implement patient sync (EMR → PM)
-- [ ] Implement appointment visibility (PM → EMR)
-- [ ] Handle conflicts gracefully
-- [ ] Add sync status UI
-
-**Verification:**
-```bash
-pytest tests/test_integrations/test_emr_bridge.py -v
+pytest tests/api/test_ai_actions.py -v
 ```
 
 **Completion Criteria:**
-- Patient data syncs correctly
-- No data loss during sync
-- Conflict resolution works
-- Sync is efficient (only changed data)
+- All actions work correctly
+- Confirmation required before execution
+- Undo works
+- Audit trail complete
 
-### Task 5.2: Notification Service
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement SMS and WhatsApp notifications"
+#### Task 16B.2: Book Appointment via Chat
+**Status:** Not Started
+**Ralph Loop:** Yes - "Implement chat-based booking"
 **Max Iterations:** 30
 
-- [ ] Create src/services/notification_service.py
-- [ ] Integrate SMS gateway
-- [ ] Integrate WhatsApp Business API
-- [ ] Implement notification scheduling
-- [ ] Create message templates
-- [ ] Add notification history
+- [ ] Parse booking intent from chat
+- [ ] Extract patient, doctor, date, time
+- [ ] Check slot availability
+- [ ] Present options to user
+- [ ] Confirmation dialog
+- [ ] Book appointment via existing API
+- [ ] Send confirmation message
 
 **Verification:**
-```bash
-pytest tests/test_services/test_notification_service.py -v
-```
+- User can book via chat
+- No double bookings
+- Confirmation sent
 
-### Task 5.3: Authentication & Authorization
-**Status:** Pending
-**Ralph Loop:** Yes - "Implement auth with RBAC"
-**Max Iterations:** 30
-
-- [ ] Create src/services/auth_service.py
-- [ ] Implement login flow
-- [ ] Implement role-based access control
-- [ ] Add session management
-- [ ] Implement audit logging
-- [ ] Create user management UI
-
-**Verification:**
-```bash
-pytest tests/test_services/test_auth_service.py -v
-```
-
-### Task 5.4: Settings Page
-**Status:** Pending
-**Ralph Loop:** Yes - "Create comprehensive settings"
+#### Task 16B.3: Patient Lookup via NL
+**Status:** Not Started
+**Ralph Loop:** Yes - "Enhance patient search with NL"
 **Max Iterations:** 25
 
-- [ ] Create settings page (src/ui/pages/settings.py)
-- [ ] Add clinic profile settings
-- [ ] Add doctor management
-- [ ] Add staff management
-- [ ] Add service catalog management
-- [ ] Add notification settings
-- [ ] Add system settings
-
-### Task 5.5: Performance Optimization
-**Status:** Pending
-**Ralph Loop:** Yes - "Optimize for performance targets"
-**Max Iterations:** 30
-
-- [ ] Profile application startup
-- [ ] Optimize database queries
-- [ ] Add caching where appropriate
-- [ ] Optimize UI rendering
-- [ ] Reduce memory footprint
-- [ ] Test on minimum spec hardware
+- [ ] Parse fuzzy patient descriptions
+- [ ] Use existing RAG search (Phase 2)
+- [ ] Handle multiple matches
+- [ ] Present results in chat
+- [ ] Allow selection via chat
+- [ ] Display patient profile
 
 **Verification:**
-- App launches in < 2 seconds
-- All operations meet latency targets
-
-### Task 5.6: Final Testing & Documentation
-**Status:** Pending
-**Ralph Loop:** Not required
-
-- [ ] Run full test suite
-- [ ] Fix any failing tests
-- [ ] Write API documentation
-- [ ] Create user guide
-- [ ] Prepare release notes
+- Fuzzy search works
+- Results relevant
+- Selection clear
 
 ---
 
-## Ralph Wiggum Command Templates
+### Phase 17: Telemedicine - Frontend
+**Status:** Backend ✅ Complete, Frontend ⏳ Pending
+**Priority:** LOW (Nice to have)
+**Completion:** 50% (Backend only)
+
+#### Task 17.1: Flutter WebRTC Integration
+**Status:** Not Started
+**Ralph Loop:** Yes - "Integrate WebRTC in Flutter"
+**Max Iterations:** 40
+
+- [ ] Add `flutter_webrtc` package
+- [ ] Create video call screen
+- [ ] Implement WebRTC peer connection
+- [ ] Connect to backend WebSocket signaling
+- [ ] Handle ICE candidates
+- [ ] Video/audio controls (mute, camera switch)
+- [ ] Call quality indicators
+- [ ] Recording controls
+
+**Verification:**
+```bash
+flutter test test/features/telemedicine/
+```
+
+**Completion Criteria:**
+- Video calls work peer-to-peer
+- Audio clear
+- Camera switching works
+- No crashes
+
+#### Task 17.2: Consultation UI
+**Status:** Not Started
+**Ralph Loop:** Yes - "Build consultation interface"
+**Max Iterations:** 30
+
+- [ ] Consultation list screen
+- [ ] Start consultation flow
+- [ ] Waiting room UI
+- [ ] In-call UI with chat
+- [ ] Prescription sharing UI
+- [ ] End call summary
+- [ ] Recording playback (if enabled)
+
+**Verification:**
+- All UI states handled
+- UX smooth
+- No performance issues
+
+---
+
+## ⏸️ ON HOLD / NOT STARTED
+
+### Phase 18: Patient Mobile App
+**Status:** Not Started
+**Priority:** LOW
+**Reason:** Booking portal (web) covers patient needs for now
+
+**Tasks:**
+- Separate Flutter app for patients
+- Appointment booking
+- Health records view
+- Telemedicine support
+- Prescription downloads
+- Lab result viewing
+
+**Blocked By:** Nothing, just prioritized lower
+
+### Phase 19: Advanced Analytics & BI
+**Status:** Not Started
+**Priority:** LOW
+
+**Tasks:**
+- Interactive dashboards
+- Custom report builder
+- Predictive analytics
+- Forecasting models
+- Cohort analysis
+
+### Phase 20: Integration Marketplace
+**Status:** Not Started
+**Priority:** LOW
+
+**Tasks:**
+- Lab integration framework
+- Pharmacy integration
+- Imaging center integration
+- Diagnostic center integration
+
+---
+
+## ✅ COMPLETED PHASES (Archived)
+
+For completed phases, see implementation summaries:
+- Phase 1-9: Pre-2026 implementations (no detailed docs)
+- Phase 10: `/PHASE_10_IMPLEMENTATION.md`
+- Phase 11: `/PHASE_11_IMPLEMENTATION_SUMMARY.md`
+- Phase 12: `/PHASE_12_IMPLEMENTATION_SUMMARY.md`
+- Phase 13: `/PHASE_13_SUMMARY.md`
+- Phase 14: `/PHASE_14_SUMMARY.md`
+- Phase 16C: `/PHASE_16C_IMPLEMENTATION_SUMMARY.md`
+
+**Completed Tasks:** 95% of Phases 1-14, 16C, 17 Backend
+
+---
+
+## 📋 Ralph Wiggum Command Templates
 
 ### Starting a Feature
 ```
@@ -558,7 +414,67 @@ Max iterations: 20
 
 ---
 
-*Update this task list as work progresses. Check boxes and update status.*
+## 📊 Overall Progress
 
-**Last Updated:** 2026-01-03
-**Version:** 1.0
+| Phase | Status | Backend | Mobile | Tests | Docs |
+|-------|--------|---------|--------|-------|------|
+| 1-9 | ✅ Complete | ✅ | ✅ | ✅ | ⚠️ |
+| 10 | ✅ Complete | ✅ | ✅ | ✅ | ✅ |
+| 11 | ✅ Complete | ✅ | ⚠️ | ✅ | ✅ |
+| 12 | ✅ Complete | ✅ | N/A (Web) | ✅ | ✅ |
+| 13 | ✅ Complete | ✅ | ❌ | ✅ | ✅ |
+| 14 | ✅ Complete | ✅ | ❌ | ✅ | ✅ |
+| 15 | ⏳ Partial | ✅ | ❌ | ✅ | ⚠️ |
+| 16A | ❌ Not Started | ❌ | ❌ | ❌ | ✅ (Spec) |
+| 16B | ❌ Not Started | ❌ | ❌ | ❌ | ✅ (Spec) |
+| 16C | ✅ Complete | ✅ | ❌ | ✅ | ✅ |
+| 17 | ⏳ Partial | ✅ | ❌ | ✅ | ⚠️ |
+| 18+ | ❌ Not Started | ❌ | ❌ | ❌ | ❌ |
+
+**Legend:**
+- ✅ Complete
+- ⏳ In Progress
+- ⚠️ Partial
+- ❌ Not Started
+- N/A Not Applicable
+
+---
+
+## 🎯 Priority Queue
+
+**High Priority:**
+1. Phase 15: Mobile UI for multi-location
+2. Phase 13: Mobile UI for EMR timeline
+3. Phase 14: Mobile UI for insurance
+4. SMS Gateway Configuration (MSG91)
+5. Background job scheduler integration
+
+**Medium Priority:**
+1. Phase 16A: Natural Language Analytics
+2. Phase 16B: Conversational Actions
+3. Phase 16C: Mobile UI for proactive insights
+4. Load testing and optimization
+
+**Low Priority:**
+1. Phase 17: Telemedicine mobile UI
+2. Phase 18: Patient mobile app
+3. Advanced features (Phases 19-21)
+
+---
+
+## 📝 Next Steps for Current Session
+
+1. **Read** `/.claude/MASTER_ROADMAP.md` for current status
+2. **Choose** a high-priority task from above
+3. **Run** `/speckit.specify` if starting new feature
+4. **Execute** using Ralph loop if complex
+5. **Test** thoroughly before marking complete
+6. **Update** this file and master roadmap when done
+7. **Commit** with descriptive message
+
+---
+
+**Last Updated:** 2026-01-05
+**Version:** 2.0 (Aligned with Master Roadmap)
+
+*For detailed project status, always refer to /.claude/MASTER_ROADMAP.md*
