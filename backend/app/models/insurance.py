@@ -9,7 +9,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -372,7 +373,7 @@ class InsuranceClaim(BaseModel):
     )
 
     # Additional metadata
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(
+    claim_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Additional claim data from TPA"
@@ -522,7 +523,7 @@ class PreAuthorization(BaseModel):
     )
 
     # Additional metadata
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(
+    preauth_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
         comment="Additional pre-auth data"

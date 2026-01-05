@@ -12,7 +12,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -110,7 +111,7 @@ class ProactiveInsight(BaseModel):
     )
 
     # Metadata
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(
+    insight_metadata: Mapped[dict[str, Any] | None] = mapped_column(
         JSONB,
         nullable=True,
     )

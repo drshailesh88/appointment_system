@@ -5,11 +5,35 @@ Base model with common fields.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import DateTime, func, JSON
+from sqlalchemy.dialects.postgresql import UUID, JSONB as PostgresJSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.types import TypeDecorator
 
 from app.core.database import Base
+
+
+class JSONB(TypeDecorator):
+    """
+    Database-agnostic JSON type that uses JSONB for PostgreSQL and JSON for others.
+
+    This allows tests to run with SQLite while production uses PostgreSQL JSONB.
+    """
+
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PostgresJSONB())
+        else:
+            return dialect.type_descriptor(JSON())
+
+    def process_bind_param(self, value, dialect):
+        return value
+
+    def process_result_value(self, value, dialect):
+        return value
 
 
 class TimestampMixin:

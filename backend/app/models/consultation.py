@@ -11,7 +11,8 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -158,7 +159,7 @@ class Consultation(BaseModel):
     )
 
     # Metadata
-    metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    consultation_metadata: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     appointment: Mapped["Appointment"] = relationship(

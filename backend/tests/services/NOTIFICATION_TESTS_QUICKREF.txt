@@ -1,0 +1,126 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║           NOTIFICATION SERVICES - TEST QUICK REFERENCE                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+📁 File: tests/services/test_notification_services.py
+📊 Stats: 1,258 lines | 55 tests | 4 services
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 1. PUSH NOTIFICATIONS SERVICE (17 tests)                                    │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Device Management:                                                           │
+│   ✓ Register device token (iOS/Android/Web)                                 │
+│   ✓ Update existing token                                                   │
+│   ✓ Unregister token                                                        │
+│   ✓ Auto-deactivate invalid tokens                                          │
+│                                                                              │
+│ Sending:                                                                     │
+│   ✓ Send to user (all devices)                                              │
+│   ✓ Send to specific device                                                 │
+│   ✓ Send to topic (broadcasts)                                              │
+│   ✓ Handle Firebase errors                                                  │
+│   ✓ Batch operations                                                        │
+│                                                                              │
+│ Templates:                                                                   │
+│   ✓ All notification types                                                  │
+│   ✓ Template variable validation                                            │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 2. DAILY DIGEST SERVICE (13 tests)                                          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Digest Generation:                                                           │
+│   ✓ Today's appointments count                                              │
+│   ✓ Yesterday's revenue                                                     │
+│   ✓ Pending follow-ups                                                      │
+│   ✓ Schedule gaps                                                           │
+│   ✓ Waitlist opportunities                                                  │
+│   ✓ Key insights                                                            │
+│                                                                              │
+│ Preferences:                                                                 │
+│   ✓ User preferences (get/create/update)                                    │
+│   ✓ Delivery time configuration                                             │
+│   ✓ Channel selection (push/email/SMS)                                      │
+│   ✓ Content filtering                                                       │
+│                                                                              │
+│ Delivery:                                                                    │
+│   ✓ Send via configured channels                                            │
+│   ✓ Respect enable/disable settings                                         │
+│   ✓ Message formatting                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 3. OTP SERVICE (13 tests)                                                   │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ OTP Operations:                                                              │
+│   ✓ Generate 6-digit OTP                                                    │
+│   ✓ Ensure uniqueness                                                       │
+│   ✓ Send OTP via SMS                                                        │
+│   ✓ Invalidate old OTPs                                                     │
+│                                                                              │
+│ Verification:                                                                │
+│   ✓ Verify correct OTP                                                      │
+│   ✓ Reject wrong OTP                                                        │
+│   ✓ Reject expired OTP                                                      │
+│   ✓ Max attempts (3)                                                        │
+│   ✓ Attempt tracking                                                        │
+│                                                                              │
+│ JWT Tokens:                                                                  │
+│   ✓ Create access token                                                     │
+│   ✓ Decode valid token                                                      │
+│   ✓ Handle invalid tokens                                                   │
+│   ✓ Token type validation                                                   │
+│                                                                              │
+│ Config: 10min expiry | 3 max attempts | 24hr token                          │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 4. REALTIME SERVICE (12 tests)                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Event Publishing:                                                            │
+│   ✓ Appointment events                                                      │
+│   ✓ Waitlist events                                                         │
+│   ✓ Notification events                                                     │
+│   ✓ System events (clinic/global)                                           │
+│                                                                              │
+│ Connection Manager:                                                          │
+│   ✓ Connect/disconnect WebSocket                                            │
+│   ✓ Broadcast to clinic                                                     │
+│   ✓ Broadcast to all clients                                                │
+│   ✓ Send to specific user                                                   │
+│   ✓ Heartbeat management                                                    │
+│   ✓ Connection counting                                                     │
+│   ✓ Cleanup on disconnect                                                   │
+│                                                                              │
+│ Edge Cases:                                                                  │
+│   ✓ No connection manager set                                               │
+│   ✓ Task cancellation                                                       │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ INTEGRATION TESTS (2 tests)                                                 │
+├──────────────────────────────────────────────────────────────────────────────┤
+│   ✓ Digest → Push Notifications flow                                        │
+│   ✓ Realtime appointment notification flow                                  │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+RUN TESTS:
+═══════════════════════════════════════════════════════════════════════════════
+
+# All tests
+pytest tests/services/test_notification_services.py -v
+
+# Specific service
+pytest tests/services/test_notification_services.py::TestPushNotificationService -v
+pytest tests/services/test_notification_services.py::TestDailyDigestService -v
+pytest tests/services/test_notification_services.py::TestOTPService -v
+pytest tests/services/test_notification_services.py::TestRealtimeService -v
+
+# With coverage
+pytest tests/services/test_notification_services.py --cov=app.services
+
+# Specific test
+pytest tests/services/test_notification_services.py::TestOTPService::test_verify_otp_success -v
+
+═══════════════════════════════════════════════════════════════════════════════

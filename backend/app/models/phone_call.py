@@ -10,7 +10,8 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
@@ -111,7 +112,7 @@ class PhoneCall(BaseModel):
     recording_consent: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # Metadata
-    metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    call_metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     # Relationships
     appointment: Mapped[Optional["Appointment"]] = relationship(
