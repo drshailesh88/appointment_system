@@ -1141,7 +1141,7 @@ class TestWebSocketEndpoints:
         """Test successful WebSocket connection."""
         from app.core.security import create_access_token
 
-        token = create_access_token(subject=test_user.id, "type": "access")
+        token = create_access_token(subject=test_user.id, extra_claims={"type": "access"})
 
         # Note: TestClient WebSocket support is limited
         # In production, use websockets library for full testing
@@ -1166,7 +1166,7 @@ class TestWebSocketEndpoints:
         """Test WebSocket heartbeat/ping-pong."""
         from app.core.security import create_access_token
 
-        token = create_access_token(subject=test_user.id, "type": "access")
+        token = create_access_token(subject=test_user.id, extra_claims={"type": "access"})
 
         try:
             with client.websocket_connect(
