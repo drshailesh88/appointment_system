@@ -20,7 +20,7 @@ class TestDoctors:
     ):
         """Test getting list of doctors."""
         response = await client.get(
-            "/api/v1/doctors",
+            "/api/v1/doctors/",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -38,7 +38,7 @@ class TestDoctors:
     ):
         """Test filtering doctors by specialization."""
         response = await client.get(
-            f"/api/v1/doctors?specialization={test_doctor.specialization}",
+            f"/api/v1/doctors/?specialization={test_doctor.specialization}",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -56,7 +56,7 @@ class TestDoctors:
     ):
         """Test filtering only active doctors."""
         response = await client.get(
-            "/api/v1/doctors?active_only=true",
+            "/api/v1/doctors/?active_only=true",
             headers=auth_headers,
         )
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestDoctors:
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["id"] == test_doctor.id
+        assert data["id"] == str(test_doctor.id)
         assert data["name"] == test_doctor.name
 
     @pytest.mark.asyncio
@@ -204,9 +204,9 @@ class TestDoctorAvailability:
 
         # Verify doctor doesn't appear in active list
         response = await client.get(
-            "/api/v1/doctors?active_only=true",
+            "/api/v1/doctors/?active_only=true",
             headers=auth_headers,
         )
         data = response.json()
-        assert not any(d["id"] == test_doctor.id for d in data)
+        assert not any(d["id"] == str(test_doctor.id) for d in data)
 
