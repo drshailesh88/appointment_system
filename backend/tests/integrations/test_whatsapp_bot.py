@@ -2,296 +2,273 @@
 Tests for WhatsApp Bot Integration.
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, AsyncMock, patch
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from app.integrations.whatsapp_bot import (
     WhatsAppBot,
+    WhatsAppMessage,
     ConversationState,
+    ConversationContext,
+    MessageType,
     MessageIntent,
     get_whatsapp_bot,
 )
+from app.voice.nlu import Intent
 
 
 class TestWhatsAppBot:
     """Tests for WhatsAppBot."""
 
     @pytest.fixture
-    def mock_db(self):
-        """Create mock database session."""
-        return AsyncMock()
+    def bot(self):
+        """Create WhatsApp bot with test config."""
+        return WhatsAppBot(
+            api_token="test_token",
+            phone_number_id="123456789",
+            verify_token="test_verify"
+        )
 
-    @pytest.fixture
-    def mock_sms_service(self):
-        """Create mock SMS service."""
-        service = AsyncMock()
-        service.send_whatsapp = AsyncMock()
-        return service
-
-    @pytest.fixture
-    def mock_nlu_engine(self):
-        """Create mock NLU engine."""
-        return AsyncMock()
-
-    @pytest.fixture
-    def bot(self, mock_db, mock_sms_service, mock_nlu_engine):
-        """Create WhatsApp bot with mocks."""
-        bot = WhatsAppBot(mock_db)
-        bot.sms_service = mock_sms_service
-        bot.nlu_engine = mock_nlu_engine
-        return bot
-
-    def test_initialization(self, mock_db):
+    def test_initialization(self):
         """Test bot initialization."""
-        bot = WhatsAppBot(mock_db)
-        assert bot.db == mock_db
-        assert bot.conversations == {}
+        bot = WhatsAppBot(
+            api_token="test_token",
+            phone_number_id="123456789"
+        )
+        assert bot.api_token == "test_token"
+        assert bot.phone_number_id == "123456789"
+        assert bot._conversations == {}
 
-    @pytest.mark.asyncio
-    async def test_parse_webhook_msg91(self, bot):
-        """Test parsing MSG91 webhook payload."""
+    def test_parse_webhook_whatsapp(self, bot):
+        """Test parsing WhatsApp Business API webhook payload."""
         payload = {
-            "user": {"mobiles": "919876543210"},
-            "message": "Hello, I want to book an appointment",
-            "timestamp": "2026-01-04T10:00:00Z",
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "id": "msg_123",
+                            "from": "919876543210",
+                            "text": {
+                                "body": "Hello, I want to book an appointment"
+                            }
+                        }],
+                        "contacts": [{
+                            "profile": {
+                                "name": "Test Patient"
+                            }
+                        }]
+                    }
+                }]
+            }]
         }
 
-        result = bot.parse_webhook(payload, provider="msg91")
+        result = bot.parse_webhook(payload)
 
-        assert result["phone"] == "+919876543210"
-        assert result["message"] == "Hello, I want to book an appointment"
+        assert result is not None
+        assert result.from_phone == "919876543210"
+        assert result.text == "Hello, I want to book an appointment"
+        assert result.from_name == "Test Patient"
+        assert result.message_type == MessageType.TEXT
 
-    @pytest.mark.asyncio
-    async def test_parse_webhook_twilio(self, bot):
-        """Test parsing Twilio webhook payload."""
+    def test_parse_webhook_with_button(self, bot):
+        """Test parsing webhook with button reply."""
         payload = {
-            "From": "whatsapp:+919876543210",
-            "Body": "Book appointment",
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "id": "msg_123",
+                            "from": "919876543210",
+                            "interactive": {
+                                "type": "button_reply",
+                                "button_reply": {
+                                    "id": "book_appointment",
+                                    "title": "Book Appointment"
+                                }
+                            }
+                        }],
+                        "contacts": [{
+                            "profile": {"name": "Test Patient"}
+                        }]
+                    }
+                }]
+            }]
         }
 
-        result = bot.parse_webhook(payload, provider="twilio")
+        result = bot.parse_webhook(payload)
 
-        assert result["phone"] == "+919876543210"
-        assert result["message"] == "Book appointment"
+        assert result is not None
+        assert result.message_type == MessageType.BUTTON
+        assert result.button_id == "book_appointment"
+        assert result.button_text == "Book Appointment"
 
-    @pytest.mark.asyncio
-    async def test_detect_intent_book(self, bot, mock_nlu_engine):
-        """Test detecting booking intent."""
-        mock_nlu_engine.parse.return_value = {
-            "intent": {"name": "book_appointment", "confidence": 0.9},
-            "entities": [],
-        }
-
-        intent = await bot.detect_intent("I want to book an appointment")
-
-        assert intent == MessageIntent.BOOK_APPOINTMENT
-
-    @pytest.mark.asyncio
-    async def test_detect_intent_cancel(self, bot, mock_nlu_engine):
-        """Test detecting cancel intent."""
-        mock_nlu_engine.parse.return_value = {
-            "intent": {"name": "cancel_appointment", "confidence": 0.9},
-            "entities": [],
-        }
-
-        intent = await bot.detect_intent("Cancel my appointment")
-
-        assert intent == MessageIntent.CANCEL_APPOINTMENT
-
-    @pytest.mark.asyncio
-    async def test_detect_intent_status(self, bot, mock_nlu_engine):
-        """Test detecting status check intent."""
-        mock_nlu_engine.parse.return_value = {
-            "intent": {"name": "check_status", "confidence": 0.85},
-            "entities": [],
-        }
-
-        intent = await bot.detect_intent("What is my appointment status?")
-
-        assert intent == MessageIntent.CHECK_STATUS
-
-    @pytest.mark.asyncio
-    async def test_detect_intent_unknown(self, bot, mock_nlu_engine):
-        """Test detecting unknown intent."""
-        mock_nlu_engine.parse.return_value = {
-            "intent": {"name": "other", "confidence": 0.3},
-            "entities": [],
-        }
-
-        intent = await bot.detect_intent("Random message")
-
-        assert intent == MessageIntent.UNKNOWN
-
-    @pytest.mark.asyncio
-    async def test_handle_message_new_conversation(self, bot, mock_db, mock_nlu_engine):
-        """Test handling message for new conversation."""
-        phone = "+919876543210"
-        message = "Hi, I want to book an appointment"
-
-        mock_nlu_engine.parse.return_value = {
-            "intent": {"name": "book_appointment", "confidence": 0.9},
-            "entities": [],
-        }
-
-        # Mock patient lookup
-        mock_patient = MagicMock()
-        mock_patient.id = str(uuid4())
-        mock_patient.first_name = "Test"
-        mock_patient.last_name = "Patient"
-        mock_patient.full_name = "Test Patient"
-
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.first.return_value = mock_patient
-        mock_db.execute.return_value = mock_result
-
-        response = await bot.handle_message(phone, message)
-
-        assert phone in bot.conversations
-        assert response is not None
-
-    @pytest.mark.asyncio
-    async def test_handle_message_existing_conversation(self, bot, mock_db, mock_nlu_engine):
-        """Test handling message in existing conversation."""
-        phone = "+919876543210"
-
-        # Set up existing conversation
-        bot.conversations[phone] = ConversationState(
-            phone=phone,
-            patient_id=str(uuid4()),
-            state="awaiting_doctor_selection",
-            context={"clinic_id": str(uuid4())},
+    def test_verify_webhook(self, bot):
+        """Test webhook verification."""
+        result = bot.verify_webhook(
+            mode="subscribe",
+            token="test_verify",
+            challenge="challenge_123"
         )
 
-        # Mock doctor selection
-        mock_doctors = [
-            MagicMock(id=str(uuid4()), name="Dr. Sharma"),
-            MagicMock(id=str(uuid4()), name="Dr. Patel"),
-        ]
-        mock_result = MagicMock()
-        mock_result.scalars.return_value.all.return_value = mock_doctors
-        mock_db.execute.return_value = mock_result
+        assert result == "challenge_123"
 
-        response = await bot.handle_message(phone, "1")  # Select first doctor
+    def test_verify_webhook_invalid(self, bot):
+        """Test webhook verification with invalid token."""
+        result = bot.verify_webhook(
+            mode="subscribe",
+            token="wrong_token",
+            challenge="challenge_123"
+        )
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_handle_message_greeting(self, bot):
+        """Test handling greeting message."""
+        message = WhatsAppMessage(
+            message_id="msg_123",
+            from_phone="919876543210",
+            from_name="Test Patient",
+            message_type=MessageType.TEXT,
+            text="Hi"
+        )
+
+        mock_db = AsyncMock()
+        clinic_id = uuid4()
+
+        response = await bot.handle_message(message, mock_db, clinic_id)
 
         assert response is not None
-        assert bot.conversations[phone].state != "awaiting_doctor_selection"
+        assert "Welcome to DocAssist" in response
 
     @pytest.mark.asyncio
-    async def test_handle_cancel_confirmation(self, bot, mock_db):
-        """Test handling appointment cancellation."""
-        phone = "+919876543210"
-        appointment_id = str(uuid4())
-
-        bot.conversations[phone] = ConversationState(
-            phone=phone,
-            patient_id=str(uuid4()),
-            state="awaiting_cancel_confirmation",
-            context={"appointment_id": appointment_id},
+    async def test_handle_message_book_appointment(self, bot):
+        """Test handling book appointment request."""
+        message = WhatsAppMessage(
+            message_id="msg_123",
+            from_phone="919876543210",
+            from_name="Test Patient",
+            message_type=MessageType.TEXT,
+            text="book"
         )
 
-        # Mock appointment
-        mock_appointment = MagicMock()
-        mock_appointment.id = appointment_id
-        mock_appointment.status = "scheduled"
-        mock_db.get.return_value = mock_appointment
+        mock_db = AsyncMock()
+        clinic_id = uuid4()
 
-        response = await bot.handle_message(phone, "YES")
+        # Mock doctors query
+        mock_doctor = MagicMock()
+        mock_doctor.id = uuid4()
+        mock_doctor.name = "Sharma"
+        mock_doctor.specialization = "Cardiologist"
 
-        assert mock_appointment.status == "cancelled"
-        mock_db.commit.assert_called()
+        mock_result = AsyncMock()
+        mock_result.scalars.return_value.all.return_value = [mock_doctor]
+        mock_db.execute = AsyncMock(return_value=mock_result)
+
+        response = await bot.handle_message(message, mock_db, clinic_id)
+
+        assert response is not None
+        assert "select a doctor" in response.lower()
 
     @pytest.mark.asyncio
-    async def test_send_reminder(self, bot, mock_sms_service):
-        """Test sending appointment reminder."""
-        appointment = MagicMock(
-            id=str(uuid4()),
-            patient=MagicMock(name="Test Patient", phone="+919876543210"),
-            doctor=MagicMock(name="Dr. Sharma"),
-            start_time=datetime.now() + timedelta(days=1),
+    async def test_send_message(self, bot):
+        """Test sending a message."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(bot, '_get_client', return_value=mock_client):
+            result = await bot.send_message(
+                to_phone="919876543210",
+                text="Test message"
+            )
+
+            assert result is True
+            mock_client.post.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_send_message_not_configured(self):
+        """Test sending message when not configured."""
+        bot = WhatsAppBot(api_token=None)
+
+        result = await bot.send_message(
+            to_phone="919876543210",
+            text="Test message"
         )
 
-        await bot.send_reminder(appointment)
-
-        mock_sms_service.send_whatsapp.assert_called_once()
+        assert result is False
 
     @pytest.mark.asyncio
-    async def test_send_confirmation(self, bot, mock_sms_service):
-        """Test sending booking confirmation."""
-        appointment = MagicMock(
-            id=str(uuid4()),
-            patient=MagicMock(name="Test Patient", phone="+919876543210"),
-            doctor=MagicMock(name="Dr. Sharma"),
-            start_time=datetime.now() + timedelta(days=1),
-            token_number=5,
-            clinic=MagicMock(address="123 Clinic St"),
-        )
+    async def test_send_interactive_buttons(self, bot):
+        """Test sending message with interactive buttons."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
 
-        await bot.send_confirmation(appointment)
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
 
-        mock_sms_service.send_whatsapp.assert_called_once()
+        with patch.object(bot, '_get_client', return_value=mock_client):
+            result = await bot.send_interactive_buttons(
+                to_phone="919876543210",
+                body="Choose an option",
+                buttons=[
+                    {"id": "opt1", "title": "Option 1"},
+                    {"id": "opt2", "title": "Option 2"}
+                ]
+            )
 
-    @pytest.mark.asyncio
-    async def test_session_timeout(self, bot):
-        """Test conversation session timeout."""
-        phone = "+919876543210"
+            assert result is True
+            mock_client.post.assert_called_once()
+
+    def test_cleanup_stale_conversations(self, bot):
+        """Test cleaning up old conversations."""
+        phone1 = "919876543210"
+        phone2 = "919876543211"
 
         # Create old conversation
-        bot.conversations[phone] = ConversationState(
-            phone=phone,
-            patient_id=str(uuid4()),
-            state="awaiting_input",
-            context={},
-            last_activity=datetime.now() - timedelta(hours=2),
-        )
-
-        is_expired = bot.is_session_expired(phone)
-        assert is_expired
-
-    @pytest.mark.asyncio
-    async def test_session_not_expired(self, bot):
-        """Test conversation session not expired."""
-        phone = "+919876543210"
+        old_context = ConversationContext(phone=phone1)
+        old_context.last_activity = datetime.now(timezone.utc) - timedelta(hours=2)
+        bot._conversations[phone1] = old_context
 
         # Create recent conversation
-        bot.conversations[phone] = ConversationState(
-            phone=phone,
-            patient_id=str(uuid4()),
-            state="awaiting_input",
-            context={},
-            last_activity=datetime.now() - timedelta(minutes=5),
-        )
+        recent_context = ConversationContext(phone=phone2)
+        recent_context.last_activity = datetime.now(timezone.utc)
+        bot._conversations[phone2] = recent_context
 
-        is_expired = bot.is_session_expired(phone)
-        assert not is_expired
+        # Cleanup with 60 min max age
+        bot.cleanup_stale_conversations(max_age_minutes=60)
+
+        assert phone1 not in bot._conversations
+        assert phone2 in bot._conversations
 
 
-class TestConversationState:
-    """Tests for ConversationState."""
+class TestConversationContext:
+    """Tests for ConversationContext."""
 
-    def test_create_state(self):
-        """Test creating conversation state."""
-        state = ConversationState(
+    def test_create_context(self):
+        """Test creating conversation context."""
+        context = ConversationContext(
             phone="+919876543210",
-            patient_id=str(uuid4()),
-            state="initial",
-            context={"clinic_id": str(uuid4())},
+            clinic_id=uuid4(),
+            patient_id=uuid4(),
         )
 
-        assert state.phone == "+919876543210"
-        assert state.state == "initial"
-        assert state.context is not None
+        assert context.phone == "+919876543210"
+        assert context.state == ConversationState.IDLE
+        assert context.clinic_id is not None
+        assert context.patient_id is not None
 
-    def test_state_with_default_values(self):
-        """Test conversation state with default values."""
-        state = ConversationState(
-            phone="+919876543210",
-        )
+    def test_context_with_defaults(self):
+        """Test conversation context with default values."""
+        context = ConversationContext(phone="+919876543210")
 
-        assert state.patient_id is None
-        assert state.state == "initial"
-        assert state.context == {}
-        assert state.last_activity is not None
+        assert context.patient_id is None
+        assert context.state == ConversationState.IDLE
+        assert context.message_history == []
+        assert context.last_activity is not None
 
 
 class TestMessageIntent:
@@ -313,21 +290,21 @@ class TestGetWhatsAppBot:
 
     def test_creates_bot(self):
         """Test that factory creates bot."""
-        mock_db = AsyncMock()
-        bot = get_whatsapp_bot(mock_db)
+        # Reset singleton first
+        import app.integrations.whatsapp_bot as whatsapp_module
+        whatsapp_module._whatsapp_bot = None
+
+        bot = get_whatsapp_bot()
         assert isinstance(bot, WhatsAppBot)
-        assert bot.db == mock_db
 
     def test_singleton_pattern(self):
         """Test that factory returns same instance."""
-        mock_db = AsyncMock()
-
         # Reset singleton
         import app.integrations.whatsapp_bot as whatsapp_module
         whatsapp_module._whatsapp_bot = None
 
-        bot1 = get_whatsapp_bot(mock_db)
-        bot2 = get_whatsapp_bot(mock_db)
+        bot1 = get_whatsapp_bot()
+        bot2 = get_whatsapp_bot()
 
         assert bot1 is bot2
 
@@ -338,23 +315,111 @@ class TestWebhookHandling:
     @pytest.fixture
     def bot(self):
         """Create bot for webhook tests."""
-        mock_db = AsyncMock()
-        return WhatsAppBot(mock_db)
+        return WhatsAppBot(api_token="test_token")
 
     def test_parse_invalid_webhook(self, bot):
         """Test parsing invalid webhook payload."""
-        result = bot.parse_webhook({}, provider="msg91")
-        assert result is None or result.get("phone") is None
+        result = bot.parse_webhook({})
+        assert result is None
 
-    def test_parse_webhook_extracts_phone_formats(self, bot):
-        """Test phone number format extraction."""
-        test_cases = [
-            ({"user": {"mobiles": "9876543210"}}, "+919876543210"),
-            ({"user": {"mobiles": "+919876543210"}}, "+919876543210"),
-            ({"user": {"mobiles": "919876543210"}}, "+919876543210"),
-        ]
+    def test_parse_webhook_missing_messages(self, bot):
+        """Test parsing webhook with missing messages."""
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "contacts": []
+                    }
+                }]
+            }]
+        }
 
-        for payload, expected_phone in test_cases:
-            result = bot.parse_webhook(payload, provider="msg91")
-            if result:
-                assert result["phone"] == expected_phone
+        result = bot.parse_webhook(payload)
+        assert result is None
+
+    def test_parse_webhook_with_image(self, bot):
+        """Test parsing webhook with image message."""
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "id": "msg_123",
+                            "from": "919876543210",
+                            "image": {
+                                "id": "image_123"
+                            }
+                        }],
+                        "contacts": [{
+                            "profile": {"name": "Test Patient"}
+                        }]
+                    }
+                }]
+            }]
+        }
+
+        result = bot.parse_webhook(payload)
+
+        assert result is not None
+        assert result.message_type == MessageType.IMAGE
+
+    def test_parse_webhook_with_document(self, bot):
+        """Test parsing webhook with document message."""
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "value": {
+                        "messages": [{
+                            "id": "msg_123",
+                            "from": "919876543210",
+                            "document": {
+                                "id": "doc_123"
+                            }
+                        }],
+                        "contacts": [{
+                            "profile": {"name": "Test Patient"}
+                        }]
+                    }
+                }]
+            }]
+        }
+
+        result = bot.parse_webhook(payload)
+
+        assert result is not None
+        assert result.message_type == MessageType.DOCUMENT
+
+
+class TestWhatsAppMessage:
+    """Tests for WhatsAppMessage dataclass."""
+
+    def test_create_message(self):
+        """Test creating WhatsApp message."""
+        msg = WhatsAppMessage(
+            message_id="msg_123",
+            from_phone="919876543210",
+            from_name="Test Patient",
+            message_type=MessageType.TEXT,
+            text="Hello"
+        )
+
+        assert msg.message_id == "msg_123"
+        assert msg.from_phone == "919876543210"
+        assert msg.text == "Hello"
+        assert msg.message_type == MessageType.TEXT
+
+    def test_message_with_button(self):
+        """Test creating message with button."""
+        msg = WhatsAppMessage(
+            message_id="msg_123",
+            from_phone="919876543210",
+            from_name="Test Patient",
+            message_type=MessageType.BUTTON,
+            button_id="btn_1",
+            button_text="Book Now",
+            text="Book Now"
+        )
+
+        assert msg.message_type == MessageType.BUTTON
+        assert msg.button_id == "btn_1"
+        assert msg.button_text == "Book Now"

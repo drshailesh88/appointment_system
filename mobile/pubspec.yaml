@@ -77,6 +77,9 @@ dependencies:
   image_cropper: ^5.0.1
   camera: ^0.10.5+9
 
+  # Telemedicine Video Calls (Phase 17)
+  flutter_webrtc: ^0.9.47
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

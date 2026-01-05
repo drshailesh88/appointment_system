@@ -2,12 +2,15 @@
 Tests for Razorpay payment integration.
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from decimal import Decimal
+from datetime import datetime, timezone
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from app.integrations.razorpay import (
     RazorpayService,
     RazorpayOrder,
     RazorpayPayment,
+    RefundResult,
 )
 
 
@@ -16,158 +19,235 @@ class TestRazorpayService:
 
     def test_service_initialization(self):
         """Test service initialization."""
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            assert service is not None
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+        assert service is not None
+        assert service.key_id == "test_key"
+        assert service.key_secret == "test_secret"
 
-    @patch("razorpay.Client")
-    def test_create_order(self, mock_client):
+    @pytest.mark.asyncio
+    async def test_create_order(self):
         """Test creating a payment order."""
-        mock_instance = MagicMock()
-        mock_instance.order.create.return_value = {
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        # Mock the HTTP client
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "id": "order_123",
             "amount": 50000,
             "currency": "INR",
             "status": "created",
             "receipt": "receipt_123",
+            "created_at": int(datetime.now(timezone.utc).timestamp()),
         }
-        mock_client.return_value = mock_instance
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            order = service.create_order(
-                amount=500.0,
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            order = await service.create_order(
+                amount=Decimal("500.0"),
                 currency="INR",
                 receipt="receipt_123",
             )
 
             assert order is not None
-            assert order.id == "order_123"
+            assert order.order_id == "order_123"
             assert order.amount == 50000
+            assert order.currency == "INR"
+            mock_client.post.assert_called_once()
 
-    @patch("razorpay.Client")
-    def test_create_order_with_notes(self, mock_client):
+    @pytest.mark.asyncio
+    async def test_create_order_with_notes(self):
         """Test creating order with notes."""
-        mock_instance = MagicMock()
-        mock_instance.order.create.return_value = {
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "id": "order_456",
             "amount": 100000,
             "currency": "INR",
             "status": "created",
             "receipt": "receipt_456",
             "notes": {"patient_id": "pat_123"},
+            "created_at": int(datetime.now(timezone.utc).timestamp()),
         }
-        mock_client.return_value = mock_instance
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            order = service.create_order(
-                amount=1000.0,
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            order = await service.create_order(
+                amount=Decimal("1000.0"),
                 currency="INR",
                 receipt="receipt_456",
                 notes={"patient_id": "pat_123"},
             )
 
-            assert order.id == "order_456"
+            assert order.order_id == "order_456"
+            assert order.amount == 100000
 
-    @patch("razorpay.Client")
-    def test_verify_payment_signature_valid(self, mock_client):
+    def test_verify_payment_signature_valid(self):
         """Test verifying valid payment signature."""
-        mock_instance = MagicMock()
-        mock_instance.utility.verify_payment_signature.return_value = True
-        mock_client.return_value = mock_instance
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            result = service.verify_payment_signature(
-                order_id="order_123",
-                payment_id="pay_123",
-                signature="valid_signature",
-            )
+        # Create a valid signature
+        import hmac
+        import hashlib
+        order_id = "order_123"
+        payment_id = "pay_123"
+        message = f"{order_id}|{payment_id}"
+        signature = hmac.new(
+            b"test_secret",
+            message.encode(),
+            hashlib.sha256
+        ).hexdigest()
 
-            assert result == True
+        result = service.verify_payment_signature(
+            order_id=order_id,
+            payment_id=payment_id,
+            signature=signature,
+        )
 
-    @patch("razorpay.Client")
-    def test_verify_payment_signature_invalid(self, mock_client):
+        assert result is True
+
+    def test_verify_payment_signature_invalid(self):
         """Test verifying invalid payment signature."""
-        mock_instance = MagicMock()
-        mock_instance.utility.verify_payment_signature.side_effect = Exception("Invalid signature")
-        mock_client.return_value = mock_instance
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            result = service.verify_payment_signature(
-                order_id="order_123",
-                payment_id="pay_123",
-                signature="invalid_signature",
-            )
+        result = service.verify_payment_signature(
+            order_id="order_123",
+            payment_id="pay_123",
+            signature="invalid_signature",
+        )
 
-            assert result == False
+        assert result is False
 
-    @patch("razorpay.Client")
-    def test_create_refund(self, mock_client):
+    @pytest.mark.asyncio
+    async def test_create_refund(self):
         """Test creating a refund."""
-        mock_instance = MagicMock()
-        mock_instance.payment.refund.return_value = {
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
             "id": "rfnd_123",
             "payment_id": "pay_123",
             "amount": 50000,
             "status": "processed",
         }
-        mock_client.return_value = mock_instance
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            refund = service.create_refund(
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            refund = await service.create_refund(
                 payment_id="pay_123",
-                amount=500.0,
+                amount=Decimal("500.0"),
             )
 
             assert refund is not None
-            assert refund["id"] == "rfnd_123"
+            assert refund.success is True
+            assert refund.refund_id == "rfnd_123"
+            assert refund.amount == 50000
+            mock_client.post.assert_called_once()
 
-    @patch("razorpay.Client")
-    def test_get_checkout_options(self, mock_client):
-        """Test getting checkout options for frontend."""
-        mock_instance = MagicMock()
-        mock_client.return_value = mock_instance
+    @pytest.mark.asyncio
+    async def test_create_refund_failure(self):
+        """Test refund failure."""
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
 
-        with patch.dict("os.environ", {
-            "RAZORPAY_KEY_ID": "test_key",
-            "RAZORPAY_KEY_SECRET": "test_secret"
-        }):
-            service = RazorpayService()
-            options = service.get_checkout_options(
-                order_id="order_123",
-                amount=500.0,
-                name="Test Clinic",
-                description="Consultation Fee",
-                prefill_email="patient@test.com",
-                prefill_phone="+919876543210",
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.text = "Insufficient balance"
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            refund = await service.create_refund(
+                payment_id="pay_123",
+                amount=Decimal("500.0"),
             )
 
-            assert "key" in options
-            assert "order_id" in options
-            assert "amount" in options
-            assert "name" in options
+            assert refund.success is False
+            assert refund.error is not None
+
+    @pytest.mark.asyncio
+    async def test_get_order(self):
+        """Test fetching order details."""
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "id": "order_123",
+            "amount": 50000,
+            "currency": "INR",
+            "status": "created",
+            "receipt": "receipt_123",
+            "created_at": int(datetime.now(timezone.utc).timestamp()),
+        }
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            order = await service.get_order("order_123")
+
+            assert order is not None
+            assert order.order_id == "order_123"
+            mock_client.get.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_capture_payment(self):
+        """Test capturing a payment."""
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+
+        mock_client = AsyncMock()
+        mock_client.post = AsyncMock(return_value=mock_response)
+
+        with patch.object(service, '_get_client', return_value=mock_client):
+            result = await service.capture_payment(
+                payment_id="pay_123",
+                amount=50000,
+            )
+
+            assert result is True
+            mock_client.post.assert_called_once()
+
+    def test_get_checkout_options(self):
+        """Test getting checkout options for frontend."""
+        service = RazorpayService(key_id="test_key", key_secret="test_secret")
+
+        order = RazorpayOrder(
+            order_id="order_123",
+            amount=50000,
+            currency="INR",
+            status="created",
+            receipt="receipt_123",
+            created_at=datetime.now(timezone.utc),
+        )
+
+        options = service.get_checkout_options(
+            order=order,
+            customer_name="Test Patient",
+            customer_email="patient@test.com",
+            customer_phone="+919876543210",
+            description="Consultation Fee",
+        )
+
+        assert "key" in options
+        assert "order_id" in options
+        assert options["order_id"] == "order_123"
+        assert "amount" in options
+        assert options["amount"] == 50000
+        assert "name" in options
+        assert options["prefill"]["name"] == "Test Patient"
 
 
 class TestRazorpayDataClasses:

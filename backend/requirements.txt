@@ -26,6 +26,7 @@ passlib[bcrypt]>=1.7.4
 # Cache & Task Queue
 redis>=5.0.1
 celery>=5.3.6
+apscheduler>=3.10.4
 
 # HTTP Client
 httpx>=0.26.0

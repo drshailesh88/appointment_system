@@ -25,6 +25,7 @@ from app.api.v1 import (
     notifications,
     procedures,
     ai_chat,
+    ai_analytics,
     documents,
     calendar,
     emr,
@@ -33,6 +34,7 @@ from app.api.v1 import (
     staff,
     telemedicine,
     ws_telemedicine,
+    scheduler,
 )
 
 api_router = APIRouter()
@@ -57,6 +59,7 @@ api_router.include_router(websocket.router, tags=["WebSocket"])
 api_router.include_router(notifications.router, prefix="/notifications", tags=["Push Notifications"])
 api_router.include_router(procedures.router, prefix="/procedures", tags=["Procedures"])
 api_router.include_router(ai_chat.router, prefix="/ai", tags=["AI Assistant"])
+api_router.include_router(ai_analytics.router, prefix="/ai", tags=["AI Analytics"])
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents & OCR"])
 api_router.include_router(calendar.router, prefix="/calendar", tags=["Google Calendar"])
 api_router.include_router(emr.router, prefix="/emr", tags=["EMR Integration"])
@@ -65,3 +68,4 @@ api_router.include_router(organizations.router, prefix="/organizations", tags=["
 api_router.include_router(staff.router, prefix="/staff", tags=["Staff Management"])
 api_router.include_router(telemedicine.router, prefix="/telemedicine", tags=["Telemedicine"])
 api_router.include_router(ws_telemedicine.router, tags=["Telemedicine WebSocket"])
+api_router.include_router(scheduler.router, tags=["Scheduler Management"])

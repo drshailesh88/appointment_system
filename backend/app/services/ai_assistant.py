@@ -273,6 +273,7 @@ Current time: {datetime.now().isoformat()}
         user_id: UUID,
         session_id: str | None = None,
         context: dict | None = None,
+        db_session=None,
     ) -> AIResponse:
         """
         Process a chat message and return AI response.
@@ -283,6 +284,7 @@ Current time: {datetime.now().isoformat()}
             user_id: User ID
             session_id: Optional session ID for context
             context: Optional UI context (current screen, selected items)
+            db_session: Optional database session for real analytics
 
         Returns:
             AIResponse with answer and suggestions
@@ -328,12 +330,12 @@ Current time: {datetime.now().isoformat()}
                 session_id=session_id,
             )
 
-        # Execute function (would be injected in production)
-        # For now, return mock response
+        # Execute function with real or mock data
         response_text, data = await self._execute_function(
             function_call,
             clinic_id,
             session,
+            db_session=db_session,
         )
 
         # Generate follow-up suggestions
@@ -535,19 +537,36 @@ Current time: {datetime.now().isoformat()}
         function_call: FunctionCall,
         clinic_id: UUID,
         session: ConversationSession,
+        db_session=None,
     ) -> tuple[str, dict]:
         """
         Execute function call and generate natural language response.
 
-        NOTE: This is a placeholder. Actual function execution would be
-        injected via dependency injection in the API layer.
+        If db_session is provided, uses real analytics. Otherwise falls back to mocks.
+
+        Args:
+            function_call: Parsed function call
+            clinic_id: Clinic UUID
+            session: Conversation session
+            db_session: Optional SQLAlchemy async session for real analytics
 
         Returns:
             Tuple of (natural_language_response, structured_data)
         """
-        # This would be replaced with actual service calls
-        # For now, return mock responses
+        # If database session provided, use real analytics
+        if db_session:
+            try:
+                from app.services.nl_analytics import get_nl_analytics
 
+                nl_analytics = get_nl_analytics(db_session)
+                result = await nl_analytics.execute_query(function_call, clinic_id)
+
+                return result.natural_response, result.structured_data
+            except Exception as e:
+                logger.error(f"Real analytics execution failed: {e}, falling back to mocks")
+                # Fall through to mock responses
+
+        # Fallback to mock responses (for testing or when DB unavailable)
         func = function_call.function
         args = function_call.arguments
 

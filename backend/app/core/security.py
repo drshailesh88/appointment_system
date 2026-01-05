@@ -139,3 +139,146 @@ def generate_otp(length: int | None = None) -> str:
 def generate_api_key() -> str:
     """Generate a secure API key."""
     return secrets.token_urlsafe(32)
+
+
+def verify_webhook_signature(
+    payload: bytes,
+    signature: str,
+    secret: str,
+    algorithm: str = "sha256",
+) -> bool:
+    """
+    Verify webhook signature using HMAC.
+
+    Args:
+        payload: Raw request body bytes
+        signature: Signature from webhook header
+        secret: Webhook secret key
+        algorithm: Hash algorithm (default: sha256)
+
+    Returns:
+        True if signature is valid
+    """
+    try:
+        import hashlib
+        import hmac
+
+        if algorithm == "sha1":
+            hash_func = hashlib.sha1
+        elif algorithm == "sha256":
+            hash_func = hashlib.sha256
+        else:
+            raise ValueError(f"Unsupported algorithm: {algorithm}")
+
+        expected_signature = hmac.new(
+            secret.encode(),
+            payload,
+            hash_func,
+        ).hexdigest()
+
+        return hmac.compare_digest(expected_signature, signature)
+    except Exception:
+        return False
+
+
+def sanitize_filename(filename: str) -> str:
+    """
+    Sanitize filename to prevent path traversal and injection attacks.
+
+    Args:
+        filename: Original filename
+
+    Returns:
+        Sanitized filename safe for filesystem operations
+    """
+    import os
+    import re
+
+    # Remove any path components
+    filename = os.path.basename(filename)
+
+    # Remove null bytes
+    filename = filename.replace('\x00', '')
+
+    # Remove control characters and dangerous characters
+    filename = re.sub(r'[<>:"|?*\x00-\x1f\x7f]', '', filename)
+
+    # Remove leading/trailing dots and spaces
+    filename = filename.strip('. ')
+
+    # Limit length
+    if len(filename) > 255:
+        name, ext = os.path.splitext(filename)
+        filename = name[:255-len(ext)] + ext
+
+    # Fallback if filename becomes empty
+    if not filename:
+        filename = "unnamed_file"
+
+    return filename
+
+
+def validate_file_magic_bytes(content: bytes, expected_type: str) -> bool:
+    """
+    Validate file type by checking magic bytes (file signature).
+
+    Args:
+        content: File content bytes
+        expected_type: Expected file type (pdf, jpg, png, etc.)
+
+    Returns:
+        True if magic bytes match expected type
+    """
+    if not content:
+        return False
+
+    # Magic bytes for common file types
+    magic_bytes = {
+        "pdf": [b"%PDF"],
+        "jpg": [b"\xff\xd8\xff"],
+        "jpeg": [b"\xff\xd8\xff"],
+        "png": [b"\x89PNG\r\n\x1a\n"],
+        "gif": [b"GIF87a", b"GIF89a"],
+        "bmp": [b"BM"],
+        "tiff": [b"II*\x00", b"MM\x00*"],
+        "webp": [b"RIFF"],
+        "svg": [b"<svg", b"<?xml"],
+        "doc": [b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"],
+        "docx": [b"PK\x03\x04"],
+        "xls": [b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"],
+        "xlsx": [b"PK\x03\x04"],
+        "zip": [b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08"],
+    }
+
+    expected_type = expected_type.lower().lstrip(".")
+
+    if expected_type not in magic_bytes:
+        # Unknown type, allow (but log warning)
+        return True
+
+    for magic in magic_bytes[expected_type]:
+        if content.startswith(magic):
+            return True
+
+    return False
+
+
+def is_safe_path(basedir: str, path: str) -> bool:
+    """
+    Check if path is within basedir (prevents path traversal).
+
+    Args:
+        basedir: Base directory path
+        path: Path to check
+
+    Returns:
+        True if path is safe
+    """
+    import os
+
+    # Resolve to absolute paths
+    basedir = os.path.abspath(basedir)
+    path = os.path.abspath(path)
+
+    # Check if path starts with basedir
+    return path.startswith(basedir)

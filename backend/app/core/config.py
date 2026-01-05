@@ -72,19 +72,40 @@ class Settings(BaseSettings):
     otp_expire_minutes: int = 10
     otp_length: int = 6
 
-    # SMS Gateway
+    # SMS Configuration (MSG91)
     sms_enabled: bool = False
+    msg91_auth_key: str = ""
+    msg91_sender_id: str = "DOCAST"  # 6 char sender ID (DLT registered)
+    msg91_route: str = "4"  # Route 4 = Transactional
+    msg91_country: str = "91"  # India country code
+    msg91_dlt_te_id: str = ""  # DLT Template Entity ID
+
+    # Legacy SMS fields (deprecated, use MSG91 fields above)
     sms_gateway_url: str | None = None
     sms_gateway_api_key: str | None = None
+
+    # For backward compatibility with existing code
+    @property
+    def sms_api_key(self) -> str:
+        """Get SMS API key (MSG91 auth key)."""
+        return self.msg91_auth_key
+
+    @property
+    def sms_sender_id(self) -> str:
+        """Get SMS sender ID."""
+        return self.msg91_sender_id
 
     # WhatsApp
     whatsapp_enabled: bool = False
     whatsapp_api_url: str | None = None
     whatsapp_api_token: str | None = None
+    whatsapp_verify_token: str | None = None  # For webhook verification
+    whatsapp_webhook_secret: str | None = None  # Optional additional security
 
     # Razorpay (UPI Payments)
     razorpay_key_id: str | None = None
     razorpay_key_secret: str | None = None
+    razorpay_webhook_secret: str | None = None
 
     # Voice Agent
     voice_enabled: bool = True
@@ -134,6 +155,19 @@ class Settings(BaseSettings):
 
     # Rate Limiting
     rate_limit_per_minute: int = 60
+
+    # Scheduler
+    scheduler_enabled: bool = True
+    scheduler_timezone: str = "Asia/Kolkata"
+    calendar_sync_interval_minutes: int = 5
+    digest_send_hour: int = 6
+    digest_send_minute: int = 0
+    emr_sync_interval_minutes: int = 5
+    reminder_check_interval_minutes: int = 60
+    insurance_check_interval_hours: int = 6
+
+    # Testing flag
+    testing: bool = False
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

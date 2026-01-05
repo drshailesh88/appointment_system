@@ -62,11 +62,33 @@ class OTPService:
         await self.db.commit()
         await self.db.refresh(otp)
 
-        # TODO: Send SMS via MSG91
-        # For development, log the OTP
+        # Send OTP via SMS
+        from app.services.sms_service import get_sms_service
         import logging
+
         logger = logging.getLogger(__name__)
-        logger.info(f"OTP for {phone}: {otp_code} (expires in {self.OTP_EXPIRY_MINUTES}min)")
+
+        # Always log OTP in development/testing
+        if not settings.sms_enabled or settings.testing:
+            logger.info(
+                f"[OTP] Phone: {phone}, Code: {otp_code}, "
+                f"Expires: {self.OTP_EXPIRY_MINUTES}min"
+            )
+
+        # Send SMS if enabled
+        if settings.sms_enabled:
+            sms_service = get_sms_service()
+            result = await sms_service.send_otp(
+                phone=phone,
+                otp=otp_code,
+                validity_minutes=self.OTP_EXPIRY_MINUTES,
+            )
+
+            if not result.success:
+                logger.error(f"Failed to send OTP SMS to {phone}: {result.error}")
+                # Don't fail the whole operation, OTP is still logged
+        else:
+            logger.info(f"SMS disabled. OTP for {phone}: {otp_code}")
 
         return otp
 
