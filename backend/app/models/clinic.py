@@ -6,10 +6,9 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, UUID
 
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
@@ -46,7 +45,7 @@ class Clinic(BaseModel):
 
     # Organization (for multi-location support)
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("organizations.id", ondelete="SET NULL"),
         nullable=True,
         index=True,

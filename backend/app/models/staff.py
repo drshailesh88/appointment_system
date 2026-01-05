@@ -9,11 +9,10 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.clinic import Clinic
@@ -107,7 +106,7 @@ class StaffRole(BaseModel):
 
     # Organization (nullable for system-wide roles)
     organization_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("organizations.id", ondelete="CASCADE"),
         nullable=True,
     )
@@ -181,17 +180,17 @@ class StaffAssignment(BaseModel):
 
     # Assignment
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
     )
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id", ondelete="CASCADE"),
         nullable=False,
     )
     role_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("staff_roles.id", ondelete="RESTRICT"),
         nullable=False,
     )

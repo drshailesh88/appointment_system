@@ -9,11 +9,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.invoice import Invoice
@@ -61,7 +60,7 @@ class Payment(BaseModel):
 
     # Relations
     invoice_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("invoices.id"),
         nullable=False,
         index=True,

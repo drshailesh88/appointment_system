@@ -22,7 +22,7 @@ from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Tex
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, UUID
 
 
 class WaitlistPriority(str, Enum):
@@ -60,20 +60,20 @@ class Waitlist(Base, TimestampMixin):
     __tablename__ = "waitlist"
 
     id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        PGUUID(),
         primary_key=True,
         default=uuid4,
     )
 
     # Clinic and doctor
     clinic_id: Mapped[UUID] = mapped_column(
-        PGUUID(as_uuid=True),
+        PGUUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,
     )
     doctor_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True),
+        PGUUID(),
         ForeignKey("doctors.id"),
         nullable=True,  # Can be any available doctor
         index=True,
@@ -81,7 +81,7 @@ class Waitlist(Base, TimestampMixin):
 
     # Patient info
     patient_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True),
+        PGUUID(),
         ForeignKey("patients.id"),
         nullable=True,  # New patient might not have ID yet
     )
@@ -136,7 +136,7 @@ class Waitlist(Base, TimestampMixin):
         nullable=True,
     )
     booked_appointment_id: Mapped[Optional[UUID]] = mapped_column(
-        PGUUID(as_uuid=True),
+        PGUUID(),
         ForeignKey("appointments.id"),
         nullable=True,
     )

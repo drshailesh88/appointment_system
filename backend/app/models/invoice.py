@@ -9,10 +9,9 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Date, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, UUID
 
 if TYPE_CHECKING:
     from app.models.clinic import Clinic
@@ -64,18 +63,18 @@ class Invoice(BaseModel):
 
     # Relations
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
     doctor_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id"),
         nullable=True,
     )
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,
@@ -164,13 +163,13 @@ class InvoiceItem(BaseModel):
 
     # Relations
     invoice_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("invoices.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
     service_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("services.id"),
         nullable=True,
     )

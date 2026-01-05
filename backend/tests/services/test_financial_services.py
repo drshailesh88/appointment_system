@@ -79,6 +79,7 @@ async def test_clinic(async_session: AsyncSession) -> Clinic:
     clinic = Clinic(
         id=uuid4(),
         name="Test Clinic",
+        slug="test-clinic",
         address="123 Test Street",
         city="Mumbai",
         state="MH",
@@ -86,7 +87,7 @@ async def test_clinic(async_session: AsyncSession) -> Clinic:
         phone="+919876543210",
         email="test@clinic.com",
         subscription_tier="professional",
-        gstin="27AABCT1234F1Z5",  # Valid GSTIN
+        gst_number="27AABCT1234F1Z5",  # Valid GSTIN
     )
     async_session.add(clinic)
     await async_session.commit()
@@ -768,7 +769,7 @@ class TestInvoiceFormatting:
         clinic.city = "Mumbai"
         clinic.state = "MH"
         clinic.pincode = "400001"
-        clinic.gstin = "27AABCT1234F1Z5"
+        clinic.gst_number = "27AABCT1234F1Z5"
         clinic.phone = "+919876543210"
 
         patient = MagicMock(spec=Patient)

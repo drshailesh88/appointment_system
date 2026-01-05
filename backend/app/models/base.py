@@ -5,12 +5,45 @@ Base model with common fields.
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, func, JSON
-from sqlalchemy.dialects.postgresql import UUID, JSONB as PostgresJSONB
+from sqlalchemy import DateTime, func, JSON, String
+from sqlalchemy.dialects.postgresql import UUID as PostgresUUID, JSONB as PostgresJSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import TypeDecorator
 
 from app.core.database import Base
+
+
+class UUID(TypeDecorator):
+    """
+    Database-agnostic UUID type that uses UUID for PostgreSQL and String for SQLite.
+
+    This allows tests to run with SQLite while production uses PostgreSQL UUID.
+    """
+
+    impl = String(36)
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(PostgresUUID(as_uuid=True))
+        else:
+            return dialect.type_descriptor(String(36))
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return value
+        if dialect.name == 'postgresql':
+            return value
+        if isinstance(value, uuid.UUID):
+            return str(value)
+        return str(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return value
+        if isinstance(value, uuid.UUID):
+            return value
+        return uuid.UUID(value)
 
 
 class JSONB(TypeDecorator):
@@ -56,7 +89,7 @@ class UUIDMixin:
     """Mixin for UUID primary key."""
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid.uuid4,
     )

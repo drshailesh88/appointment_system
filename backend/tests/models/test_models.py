@@ -26,6 +26,7 @@ class TestClinicModel:
         clinic = Clinic(
             id=str(uuid4()),
             name="Test Clinic",
+            slug="test-clinic-models",
             address="123 Test Street",
             city="Mumbai",
             state="Maharashtra",

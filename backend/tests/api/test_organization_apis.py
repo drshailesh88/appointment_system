@@ -713,6 +713,7 @@ class TestStaffAPI:
         clinic2 = Clinic(
             id=uuid4(),
             name="Second Clinic",
+            slug="second-clinic",
             address="456 Second Street",
             city="Delhi",
             state="Delhi",

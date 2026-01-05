@@ -7,10 +7,9 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, UUID
 
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
@@ -49,7 +48,7 @@ class Service(BaseModel):
 
     # Clinic Association
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,

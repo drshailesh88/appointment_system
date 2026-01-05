@@ -567,6 +567,7 @@ class TestRBACEnforcement:
         other_clinic = Clinic(
             id=str(uuid4()),
             name="Other Clinic",
+            slug="other-clinic",
             address="456 Other Street",
             city="Delhi",
             state="Delhi",
@@ -666,6 +667,7 @@ class TestRBACEnforcement:
         other_clinic = Clinic(
             id=str(uuid4()),
             name="Admin Access Clinic",
+            slug="admin-access-clinic",
             address="789 Admin Street",
             city="Bangalore",
             state="Karnataka",

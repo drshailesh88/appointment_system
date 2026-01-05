@@ -7,11 +7,9 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
 
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
@@ -39,7 +37,7 @@ class DoctorCalendarSettings(BaseModel):
 
     # Relations
     doctor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id", ondelete="CASCADE"),
         nullable=False,
         unique=True,

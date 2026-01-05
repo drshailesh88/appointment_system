@@ -26,11 +26,10 @@ from sqlalchemy import (
     String,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
@@ -86,25 +85,25 @@ class Procedure(BaseModel):
 
     # Core Relations
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,
     )
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id"),
         nullable=False,
         index=True,
     )
     appointment_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("appointments.id"),
         nullable=True,
         index=True,

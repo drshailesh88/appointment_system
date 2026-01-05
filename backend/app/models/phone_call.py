@@ -10,11 +10,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
@@ -58,7 +57,7 @@ class PhoneCall(BaseModel):
     __tablename__ = "phone_calls"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid.uuid4,
     )
@@ -88,17 +87,17 @@ class PhoneCall(BaseModel):
 
     # Foreign keys
     appointment_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("appointments.id", ondelete="SET NULL"),
         nullable=True,
     )
     patient_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id", ondelete="SET NULL"),
         nullable=True,
     )
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -147,13 +146,13 @@ class CallTranscriptSegment(BaseModel):
     __tablename__ = "call_transcript_segments"
 
     id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         primary_key=True,
         default=uuid.uuid4,
     )
 
     call_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("phone_calls.id", ondelete="CASCADE"),
         nullable=False,
         index=True,

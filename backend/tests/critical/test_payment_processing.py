@@ -86,6 +86,7 @@ async def test_clinic(async_db: AsyncSession) -> Clinic:
     clinic = Clinic(
         id=uuid4(),
         name="Test Clinic",
+        slug="test-clinic",
         address="123 Test Street",
         city="Mumbai",
         state="Maharashtra",
@@ -93,7 +94,7 @@ async def test_clinic(async_db: AsyncSession) -> Clinic:
         phone="+919876543210",
         email="test@clinic.com",
         subscription_tier="professional",
-        gstin="27AABCU9603R1ZX",  # Valid GSTIN format
+        gst_number="27AABCU9603R1ZX",  # Valid GSTIN format
     )
     async_db.add(clinic)
     await async_db.commit()
@@ -213,7 +214,7 @@ async def test_invoice(
         invoice_date=date.today(),
         due_date=date.today() + timedelta(days=7),
         status=InvoiceStatus.PENDING.value,
-        gstin=test_clinic.gstin,
+        gstin=test_clinic.gst_number,
     )
     async_db.add(invoice)
     await async_db.flush()
@@ -1229,6 +1230,7 @@ class TestInvoiceGeneration:
         ka_clinic = Clinic(
             id=uuid4(),
             name="Karnataka Clinic",
+            slug="karnataka-clinic",
             address="Bangalore",
             city="Bangalore",
             state="Karnataka",
@@ -1236,7 +1238,7 @@ class TestInvoiceGeneration:
             phone="+918012345678",
             email="ka@clinic.com",
             subscription_tier="professional",
-            gstin="29AABCU9603R1ZX",  # Karnataka GSTIN
+            gst_number="29AABCU9603R1ZX",  # Karnataka GSTIN
         )
         async_db.add(ka_clinic)
         await async_db.commit()
@@ -1249,7 +1251,7 @@ class TestInvoiceGeneration:
             clinic_id=ka_clinic.id,
             invoice_date=date.today(),
             status=InvoiceStatus.PENDING.value,
-            gstin=ka_clinic.gstin,
+            gstin=ka_clinic.gst_number,
             subtotal=Decimal("2000.00"),
             tax_amount=Decimal("360.00"),  # 18% GST
             igst_amount=Decimal("360.00"),  # Interstate - full IGST

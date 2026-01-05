@@ -8,11 +8,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.consultation import Consultation
@@ -83,13 +82,13 @@ class Appointment(BaseModel):
 
     # Core Relations
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id"),
         nullable=False,
         index=True,
@@ -149,7 +148,7 @@ class Appointment(BaseModel):
 
     # Rescheduling
     rescheduled_from_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("appointments.id"),
         nullable=True,
     )
@@ -163,7 +162,7 @@ class Appointment(BaseModel):
 
     # Service/Procedure
     service_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("services.id"),
         nullable=True,
     )

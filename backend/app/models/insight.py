@@ -12,11 +12,10 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.clinic import Clinic
@@ -63,19 +62,19 @@ class ProactiveInsight(BaseModel):
 
     # Core Relations
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,
     )
     patient_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id"),
         nullable=True,
         index=True,
     )
     doctor_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id"),
         nullable=True,
         index=True,
@@ -129,7 +128,7 @@ class ProactiveInsight(BaseModel):
         nullable=True,
     )
     dismissed_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -139,7 +138,7 @@ class ProactiveInsight(BaseModel):
         nullable=True,
     )
     acted_by_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id"),
         nullable=True,
     )
@@ -172,25 +171,25 @@ class FollowupSchedule(BaseModel):
 
     # Core Relations
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,
     )
     patient_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("patients.id"),
         nullable=False,
         index=True,
     )
     doctor_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("doctors.id"),
         nullable=False,
         index=True,
     )
     procedure_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("procedures.id"),
         nullable=False,
         index=True,
@@ -225,7 +224,7 @@ class FollowupSchedule(BaseModel):
         index=True,
     )
     scheduled_appointment_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("appointments.id"),
         nullable=True,
     )
@@ -253,14 +252,14 @@ class UserDigestPreferences(BaseModel):
 
     # Core Relations
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id"),
         nullable=False,
         unique=True,
         index=True,
     )
     clinic_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("clinics.id"),
         nullable=False,
         index=True,

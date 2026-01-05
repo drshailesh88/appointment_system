@@ -42,6 +42,7 @@ def test_clinic_data() -> dict:
     return {
         "id": uuid4(),
         "name": "Test Clinic",
+        "slug": "test-clinic",
         "address": "123 Test Street",
         "city": "Mumbai",
         "state": "Maharashtra",
@@ -517,6 +518,7 @@ class TestPatientDataValidation:
         clinic2_data = test_clinic_data.copy()
         clinic2_data["id"] = uuid4()
         clinic2_data["name"] = "Second Clinic"
+        clinic2_data["slug"] = "second-clinic"
         clinic2 = Clinic(**clinic2_data)
         db.add(clinic2)
         db.commit()
@@ -767,6 +769,7 @@ class TestPatientPrivacySecurity:
         clinic2_data = test_clinic_data.copy()
         clinic2_data["id"] = uuid4()
         clinic2_data["name"] = "Clinic 2"
+        clinic2_data["slug"] = "clinic-2"
         clinic2 = Clinic(**clinic2_data)
         db.add(clinic2)
         db.commit()

@@ -7,6 +7,7 @@ from app.models.organization import Organization
 from app.models.clinic import Clinic
 from app.models.staff import StaffRole, StaffAssignment, DEFAULT_PERMISSIONS
 from app.models.doctor import Doctor
+from app.models.calendar_settings import DoctorCalendarSettings
 from app.models.patient import Patient
 from app.models.appointment import Appointment
 from app.models.service import Service
@@ -63,6 +64,7 @@ __all__ = [
     "StaffAssignment",
     "DEFAULT_PERMISSIONS",
     "Doctor",
+    "DoctorCalendarSettings",
     "Patient",
     "Appointment",
     "Service",

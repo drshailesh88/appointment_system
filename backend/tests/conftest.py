@@ -83,6 +83,7 @@ def test_clinic(db: Session) -> Clinic:
     clinic = Clinic(
         id=str(uuid4()),
         name="Test Clinic",
+        slug="test-clinic",
         address="123 Test Street",
         city="Mumbai",
         state="Maharashtra",

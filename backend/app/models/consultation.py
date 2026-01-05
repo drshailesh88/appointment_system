@@ -11,11 +11,10 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
-from app.models.base import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, JSONB, UUID
+
 
 if TYPE_CHECKING:
     from app.models.appointment import Appointment
@@ -89,7 +88,7 @@ class Consultation(BaseModel):
 
     # Core Relations
     appointment_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("appointments.id"),
         nullable=False,
         index=True,
@@ -200,13 +199,13 @@ class ConsultationParticipant(BaseModel):
     __tablename__ = "consultation_participants"
 
     consultation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("consultations.id"),
         nullable=False,
         index=True,
     )
     user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id"),
         nullable=False,
         index=True,
@@ -265,7 +264,7 @@ class ConsultationRecording(BaseModel):
     __tablename__ = "consultation_recordings"
 
     consultation_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("consultations.id"),
         nullable=False,
         index=True,
@@ -298,7 +297,7 @@ class ConsultationRecording(BaseModel):
     # EMR Integration
     uploaded_to_emr: Mapped[bool] = mapped_column(Boolean, default=False)
     emr_document_id: Mapped[uuid.UUID | None] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         nullable=True,
     )
 

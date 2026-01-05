@@ -6,10 +6,9 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Boolean, DateTime, String
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, UUID
 
 
 class OTP(BaseModel):
@@ -33,7 +32,7 @@ class OTP(BaseModel):
     attempts: Mapped[int] = mapped_column(default=0)
 
     # Optional patient reference after first booking
-    patient_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    patient_id: Mapped[uuid.UUID | None] = mapped_column(UUID(), nullable=True)
 
     def is_valid(self) -> bool:
         """Check if OTP is still valid."""

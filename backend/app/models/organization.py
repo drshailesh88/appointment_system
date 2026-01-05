@@ -9,11 +9,10 @@ import uuid
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Integer, String, Text
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
-from app.models.base import BaseModel
+from app.models.base import BaseModel, UUID
 
 if TYPE_CHECKING:
     from app.models.clinic import Clinic
@@ -50,7 +49,7 @@ class Organization(BaseModel):
 
     # Owner
     owner_user_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
+        UUID(),
         ForeignKey("users.id"),
         nullable=False,
     )

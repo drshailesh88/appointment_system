@@ -597,6 +597,7 @@ class TestAppointmentBookingEdgeCases:
         other_clinic = Clinic(
             id=uuid4(),
             name="Other Clinic",
+            slug="other-clinic-booking",
             address="456 Other Street",
             city="Delhi",
             state="Delhi",
