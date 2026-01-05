@@ -1,0 +1,168 @@
+name: Backend Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'requirements.txt'
+      - '.github/workflows/backend-tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'requirements.txt'
+      - '.github/workflows/backend-tests.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.12']
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_appointment_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          requirements.txt
+          backend/requirements.txt
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          libpq-dev \
+          ffmpeg \
+          tesseract-ocr \
+          tesseract-ocr-hin \
+          poppler-utils
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pytest-asyncio pytest-mock
+        if [ -f backend/requirements.txt ]; then
+          pip install -r backend/requirements.txt
+        fi
+
+    - name: Create test environment file
+      run: |
+        cat > backend/.env.test << EOF
+        DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test_appointment_db
+        SECRET_KEY=test-secret-key-for-ci-only
+        ALGORITHM=HS256
+        ACCESS_TOKEN_EXPIRE_MINUTES=30
+        RAZORPAY_KEY_ID=test_key_id
+        RAZORPAY_KEY_SECRET=test_key_secret
+        MSG91_AUTH_KEY=test_msg91_key
+        OLLAMA_BASE_URL=http://localhost:11434
+        QDRANT_HOST=localhost
+        QDRANT_PORT=6333
+        ALLOW_ORIGINS=*
+        EOF
+
+    - name: Run linting with ruff
+      run: |
+        pip install ruff
+        ruff check backend/app --exclude backend/app/migrations
+
+    - name: Run type checking with mypy
+      run: |
+        pip install mypy types-requests
+        mypy backend/app --ignore-missing-imports --exclude backend/app/migrations
+      continue-on-error: true
+
+    - name: Run database migrations
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_appointment_db
+      run: |
+        alembic upgrade head || echo "Migration skipped"
+
+    - name: Run tests with pytest
+      working-directory: ./backend
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_appointment_db
+        PYTHONPATH: ${{ github.workspace }}/backend
+      run: |
+        pytest tests/ \
+          -v \
+          --cov=app \
+          --cov-report=xml \
+          --cov-report=html \
+          --cov-report=term \
+          --tb=short \
+          --maxfail=5
+
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./backend/coverage.xml
+        flags: backend
+        name: backend-coverage
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: backend-coverage-${{ matrix.python-version }}
+        path: |
+          backend/coverage.xml
+          backend/htmlcov/
+        retention-days: 7
+
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request'
+      uses: py-cov-action/python-coverage-comment-action@v3
+      with:
+        GITHUB_TOKEN: ${{ github.token }}
+        MINIMUM_GREEN: 80
+        MINIMUM_ORANGE: 60
+      continue-on-error: true
+
+    - name: Check coverage threshold
+      run: |
+        coverage_percent=$(python -c "import xml.etree.ElementTree as ET; tree = ET.parse('backend/coverage.xml'); root = tree.getroot(); print(float(root.attrib['line-rate']) * 100)")
+        echo "Coverage: $coverage_percent%"
+        if (( $(echo "$coverage_percent < 70" | bc -l) )); then
+          echo "❌ Coverage is below 70%"
+          exit 1
+        fi
+        echo "✅ Coverage meets threshold"
+      continue-on-error: true

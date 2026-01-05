@@ -1,0 +1,217 @@
+name: Flutter Tests
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/flutter-tests.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'mobile/**'
+      - '.github/workflows/flutter-tests.yml'
+
+jobs:
+  analyze-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+        cache: true
+        cache-key: 'flutter-:os:-:channel:-:version:-:arch:-:hash:'
+        cache-path: '${{ runner.tool_cache }}/flutter/:channel:-:version:-:arch:'
+
+    - name: Verify Flutter installation
+      run: |
+        flutter --version
+        flutter doctor -v
+
+    - name: Cache pub dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.pub-cache
+          mobile/.dart_tool
+          mobile/build
+        key: ${{ runner.os }}-pub-${{ hashFiles('mobile/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pub-
+
+    - name: Get dependencies
+      working-directory: ./mobile
+      run: flutter pub get
+
+    - name: Verify dependencies
+      working-directory: ./mobile
+      run: flutter pub deps
+
+    - name: Run code generation (if using build_runner)
+      working-directory: ./mobile
+      run: |
+        if grep -q "build_runner" pubspec.yaml; then
+          flutter pub run build_runner build --delete-conflicting-outputs
+        fi
+      continue-on-error: true
+
+    - name: Run Flutter analyze
+      working-directory: ./mobile
+      run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+    - name: Check formatting
+      working-directory: ./mobile
+      run: dart format --set-exit-if-changed lib test
+      continue-on-error: true
+
+    - name: Run unit tests
+      working-directory: ./mobile
+      run: |
+        flutter test \
+          --coverage \
+          --reporter expanded \
+          --exclude-tags integration
+
+    - name: Run widget tests
+      working-directory: ./mobile
+      run: |
+        flutter test \
+          test/widget_test.dart \
+          --coverage \
+          --reporter expanded
+      continue-on-error: true
+
+    - name: Generate coverage report
+      working-directory: ./mobile
+      run: |
+        if [ -f coverage/lcov.info ]; then
+          # Install lcov for coverage reports
+          sudo apt-get update
+          sudo apt-get install -y lcov
+
+          # Generate HTML report
+          genhtml coverage/lcov.info -o coverage/html
+
+          # Calculate coverage percentage
+          lcov --summary coverage/lcov.info
+        fi
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./mobile/coverage/lcov.info
+        flags: flutter
+        name: flutter-coverage
+        fail_ci_if_error: false
+      env:
+        CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+    - name: Upload coverage artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: flutter-coverage
+        path: |
+          mobile/coverage/
+        retention-days: 7
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: flutter-test-results
+        path: mobile/test-results/
+        retention-days: 7
+
+    - name: Comment PR with coverage
+      if: github.event_name == 'pull_request' && hashFiles('mobile/coverage/lcov.info') != ''
+      uses: romeovs/lcov-reporter-action@v0.3.1
+      with:
+        lcov-file: ./mobile/coverage/lcov.info
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        delete-old-comments: true
+      continue-on-error: true
+
+  build-apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: analyze-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Java 17
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+        cache: true
+
+    - name: Get dependencies
+      working-directory: ./mobile
+      run: flutter pub get
+
+    - name: Build APK
+      working-directory: ./mobile
+      run: flutter build apk --debug --no-pub
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+        retention-days: 7
+
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    needs: analyze-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+        cache: true
+
+    - name: Get dependencies
+      working-directory: ./mobile
+      run: flutter pub get
+
+    - name: Build iOS (no codesign)
+      working-directory: ./mobile
+      run: flutter build ios --debug --no-codesign --no-pub
+
+    - name: Upload iOS build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-debug-build
+        path: mobile/build/ios/
+        retention-days: 7

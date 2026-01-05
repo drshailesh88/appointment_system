@@ -1,0 +1,133 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  python-lint:
+    name: Python Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black isort mypy
+
+    - name: Run Ruff
+      run: |
+        ruff check backend/app --exclude backend/app/migrations
+      continue-on-error: false
+
+    - name: Run Black (check only)
+      run: |
+        black --check backend/app
+      continue-on-error: true
+
+    - name: Run isort (check only)
+      run: |
+        isort --check-only backend/app
+      continue-on-error: true
+
+    - name: Annotate code with lint issues
+      if: failure()
+      run: |
+        echo "::notice::Linting failed. Run 'ruff check --fix' and 'black .' locally to fix."
+
+  flutter-lint:
+    name: Flutter Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.24.5'
+        channel: 'stable'
+        cache: true
+
+    - name: Get dependencies
+      working-directory: ./mobile
+      run: flutter pub get
+
+    - name: Run Flutter analyze
+      working-directory: ./mobile
+      run: flutter analyze --no-fatal-infos
+
+    - name: Check formatting
+      working-directory: ./mobile
+      run: dart format --set-exit-if-changed lib test
+
+    - name: Annotate code with lint issues
+      if: failure()
+      run: |
+        echo "::notice::Flutter linting failed. Run 'dart format .' locally to fix."
+
+  markdown-lint:
+    name: Markdown Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Markdown Lint
+      uses: articulate/actions-markdownlint@v1
+      with:
+        config: .markdownlint.json
+        files: '**/*.md'
+        ignore: node_modules
+      continue-on-error: true
+
+  yaml-lint:
+    name: YAML Linting
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: YAML Lint
+      uses: ibiqlik/action-yamllint@v3
+      with:
+        file_or_dir: .github/workflows
+        config_file: .yamllint.yml
+        strict: false
+      continue-on-error: true
+
+  lint-summary:
+    name: Lint Summary
+    runs-on: ubuntu-latest
+    needs: [python-lint, flutter-lint, markdown-lint, yaml-lint]
+    if: always()
+
+    steps:
+    - name: Generate summary
+      run: |
+        echo "# Lint Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Linter | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Python (Ruff/Black) | ${{ needs.python-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Flutter (Analyze/Format) | ${{ needs.flutter-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| Markdown | ${{ needs.markdown-lint.result }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| YAML | ${{ needs.yaml-lint.result }} |" >> $GITHUB_STEP_SUMMARY
