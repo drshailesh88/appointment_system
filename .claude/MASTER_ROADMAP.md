@@ -36,11 +36,20 @@
 - None currently blocking development
 - SMS gateway (MSG91) integration pending for production
 
-✅ **RECENTLY RESOLVED:**
-- All test fixtures working
+✅ **RECENTLY RESOLVED (2026-01-05):**
+- Test suite converted to async patterns (SQLAlchemy 2.0 compatible)
+- UUID serialization fixed in all test files
+- Patient.name attribute references corrected
+- API trailing slash (307 redirect) issues fixed
+- Missing await statements fixed in async tests
+- Auth tests: 6/6 passing
+- Model tests: 15/15 passing
 - UUID/SQLite compatibility fixed
 - Import errors resolved
-- CI/CD pipeline operational
+
+🔄 **IN PROGRESS:**
+- Integration test async mocking (external services)
+- MissingGreenlet relationship loading in complex queries
 
 ---
 
