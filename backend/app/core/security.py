@@ -181,6 +181,93 @@ def verify_webhook_signature(
         return False
 
 
+def verify_meta_webhook_signature(
+    payload: bytes,
+    signature_header: str,
+    app_secret: str,
+) -> bool:
+    """
+    Verify Meta (Facebook/WhatsApp) webhook signature.
+
+    Meta sends: X-Hub-Signature-256: sha256=<signature>
+
+    Args:
+        payload: Raw request body bytes
+        signature_header: Full signature header value (e.g., "sha256=abc123")
+        app_secret: Meta App Secret
+
+    Returns:
+        True if signature is valid
+    """
+    try:
+        import hashlib
+        import hmac
+
+        # Extract signature from header (format: "sha256=<signature>")
+        if not signature_header or "=" not in signature_header:
+            return False
+
+        algorithm, signature = signature_header.split("=", 1)
+
+        if algorithm != "sha256":
+            return False
+
+        # Calculate expected signature
+        expected_signature = hmac.new(
+            app_secret.encode(),
+            payload,
+            hashlib.sha256,
+        ).hexdigest()
+
+        return hmac.compare_digest(expected_signature, signature)
+    except Exception:
+        return False
+
+
+def verify_twilio_signature(
+    url: str,
+    params: dict[str, str],
+    signature: str,
+    auth_token: str,
+) -> bool:
+    """
+    Verify Twilio webhook signature.
+
+    Twilio computes signature as: base64(hmac-sha1(url + sorted params))
+
+    Args:
+        url: Full webhook URL (including protocol and domain)
+        params: POST parameters as dict
+        signature: X-Twilio-Signature header value
+        auth_token: Twilio Auth Token
+
+    Returns:
+        True if signature is valid
+    """
+    try:
+        import base64
+        import hashlib
+        import hmac
+
+        # Sort params and concatenate to URL
+        data = url
+        for key in sorted(params.keys()):
+            data += key + params[key]
+
+        # Calculate expected signature
+        expected_signature = base64.b64encode(
+            hmac.new(
+                auth_token.encode("utf-8"),
+                data.encode("utf-8"),
+                hashlib.sha1,
+            ).digest()
+        ).decode("utf-8")
+
+        return hmac.compare_digest(expected_signature, signature)
+    except Exception:
+        return False
+
+
 def sanitize_filename(filename: str) -> str:
     """
     Sanitize filename to prevent path traversal and injection attacks.

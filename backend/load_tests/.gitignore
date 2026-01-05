@@ -1,0 +1,18 @@
+# Load test artifacts
+reports/
+*.log
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Locust
+.locust_cache/
+
+# Reports
+*.html
+*.csv
+*.json

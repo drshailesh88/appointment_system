@@ -123,6 +123,10 @@ app = FastAPI(
 # Security headers middleware
 app.add_middleware(SecurityHeadersMiddleware)
 
+# Audit logging middleware (must be before CORS)
+from app.middleware.audit import AuditLoggingMiddleware
+app.add_middleware(AuditLoggingMiddleware)
+
 # CORS middleware with specific configuration
 allowed_methods = ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
 allowed_headers = [

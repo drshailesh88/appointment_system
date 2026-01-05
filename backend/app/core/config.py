@@ -100,7 +100,7 @@ class Settings(BaseSettings):
     whatsapp_api_url: str | None = None
     whatsapp_api_token: str | None = None
     whatsapp_verify_token: str | None = None  # For webhook verification
-    whatsapp_webhook_secret: str | None = None  # Optional additional security
+    whatsapp_app_secret: str | None = None  # Meta App Secret for signature verification
 
     # Razorpay (UPI Payments)
     razorpay_key_id: str | None = None
