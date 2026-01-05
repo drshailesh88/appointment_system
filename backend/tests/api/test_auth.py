@@ -12,7 +12,7 @@ class TestAuth:
     async def test_login_success(self, client: AsyncClient, test_user):
         """Test successful login."""
         response = await client.post(
-            "/api/v1/auth/login/",
+            "/api/v1/auth/login",
             data={
                 "username": test_user.email,
                 "password": "testpassword123",
@@ -27,7 +27,7 @@ class TestAuth:
     async def test_login_wrong_password(self, client: AsyncClient, test_user):
         """Test login with wrong password."""
         response = await client.post(
-            "/api/v1/auth/login/",
+            "/api/v1/auth/login",
             data={
                 "username": test_user.email,
                 "password": "wrongpassword",
@@ -39,7 +39,7 @@ class TestAuth:
     async def test_login_nonexistent_user(self, client: AsyncClient):
         """Test login with non-existent user."""
         response = await client.post(
-            "/api/v1/auth/login/",
+            "/api/v1/auth/login",
             data={
                 "username": "nonexistent@test.com",
                 "password": "anypassword",

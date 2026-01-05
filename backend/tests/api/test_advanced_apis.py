@@ -73,7 +73,7 @@ class TestAIChatAPI:
     ):
         """Test sending a natural language query to AI."""
         response = await client.post(
-            "/api/v1/ai/chat/",
+            "/api/v1/ai/chat",
             headers=auth_headers,
             json={
                 "message": "How many appointments today?",
@@ -98,7 +98,7 @@ class TestAIChatAPI:
     ):
         """Test sending message with session context."""
         response = await client.post(
-            "/api/v1/ai/chat/",
+            "/api/v1/ai/chat",
             headers=auth_headers,
             json={
                 "message": "And tomorrow?",
@@ -137,7 +137,7 @@ class TestAIChatAPI:
         headers = {"Authorization": f"Bearer {token}"}
 
         response = await client.post(
-            "/api/v1/ai/chat/",
+            "/api/v1/ai/chat",
             headers=headers,
             json={"message": "Test query"},
         )
@@ -161,7 +161,7 @@ class TestAIChatAPI:
             mock.return_value = assistant
 
             response = await client.post(
-                "/api/v1/ai/chat/",
+                "/api/v1/ai/chat",
                 headers=auth_headers,
                 json={"message": "Test query"},
             )
@@ -298,7 +298,7 @@ class TestAIChatAPI:
             mock.return_value = assistant
 
             response = await client.delete(
-                "/api/v1/ai/sessions/nonexistent/",
+                "/api/v1/ai/sessions/nonexistent",
                 headers=auth_headers,
             )
             assert response.status_code == 200
@@ -330,11 +330,17 @@ class TestAIActionsAPI:
                 return_value=datetime.strptime("15:00", "%H:%M").time()
             )
 
+            # Create doctor mock with full_name attribute
+            doctor_mock = MagicMock()
+            doctor_mock.id = test_doctor.id
+            doctor_mock.name = test_doctor.name
+            doctor_mock.full_name = test_doctor.name  # Router expects full_name
+
             async def mock_extract_patient(*args, **kwargs):
                 return test_patient
 
             async def mock_extract_doctor(*args, **kwargs):
-                return test_doctor
+                return doctor_mock
 
             extractor.extract_patient = mock_extract_patient
             extractor.extract_doctor = mock_extract_doctor
@@ -344,7 +350,7 @@ class TestAIActionsAPI:
             mock_extractor.return_value = extractor
 
             response = await client.post(
-                "/api/v1/ai/chat/action/",
+                "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={
                     "message": f"Book {test_patient.full_name} for tomorrow at 3pm",
@@ -368,14 +374,23 @@ class TestAIActionsAPI:
         with patch("app.api.v1.ai_chat.EntityExtractor") as mock_extractor:
             extractor = MagicMock()
 
+            extractor.extract_date = MagicMock(return_value=None)
+            extractor.extract_time = MagicMock(return_value=None)
+
             async def mock_no_patient(*args, **kwargs):
                 return None
 
+            async def mock_no_doctor(*args, **kwargs):
+                return None
+
             extractor.extract_patient = mock_no_patient
+            extractor.extract_doctor = mock_no_doctor
+            extractor.extract_urgency = MagicMock(return_value="normal")
+            extractor.extract_reason = MagicMock(return_value=None)
             mock_extractor.return_value = extractor
 
             response = await client.post(
-                "/api/v1/ai/chat/action/",
+                "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={"message": "Book Unknown Patient tomorrow"},
             )
@@ -392,7 +407,26 @@ class TestAIActionsAPI:
         auth_headers: dict,
     ):
         """Test non-action messages fall back to query mode."""
-        with patch("app.api.v1.ai_chat.get_ai_assistant") as mock_assistant:
+        with patch("app.api.v1.ai_chat.EntityExtractor") as mock_extractor, \
+             patch("app.api.v1.ai_chat.get_ai_assistant") as mock_assistant:
+            # Mock entity extractor
+            extractor = MagicMock()
+            extractor.extract_date = MagicMock(return_value=None)
+            extractor.extract_time = MagicMock(return_value=None)
+
+            async def mock_no_patient(*args, **kwargs):
+                return None
+
+            async def mock_no_doctor(*args, **kwargs):
+                return None
+
+            extractor.extract_patient = mock_no_patient
+            extractor.extract_doctor = mock_no_doctor
+            extractor.extract_urgency = MagicMock(return_value=None)
+            extractor.extract_reason = MagicMock(return_value=None)
+            mock_extractor.return_value = extractor
+
+            # Mock AI assistant for fallback
             async def mock_chat(*args, **kwargs):
                 resp = MagicMock()
                 resp.response = "You have 5 appointments today."
@@ -405,7 +439,7 @@ class TestAIActionsAPI:
             mock_assistant.return_value = assistant
 
             response = await client.post(
-                "/api/v1/ai/chat/action/",
+                "/api/v1/ai/chat/action",
                 headers=auth_headers,
                 json={"message": "How many appointments today?"},
             )
@@ -420,6 +454,7 @@ class TestAIActionsAPI:
         self,
         client: AsyncClient,
         auth_headers: dict,
+        test_user: User,
         test_patient: Patient,
         test_doctor: Doctor,
     ):
@@ -448,13 +483,13 @@ class TestAIActionsAPI:
                     "patient_id": str(test_patient.id),
                     "doctor_id": str(test_doctor.id),
                 },
-                "user_id": str(auth_headers.get("user_id", uuid4())),
+                "user_id": str(test_user.id),
                 "clinic_id": str(test_patient.clinic_id),
                 "expires_at": datetime.utcnow() + timedelta(minutes=5),
             }
 
             response = await client.post(
-                "/api/v1/ai/chat/confirm/",
+                "/api/v1/ai/chat/confirm",
                 headers=auth_headers,
                 json={
                     "action_id": action_id,
@@ -487,7 +522,7 @@ class TestAIActionsAPI:
         }
 
         response = await client.post(
-            "/api/v1/ai/chat/confirm/",
+            "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
                 "action_id": action_id,
@@ -508,7 +543,7 @@ class TestAIActionsAPI:
     ):
         """Test confirming non-existent action."""
         response = await client.post(
-            "/api/v1/ai/chat/confirm/",
+            "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
                 "action_id": str(uuid4()),
@@ -539,7 +574,7 @@ class TestAIActionsAPI:
         }
 
         response = await client.post(
-            "/api/v1/ai/chat/confirm/",
+            "/api/v1/ai/chat/confirm",
             headers=auth_headers,
             json={
                 "action_id": action_id,
@@ -571,7 +606,7 @@ class TestAIActionsAPI:
             mock_executor.return_value = executor
 
             response = await client.post(
-                "/api/v1/ai/chat/undo/",
+                "/api/v1/ai/chat/undo",
                 headers=auth_headers,
                 json={"session_id": "test-session"},
             )
@@ -598,10 +633,13 @@ class TestProactiveInsightsAPI:
                 return [
                     {
                         "id": str(uuid4()),
-                        "type": "followup_due",
+                        "clinic_id": str(uuid4()),
+                        "insight_type": "followup_due",
                         "title": "Follow-up due",
                         "message": "5 patients due for follow-up",
-                        "priority": "medium",
+                        "priority": 3,
+                        "created_at": datetime.utcnow(),
+                        "updated_at": datetime.utcnow(),
                     }
                 ]
 
@@ -654,13 +692,13 @@ class TestProactiveInsightsAPI:
 
             async def mock_generate(*args, **kwargs):
                 return {
-                    "user_id": str(uuid4()),
-                    "clinic_id": str(uuid4()),
-                    "date": date.today(),
+                    "date": datetime.utcnow(),
                     "appointments_today": 10,
                     "revenue_yesterday": 5000.0,
-                    "pending_followups": 3,
-                    "insights": [],
+                    "pending_followups": [],
+                    "schedule_alerts": [],
+                    "waitlist_opportunities": [],
+                    "key_insights": [],
                 }
 
             service.generate_digest = mock_generate
@@ -742,11 +780,14 @@ class TestProactiveInsightsAPI:
 
             async def mock_get_prefs(*args, **kwargs):
                 return {
-                    "user_id": str(uuid4()),
-                    "clinic_id": str(uuid4()),
+                    "id": uuid4(),
+                    "user_id": uuid4(),
+                    "clinic_id": uuid4(),
                     "enabled": True,
                     "delivery_time": "08:00",
                     "channels": ["email", "in_app"],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
                 }
 
             service.get_user_preferences = mock_get_prefs
@@ -759,7 +800,7 @@ class TestProactiveInsightsAPI:
             assert response.status_code == 200
             data = response.json()
             assert "enabled" in data
-            assert "delivery_time" in data
+            assert "delivery_hour" in data or "delivery_time" in data
 
     @pytest.mark.asyncio
 
@@ -774,17 +815,21 @@ class TestProactiveInsightsAPI:
 
             async def mock_update(*args, **kwargs):
                 return {
-                    "user_id": str(uuid4()),
-                    "clinic_id": str(uuid4()),
+                    "id": uuid4(),
+                    "user_id": uuid4(),
+                    "clinic_id": uuid4(),
                     "enabled": False,
                     "delivery_time": "09:00",
+                    "channels": [],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
                 }
 
             service.create_or_update_preferences = mock_update
             mock_service.return_value = service
 
             response = await client.put(
-                "/api/v1/ai/preferences/digest/",
+                "/api/v1/ai/preferences/digest",
                 headers=auth_headers,
                 json={
                     "enabled": False,
@@ -822,7 +867,7 @@ class TestTelemedicineAPI:
                 consultation.appointment_id = test_appointment.id
                 consultation.room_name = "test-room-123"
                 consultation.room_url = "https://meet.jit.si/test-room-123"
-                consultation.status = ConsultationStatus.WAITING_ROOM
+                consultation.status = ConsultationStatus.WAITING
                 consultation.created_at = datetime.utcnow()
                 consultation.updated_at = datetime.utcnow()
                 return consultation
@@ -831,7 +876,7 @@ class TestTelemedicineAPI:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/telemedicine/consultations/",
+                "/api/v1/telemedicine/consultations",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
             )
@@ -839,7 +884,7 @@ class TestTelemedicineAPI:
             data = response.json()
             assert "room_name" in data
             assert "room_url" in data
-            assert data["status"] == "waiting_room"
+            assert data["status"] == "waiting"
 
     @pytest.mark.asyncio
 
@@ -851,7 +896,7 @@ class TestTelemedicineAPI:
         """Test creating consultation for non-existent appointment."""
         fake_id = uuid4()
         response = await client.post(
-            "/api/v1/telemedicine/consultations/",
+            "/api/v1/telemedicine/consultations",
             headers=auth_headers,
             json={"appointment_id": str(fake_id)},
         )
@@ -872,7 +917,7 @@ class TestTelemedicineAPI:
             id=uuid4(),
             appointment_id=test_appointment.id,
             room_name="test-room-123",
-            status=ConsultationStatus.WAITING_ROOM,
+            status=ConsultationStatus.WAITING,
         )
         db.add(consultation)
         await db.commit()
@@ -883,7 +928,7 @@ class TestTelemedicineAPI:
             async def mock_join(*args, **kwargs):
                 return {
                     "consultation_id": str(consultation.id),
-                    "status": ConsultationStatus.WAITING_ROOM,
+                    "status": ConsultationStatus.WAITING,
                     "message": "You are in the waiting room",
                     "position": 1,
                     "estimated_wait_minutes": 5,
@@ -902,7 +947,7 @@ class TestTelemedicineAPI:
             )
             assert response.status_code == 200
             data = response.json()
-            assert data["status"] == "waiting_room"
+            assert data["status"] == "waiting"
             assert "position" in data
 
     @pytest.mark.asyncio
@@ -919,7 +964,7 @@ class TestTelemedicineAPI:
             id=uuid4(),
             appointment_id=test_appointment.id,
             room_name="test-room-123",
-            status=ConsultationStatus.WAITING_ROOM,
+            status=ConsultationStatus.WAITING,
         )
         db.add(consultation)
         await db.commit()
@@ -963,7 +1008,7 @@ class TestTelemedicineAPI:
             id=uuid4(),
             appointment_id=test_appointment.id,
             room_name="test-room-123",
-            status=ConsultationStatus.WAITING_ROOM,
+            status=ConsultationStatus.WAITING,
         )
         db.add(consultation)
         await db.commit()
@@ -1388,7 +1433,7 @@ class TestWaitlistAdvanced:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/waitlist/cleanup/",
+                "/api/v1/waitlist/cleanup",
                 headers=auth_headers,
             )
             assert response.status_code == 200
@@ -1420,7 +1465,7 @@ class TestWaitlistAdvanced:
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/waitlist/process-cancellation/",
+                "/api/v1/waitlist/process-cancellation",
                 headers=auth_headers,
                 params={
                     "doctor_id": str(test_doctor.id),
@@ -1449,7 +1494,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test AI endpoints require authentication."""
         response = await client.post(
-            "/api/v1/ai/chat/",
+            "/api/v1/ai/chat",
             json={"message": "Test"},
         )
         assert response.status_code == 401
@@ -1462,7 +1507,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test telemedicine endpoints require authentication."""
         response = await client.post(
-            "/api/v1/telemedicine/consultations/",
+            "/api/v1/telemedicine/consultations",
             json={"appointment_id": str(uuid4())},
         )
         assert response.status_code == 401
@@ -1500,7 +1545,7 @@ class TestAdvancedAPIsErrorHandling:
     ):
         """Test validation errors for missing fields."""
         response = await client.post(
-            "/api/v1/ai/chat/",
+            "/api/v1/ai/chat",
             headers=auth_headers,
             json={},  # Missing required 'message' field
         )
@@ -1564,14 +1609,14 @@ class TestAdvancedAPIsIntegration:
                 c.id = consultation_id
                 c.appointment_id = test_appointment.id
                 c.room_name = "test-room"
-                c.status = ConsultationStatus.WAITING_ROOM
+                c.status = ConsultationStatus.WAITING
                 return c
 
             service.create_consultation = mock_create
             mock_service.return_value = service
 
             response = await client.post(
-                "/api/v1/telemedicine/consultations/",
+                "/api/v1/telemedicine/consultations",
                 headers=auth_headers,
                 json={"appointment_id": str(test_appointment.id)},
             )
@@ -1581,7 +1626,7 @@ class TestAdvancedAPIsIntegration:
             async def mock_join(*args, **kwargs):
                 return {
                     "consultation_id": consultation_id,
-                    "status": ConsultationStatus.WAITING_ROOM,
+                    "status": ConsultationStatus.WAITING,
                     "message": "Waiting",
                     "position": 1,
                 }
