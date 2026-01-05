@@ -30,14 +30,16 @@ class TestSMSTemplates:
         """Test reminder template exists."""
         assert MessageType.APPOINTMENT_REMINDER in SMS_TEMPLATES
         template = SMS_TEMPLATES[MessageType.APPOINTMENT_REMINDER]
-        assert "{patient_name}" in template["template"]
         assert "{doctor_name}" in template["template"]
+        assert "{date}" in template["template"]
+        assert "{time}" in template["template"]
 
     def test_cancellation_template(self):
         """Test cancellation template exists."""
         assert MessageType.APPOINTMENT_CANCELLATION in SMS_TEMPLATES
         template = SMS_TEMPLATES[MessageType.APPOINTMENT_CANCELLATION]
-        assert "{patient_name}" in template["template"]
+        assert "{doctor_name}" in template["template"]
+        assert "{date}" in template["template"]
 
     def test_otp_template(self):
         """Test OTP template exists."""

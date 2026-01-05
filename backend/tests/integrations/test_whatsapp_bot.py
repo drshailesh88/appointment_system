@@ -162,8 +162,11 @@ class TestWhatsAppBot:
         mock_doctor.name = "Sharma"
         mock_doctor.specialization = "Cardiologist"
 
-        mock_result = AsyncMock()
-        mock_result.scalars.return_value.all.return_value = [mock_doctor]
+        # Use MagicMock for result since scalars() and all() are sync methods
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = [mock_doctor]
+        mock_result = MagicMock()
+        mock_result.scalars.return_value = mock_scalars
         mock_db.execute = AsyncMock(return_value=mock_result)
 
         response = await bot.handle_message(message, mock_db, clinic_id)

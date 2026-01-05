@@ -255,28 +255,37 @@ class TestRazorpayDataClasses:
 
     def test_razorpay_order_creation(self):
         """Test RazorpayOrder dataclass."""
+        from datetime import datetime, timezone
         order = RazorpayOrder(
-            id="order_123",
+            order_id="order_123",
             amount=50000,
             currency="INR",
             status="created",
             receipt="receipt_123",
+            created_at=datetime.now(timezone.utc),
         )
-        assert order.id == "order_123"
+        assert order.order_id == "order_123"
         assert order.amount == 50000
 
     def test_razorpay_payment_creation(self):
         """Test RazorpayPayment dataclass."""
+        from datetime import datetime, timezone
         payment = RazorpayPayment(
-            id="pay_123",
+            payment_id="pay_123",
             order_id="order_123",
             amount=50000,
             currency="INR",
             status="captured",
             method="upi",
+            email="test@example.com",
+            contact="+919876543210",
+            vpa="test@upi",
+            captured=True,
+            created_at=datetime.now(timezone.utc),
         )
-        assert payment.id == "pay_123"
+        assert payment.payment_id == "pay_123"
         assert payment.method == "upi"
+        assert payment.captured is True
 
 
 class TestAmountConversion:
