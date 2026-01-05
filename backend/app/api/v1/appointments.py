@@ -7,6 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import and_, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import CurrentUser, DbSession
@@ -29,6 +30,32 @@ from app.schemas.appointment import (
 )
 
 router = APIRouter()
+
+
+async def check_appointment_access(
+    db: AsyncSession,
+    appointment: Appointment,
+    current_user: "User",
+) -> None:
+    """
+    Verify that the current user has access to the appointment.
+
+    Raises HTTPException if access is denied.
+    """
+    if current_user.role == UserRole.ADMIN.value:
+        return  # Admins can access all appointments
+
+    # Get doctor to check clinic_id
+    doctor_result = await db.execute(
+        select(Doctor).where(Doctor.id == appointment.doctor_id)
+    )
+    doctor = doctor_result.scalar_one_or_none()
+
+    if doctor and doctor.clinic_id != current_user.clinic_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied to this appointment",
+        )
 
 
 @router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
@@ -257,6 +284,9 @@ async def get_appointment(
             detail="Appointment not found",
         )
 
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
+
     return appointment
 
 
@@ -278,6 +308,9 @@ async def update_appointment(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
+
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
 
     update_data = appointment_in.model_dump(exclude_unset=True)
 
@@ -318,6 +351,9 @@ async def check_in_patient(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
+
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
 
     if appointment.status != AppointmentStatus.SCHEDULED.value:
         raise HTTPException(
@@ -370,6 +406,9 @@ async def start_consultation(
             detail="Appointment not found",
         )
 
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
+
     if appointment.status != AppointmentStatus.CHECKED_IN.value:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -403,6 +442,9 @@ async def complete_consultation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
+
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
 
     if appointment.status != AppointmentStatus.IN_PROGRESS.value:
         raise HTTPException(
@@ -444,6 +486,9 @@ async def cancel_appointment(
             detail="Appointment not found",
         )
 
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
+
     if appointment.status in [
         AppointmentStatus.COMPLETED.value,
         AppointmentStatus.CANCELLED.value,
@@ -480,6 +525,9 @@ async def mark_no_show(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Appointment not found",
         )
+
+    # SECURITY FIX: Check clinic access
+    await check_appointment_access(db, appointment, current_user)
 
     appointment.status = AppointmentStatus.NO_SHOW.value
 

@@ -8,10 +8,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import JSONB as PG_JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import BaseModel
+from app.models.types import JSONB
 
 if TYPE_CHECKING:
     from app.models.doctor import Doctor
@@ -128,7 +129,7 @@ class LabOrder(BaseModel):
     lab_order_id: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
 
     # Metadata
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    meta_data: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Relationships
     patient: Mapped["Patient"] = relationship("Patient", back_populates="lab_orders")
@@ -217,7 +218,7 @@ class LabResult(BaseModel):
     methodology: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Metadata
-    metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    meta_data: Mapped[dict[str, Any] | None] = mapped_column("metadata", JSONB, nullable=True)
 
     # Relationships
     order: Mapped["LabOrder"] = relationship("LabOrder", back_populates="results")

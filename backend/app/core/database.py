@@ -2,6 +2,7 @@
 Database configuration and session management.
 """
 
+import os
 from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
@@ -10,15 +11,28 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import StaticPool
 
 from app.core.config import settings
 
-# Create async engine
+# Create async engine with conditional pool settings
+engine_kwargs = {
+    "echo": settings.debug,
+}
+
+# Only add pool settings for PostgreSQL, not SQLite
+if "sqlite" in settings.async_database_url:
+    # SQLite specific settings
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+    engine_kwargs["poolclass"] = StaticPool
+else:
+    # PostgreSQL pool settings
+    engine_kwargs["pool_size"] = settings.database_pool_size
+    engine_kwargs["max_overflow"] = settings.database_max_overflow
+
 engine = create_async_engine(
     settings.async_database_url,
-    echo=settings.debug,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
+    **engine_kwargs,
 )
 
 # Session factory

@@ -9,7 +9,9 @@ from uuid import uuid4
 from app.integrations.whatsapp_bot import (
     WhatsAppBot,
     ConversationState,
-    MessageIntent,
+    MessageType,
+    WhatsAppMessage,
+    ConversationContext,
     get_whatsapp_bot,
 )
 
@@ -17,36 +19,17 @@ from app.integrations.whatsapp_bot import (
 class TestWhatsAppBot:
     """Tests for WhatsAppBot."""
 
-    @pytest.fixture
-    def mock_db(self):
-        """Create mock database session."""
-        return AsyncMock()
-
-    @pytest.fixture
-    def mock_sms_service(self):
-        """Create mock SMS service."""
-        service = AsyncMock()
-        service.send_whatsapp = AsyncMock()
-        return service
-
-    @pytest.fixture
-    def mock_nlu_engine(self):
-        """Create mock NLU engine."""
-        return AsyncMock()
-
-    @pytest.fixture
-    def bot(self, mock_db, mock_sms_service, mock_nlu_engine):
-        """Create WhatsApp bot with mocks."""
-        bot = WhatsAppBot(mock_db)
-        bot.sms_service = mock_sms_service
-        bot.nlu_engine = mock_nlu_engine
-        return bot
-
-    def test_initialization(self, mock_db):
+    def test_initialization(self):
         """Test bot initialization."""
-        bot = WhatsAppBot(mock_db)
-        assert bot.db == mock_db
-        assert bot.conversations == {}
+        bot = WhatsAppBot(
+            api_url="https://test.api.com",
+            api_token="test_token",
+            phone_number_id="12345",
+        )
+        assert bot.api_url == "https://test.api.com"
+        assert bot.api_token == "test_token"
+        assert bot.phone_number_id == "12345"
+        assert bot._conversations == {}
 
     @pytest.mark.asyncio
     async def test_parse_webhook_msg91(self, bot):

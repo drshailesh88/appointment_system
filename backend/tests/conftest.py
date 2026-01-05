@@ -3,23 +3,28 @@ Pytest configuration and fixtures for the test suite.
 """
 import os
 import sys
-from datetime import datetime, timedelta
-from typing import Generator
+from datetime import datetime, timedelta, timezone
+from typing import AsyncGenerator, Generator
 from uuid import uuid4
 
 import pytest
+import pytest_asyncio
+from httpx import AsyncClient
+from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Set test environment BEFORE importing app modules
 os.environ["TESTING"] = "1"
-os.environ["DATABASE_URL"] = "postgresql+asyncpg://postgres:postgres@localhost:5432/test_docassist"
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///:memory:"
 os.environ["SECRET_KEY"] = "test-secret-key-for-testing-only"
 os.environ["JWT_SECRET_KEY"] = "test-jwt-secret-key-for-testing-only"
+os.environ["RAZORPAY_KEY_ID"] = "rzp_test_123456"
+os.environ["RAZORPAY_KEY_SECRET"] = "test_secret_key_12345678"
 
 # Now we can import app modules
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.core.security import get_password_hash, create_access_token
 from app.models.base import Base
@@ -33,14 +38,27 @@ from app.models.invoice import Invoice
 from app.models.payment import Payment
 
 
-# Create test engine with SQLite (in-memory)
+# Synchronous engine for simple tests
 TEST_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(
+sync_engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sync_engine)
+
+# Async engine for async tests
+ASYNC_TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
+async_engine = create_async_engine(
+    ASYNC_TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+AsyncTestingSessionLocal = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 
 def override_get_db():
@@ -52,24 +70,43 @@ def override_get_db():
         db.close()
 
 
+async def override_get_async_db():
+    """Override async database dependency for tests."""
+    async with AsyncTestingSessionLocal() as session:
+        yield session
+
+
 @pytest.fixture(scope="function")
 def db() -> Generator[Session, None, None]:
-    """Create a fresh database for each test."""
-    Base.metadata.create_all(bind=engine)
+    """Create a fresh database for each test (sync)."""
+    Base.metadata.create_all(bind=sync_engine)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=sync_engine)
+
+
+@pytest_asyncio.fixture(scope="function")
+async def async_db() -> AsyncGenerator[AsyncSession, None]:
+    """Create a fresh database for each test (async)."""
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncTestingSessionLocal() as session:
+        yield session
+
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
 
 
 @pytest.fixture(scope="function")
 def client(db: Session) -> Generator[TestClient, None, None]:
-    """Create a test client with database override."""
+    """Create a test client with database override (sync)."""
     # Import app here to avoid circular imports
     from app.main import app
-    from app.core.database import get_db
+    from app.api.deps import get_db
 
     app.dependency_overrides[get_db] = lambda: db
     with TestClient(app) as c:
@@ -77,12 +114,28 @@ def client(db: Session) -> Generator[TestClient, None, None]:
     app.dependency_overrides.clear()
 
 
+@pytest_asyncio.fixture(scope="function")
+async def async_client(async_db: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    """Create an async test client with database override."""
+    from app.main import app
+    from app.api.deps import get_db
+
+    async def override_db():
+        yield async_db
+
+    app.dependency_overrides[get_db] = override_db
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+    app.dependency_overrides.clear()
+
+
 @pytest.fixture
 def test_clinic(db: Session) -> Clinic:
     """Create a test clinic."""
     clinic = Clinic(
-        id=str(uuid4()),
+        id=uuid4(),
         name="Test Clinic",
+        slug="test-clinic",
         address="123 Test Street",
         city="Mumbai",
         state="Maharashtra",
@@ -101,7 +154,7 @@ def test_clinic(db: Session) -> Clinic:
 def test_user(db: Session, test_clinic: Clinic) -> User:
     """Create a test admin user."""
     user = User(
-        id=str(uuid4()),
+        id=uuid4(),
         email="admin@test.com",
         phone="+919876543210",
         hashed_password=get_password_hash("testpassword123"),
@@ -121,7 +174,7 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
     """Create a test doctor."""
     # Create a user for the doctor
     user = User(
-        id=str(uuid4()),
+        id=uuid4(),
         email="doctor@test.com",
         phone="+919876543211",
         hashed_password=get_password_hash("doctorpass123"),
@@ -134,7 +187,7 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
     db.commit()
 
     doctor = Doctor(
-        id=str(uuid4()),
+        id=uuid4(),
         user_id=user.id,
         clinic_id=test_clinic.id,
         name="Dr. Test Doctor",
@@ -145,11 +198,11 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
         followup_fee=300.0,
         slot_duration=15,
         working_hours={
-            "monday": {"start": "09:00", "end": "17:00"},
-            "tuesday": {"start": "09:00", "end": "17:00"},
-            "wednesday": {"start": "09:00", "end": "17:00"},
-            "thursday": {"start": "09:00", "end": "17:00"},
-            "friday": {"start": "09:00", "end": "17:00"},
+            "monday": [{"start": "09:00", "end": "17:00"}],
+            "tuesday": [{"start": "09:00", "end": "17:00"}],
+            "wednesday": [{"start": "09:00", "end": "17:00"}],
+            "thursday": [{"start": "09:00", "end": "17:00"}],
+            "friday": [{"start": "09:00", "end": "17:00"}],
         },
         is_active=True,
     )
@@ -163,7 +216,7 @@ def test_doctor(db: Session, test_clinic: Clinic) -> Doctor:
 def test_patient(db: Session, test_clinic: Clinic) -> Patient:
     """Create a test patient."""
     patient = Patient(
-        id=str(uuid4()),
+        id=uuid4(),
         clinic_id=test_clinic.id,
         name="Test Patient",
         phone="+919876543212",
@@ -184,7 +237,7 @@ def test_patient(db: Session, test_clinic: Clinic) -> Patient:
 def test_service(db: Session, test_clinic: Clinic) -> Service:
     """Create a test service."""
     service = Service(
-        id=str(uuid4()),
+        id=uuid4(),
         clinic_id=test_clinic.id,
         name="General Consultation",
         description="Standard doctor consultation",
@@ -201,23 +254,21 @@ def test_service(db: Session, test_clinic: Clinic) -> Service:
 @pytest.fixture
 def test_appointment(
     db: Session,
-    test_clinic: Clinic,
     test_doctor: Doctor,
     test_patient: Patient,
 ) -> Appointment:
     """Create a test appointment."""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
     start_time = now.replace(hour=10, minute=0, second=0, microsecond=0)
     if start_time < now:
         start_time += timedelta(days=1)
 
     appointment = Appointment(
-        id=str(uuid4()),
-        clinic_id=test_clinic.id,
         doctor_id=test_doctor.id,
         patient_id=test_patient.id,
-        start_time=start_time,
-        end_time=start_time + timedelta(minutes=15),
+        scheduled_start=start_time,
+        scheduled_end=start_time + timedelta(minutes=15),
+        duration_minutes=15,
         status="scheduled",
         appointment_type="new_consultation",
         chief_complaint="General checkup",

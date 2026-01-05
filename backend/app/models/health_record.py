@@ -63,7 +63,7 @@ class HealthRecord(BaseModel):
     device_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     # Additional data
-    metadata: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    metadata_json: Mapped[dict | None] = mapped_column("metadata_json", JSON, nullable=True)
 
     # Relationships
     patient: Mapped["Patient"] = relationship(
