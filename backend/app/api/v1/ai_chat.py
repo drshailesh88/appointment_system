@@ -114,8 +114,8 @@ async def send_chat_message(
 
 @router.get("/sessions/{session_id}", response_model=SessionHistoryResponse)
 async def get_session_history(
+    current_user: CurrentUser,
     session_id: str = Path(..., description="Session ID"),
-    current_user: CurrentUser = Depends(),
 ):
     """
     Get conversation history for a session.
@@ -157,8 +157,8 @@ async def get_session_history(
 
 @router.delete("/sessions/{session_id}", response_model=SessionClearResponse)
 async def clear_session(
+    current_user: CurrentUser,
     session_id: str = Path(..., description="Session ID"),
-    current_user: CurrentUser = Depends(),
 ):
     """
     Clear a conversation session.

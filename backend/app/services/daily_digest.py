@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.appointment import Appointment
 from app.models.insight import InsightType, UserDigestPreferences
 from app.models.payment import Payment
-from app.models.waitlist import WaitlistEntry
+from app.models.waitlist import Waitlist
 from app.schemas.insights import DailyDigest
 from app.services.proactive_insights import ProactiveInsightsEngine
 
@@ -320,10 +320,10 @@ class DailyDigestService:
         clinic_id: UUID,
     ) -> int:
         """Get active waitlist count."""
-        stmt = select(func.count(WaitlistEntry.id)).where(
+        stmt = select(func.count(Waitlist.id)).where(
             and_(
-                WaitlistEntry.clinic_id == clinic_id,
-                WaitlistEntry.status == "waiting",
+                Waitlist.clinic_id == clinic_id,
+                Waitlist.status == "waiting",
             )
         )
 

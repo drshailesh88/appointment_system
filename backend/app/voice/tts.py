@@ -11,14 +11,27 @@ Chatterbox is a state-of-the-art zero-shot voice cloning TTS system that:
 Reference: https://github.com/resemble-ai/chatterbox
 """
 
+from __future__ import annotations
+
 import io
 import logging
 import tempfile
 import wave
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-import torch
+if TYPE_CHECKING:
+    import torch
+
+# Optional PyTorch import - not required for tests
+try:
+    import torch
+    import torchaudio
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    torch = None
+    torchaudio = None
 
 logger = logging.getLogger(__name__)
 
@@ -67,7 +80,10 @@ class ChatterboxTTS:
             device: "cuda" or "cpu" (auto-detected if None)
             voice_sample_path: Path to reference voice audio for cloning
         """
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        if TORCH_AVAILABLE and torch is not None:
+            self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        else:
+            self.device = device or "cpu"
         self.voice_sample_path = voice_sample_path
         self._model = None
         self._model_loaded = False
@@ -75,6 +91,15 @@ class ChatterboxTTS:
     def _load_model(self):
         """Lazy load the Chatterbox model."""
         if self._model_loaded:
+            return
+
+        if not TORCH_AVAILABLE:
+            logger.warning(
+                "PyTorch is not installed. TTS will use fallback mode. "
+                "For full TTS features, install with: pip install torch torchaudio"
+            )
+            self._model = None
+            self._model_loaded = True
             return
 
         try:
@@ -161,9 +186,13 @@ class ChatterboxTTS:
             logger.error(f"Chatterbox synthesis error: {e}")
             return self._synthesize_fallback(text, speed)
 
-    def _tensor_to_wav(self, wav_tensor: torch.Tensor, speed: float = 1.0) -> bytes:
+    def _tensor_to_wav(self, wav_tensor, speed: float = 1.0) -> bytes:
         """Convert PyTorch tensor to WAV bytes."""
-        import torchaudio
+        if not TORCH_AVAILABLE or torchaudio is None:
+            raise ImportError(
+                "PyTorch and torchaudio are required for TTS tensor conversion. "
+                "Install with: pip install torch torchaudio"
+            )
 
         # Adjust sample rate for speed
         sample_rate = int(DEFAULT_SAMPLE_RATE * speed)

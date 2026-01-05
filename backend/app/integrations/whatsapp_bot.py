@@ -59,6 +59,21 @@ class ConversationState(str, Enum):
     CHECK_STATUS = "check_status"
 
 
+class MessageIntent(str, Enum):
+    """
+    Message intents for WhatsApp bot.
+
+    Maps to NLU Intent enum for processing user messages.
+    """
+    BOOK_APPOINTMENT = "book_appointment"
+    CANCEL_APPOINTMENT = "cancel_appointment"
+    RESCHEDULE = "reschedule"
+    CHECK_STATUS = "check_status"
+    GREETING = "greeting"
+    HELP = "help"
+    UNKNOWN = "unknown"
+
+
 @dataclass
 class WhatsAppMessage:
     """Incoming WhatsApp message."""

@@ -99,9 +99,9 @@ async def register_device_token(
 
 @router.delete("/unregister", status_code=status.HTTP_204_NO_CONTENT)
 async def unregister_device_token(
+    db: DbSession,
+    current_user: CurrentUser,
     device_token: str = Query(..., min_length=10),
-    db: DbSession = Depends(),
-    current_user: CurrentUser = Depends(),
 ):
     """
     Unregister a device token.
