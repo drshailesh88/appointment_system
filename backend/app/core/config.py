@@ -6,6 +6,7 @@ All settings can be overridden via environment variables.
 
 from functools import lru_cache
 from typing import Literal
+import os
 import warnings
 
 from pydantic import PostgresDsn, field_validator, model_validator
@@ -33,9 +34,30 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = ["http://localhost:3000", "http://localhost:8080"]
 
     # Database
-    database_url: PostgresDsn = "postgresql+asyncpg://postgres:postgres@localhost:5432/docassist"  # type: ignore
+    database_url: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docassist"
     database_pool_size: int = 5
     database_max_overflow: int = 10
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database URL - allow SQLite in testing mode."""
+        if not v:
+            raise ValueError("Database URL cannot be empty")
+
+        # Allow SQLite URLs in testing mode
+        if os.environ.get("TESTING") == "1":
+            if v.startswith(("sqlite", "postgresql")):
+                return v
+            raise ValueError(f"Invalid database URL for testing: {v}")
+
+        # In production/development, enforce PostgreSQL
+        if not v.startswith("postgresql"):
+            raise ValueError(
+                f"Database URL must start with 'postgresql', got: {v[:20]}..."
+            )
+
+        return v
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -158,12 +180,16 @@ class Settings(BaseSettings):
     @property
     def async_database_url(self) -> str:
         """Get async database URL."""
-        return str(self.database_url)
+        return self.database_url
 
     @property
     def sync_database_url(self) -> str:
         """Get sync database URL for Alembic."""
-        return str(self.database_url).replace("+asyncpg", "+psycopg2")
+        # Handle SQLite URLs (no need to replace driver)
+        if self.database_url.startswith("sqlite"):
+            return self.database_url.replace("+aiosqlite", "")
+        # Convert PostgreSQL async to sync
+        return self.database_url.replace("+asyncpg", "+psycopg2")
 
     @property
     def cors_origins(self) -> list[str]:
