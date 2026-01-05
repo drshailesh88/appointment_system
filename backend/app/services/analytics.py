@@ -114,9 +114,10 @@ class AnalyticsService:
         start_dt = datetime.combine(start_date, datetime.min.time())
         end_dt = datetime.combine(end_date, datetime.max.time())
 
-        # Build base query
+        # Build base query - join through Doctor to filter by clinic
+        # (Appointment doesn't have clinic_id, it's linked through doctor_id -> Doctor.clinic_id)
         base_filter = and_(
-            Appointment.clinic_id == clinic_id,
+            Doctor.clinic_id == clinic_id,
             Appointment.scheduled_start >= start_dt,
             Appointment.scheduled_start <= end_dt,
         )
@@ -132,7 +133,7 @@ class AnalyticsService:
                 func.sum(case((Appointment.status == AppointmentStatus.CANCELLED.value, 1), else_=0)).label("cancelled"),
                 func.sum(case((Appointment.status == AppointmentStatus.NO_SHOW.value, 1), else_=0)).label("no_show"),
                 func.sum(case((Appointment.status == AppointmentStatus.SCHEDULED.value, 1), else_=0)).label("scheduled"),
-            ).where(base_filter)
+            ).select_from(Appointment).join(Doctor, Appointment.doctor_id == Doctor.id).where(base_filter)
         )
         row = result.one()
 
@@ -286,11 +287,14 @@ class AnalyticsService:
             current_dt = datetime.combine(current, datetime.min.time())
             next_dt = datetime.combine(next_day, datetime.min.time())
 
-            # Appointments for this day
+            # Appointments for this day (join through Doctor to filter by clinic)
             appt_result = await self.db.execute(
-                select(func.count()).where(
+                select(func.count())
+                .select_from(Appointment)
+                .join(Doctor, Appointment.doctor_id == Doctor.id)
+                .where(
                     and_(
-                        Appointment.clinic_id == clinic_id,
+                        Doctor.clinic_id == clinic_id,
                         Appointment.scheduled_start >= current_dt,
                         Appointment.scheduled_start < next_dt,
                     )
